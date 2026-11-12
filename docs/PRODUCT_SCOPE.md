@@ -22,3 +22,11 @@ MVP 模块职责：
 
 不在本期：销售折扣申请、客户价格自动配置、OP 生产接口写入、MaaS Monitor 实时监控、计量、账单、收入。
 不连接生产系统，所有数据模拟。模块字段、状态机、审批路径、分析口径须等待详细 PRD。
+
+## Stage 02 已授权范围
+
+本阶段已建立统一 Application Shell、导航、身份/业务域切换、只读工作台和其余模块占位页。未实现完整供应商、模型、渠道、采购、报价、测试、整改、治理或分析业务页，也没有业务写 API。原欢迎页兼容保留。
+
+路由：/dashboard；/models、/suppliers、/channels；/sourcing、/quotes、/tests、/remediations、/governance；/analysis/purchase、/analysis/tests；/system/roles、/system/about。除工作台外均为统一占位；未授权直接访问返回无权限提示，未知路径返回未找到。/welcome 保留原页面，/ 重定向到工作台。
+
+规划标识仅供验收：供应商 Stage 03；模型/渠道 Stage 04；寻源 Stage 05；报价 Stage 05—06；测试/整改 Stage 07；治理 Stage 08；分析阶段待确认。这不是后续开发授权。

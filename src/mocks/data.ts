@@ -938,6 +938,20 @@ const additionalTasks = mockData.channels.flatMap((c) => {
 });
 export const fixture: DomainStore = {
   ...mockData,
+  users: [
+    ...mockData.users,
+    {
+      source: 'mock',
+      id: 'u-overseas',
+      name: '模拟海外运营',
+      role: 'ProductOperations',
+      salesPriceLevel: null,
+    },
+  ],
+  domainGrants: [
+    ...mockData.domainGrants,
+    { userId: 'u-overseas', businessDomain: 'overseas' },
+  ],
   testTasks: [...mockData.testTasks, ...additionalTasks],
   quotes: [
     ...mockData.quotes,

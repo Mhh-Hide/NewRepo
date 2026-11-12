@@ -1,6 +1,11 @@
 import type { ApiAdapter } from '../services/api-adapter';
 import type { AccessContext } from '../auth/types';
-import type { Channel, Demand, Model } from '../domain/entities';
+import type {
+  BusinessDomain,
+  Channel,
+  Demand,
+  Model,
+} from '../domain/entities';
 import {
   can,
   canSeeField,
@@ -24,7 +29,10 @@ import { validateStore } from '../domain/validation';
 const fixtureErrors = validateStore(data);
 if (fixtureErrors.length) throw new Error(fixtureErrors.join('; '));
 /** Demo persona selector, NOT authentication. Never accept this as backend authority. */
-export function createMockAdapter(userId?: string): ApiAdapter {
+export function createMockAdapter(
+  userId?: string,
+  businessDomain?: BusinessDomain,
+): ApiAdapter {
   const user = data.users.find((u) => u.id === userId);
   if (userId !== undefined && !user) throw new Error('Unknown demo user');
   const ctx: AccessContext | null = user
@@ -41,9 +49,16 @@ export function createMockAdapter(userId?: string): ApiAdapter {
           .map((g) => g.customerId),
       }
     : null;
+  if (businessDomain !== undefined) {
+    if (!ctx || !ctx.domains.includes(businessDomain))
+      throw new Error('未授权的业务域');
+    // Narrow the existing grants; a query parameter can never expand them.
+  }
   const modelAllowed = (m: Model): boolean =>
     ctx !== null &&
     hasDomain(ctx, modelDomain(m, data.vendors)) &&
+    (businessDomain === undefined ||
+      modelDomain(m, data.vendors) === businessDomain) &&
     (ctx.user.role !== 'SupplierUser' ||
       data.channels.some(
         (c) => c.modelId === m.id && hasSupplier(ctx, c.supplierId),
