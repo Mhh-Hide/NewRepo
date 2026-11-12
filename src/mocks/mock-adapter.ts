@@ -1,3 +1,8 @@
+import { createSupplierApi } from './supplier-api';
+import {
+  supplierRepository,
+  type SupplierRepository,
+} from './supplier-repository';
 import type { ApiAdapter } from '../services/api-adapter';
 import type { AccessContext } from '../auth/types';
 import type {
@@ -20,7 +25,6 @@ import {
   projectDemandItem,
   projectExecution,
   projectRemediation,
-  projectSupplier,
   projectTestTask,
 } from '../auth/projections';
 import { modelDomain } from '../domain/rules';
@@ -32,6 +36,8 @@ if (fixtureErrors.length) throw new Error(fixtureErrors.join('; '));
 export function createMockAdapter(
   userId?: string,
   businessDomain?: BusinessDomain,
+  repository: SupplierRepository = supplierRepository,
+  writeActive: () => boolean = () => true,
 ): ApiAdapter {
   const user = data.users.find((u) => u.id === userId);
   if (userId !== undefined && !user) throw new Error('Unknown demo user');
@@ -65,7 +71,13 @@ export function createMockAdapter(
       ));
   const channelAllowed = (c: Channel): boolean =>
     ctx !== null &&
-    hasSupplier(ctx, c.supplierId) &&
+    (ctx.user.role === 'Procurement'
+      ? repository
+          .read()
+          .maintenance.some(
+            (g) => g.userId === ctx.user.id && g.supplierId === c.supplierId,
+          )
+      : hasSupplier(ctx, c.supplierId)) &&
     data.models.some((m) => m.id === c.modelId && modelAllowed(m));
   const channels = () => data.channels.filter(channelAllowed);
   const supplierAllowed = (id: string): boolean =>
@@ -86,7 +98,15 @@ export function createMockAdapter(
   const channelById = (id: string) => channels().find((c) => c.id === id);
   // Clone each response so client mutation cannot contaminate the backing fixture or another role.
   const copy = <T>(value: T): T => structuredClone(value);
+  const supplierApi = createSupplierApi({
+    ctx,
+    domain: businessDomain,
+    repository,
+    channels,
+    writeActive,
+  });
   return {
+    ...supplierApi,
     async getDemoInfo() {
       return {
         source: 'mock',
@@ -108,18 +128,6 @@ export function createMockAdapter(
     async listModels() {
       return copy(
         ctx && can(ctx, 'model:read') ? data.models.filter(modelAllowed) : [],
-      );
-    },
-    async listSuppliers() {
-      return copy(
-        ctx && can(ctx, 'supplier:read')
-          ? data.suppliers
-              .filter((s) => supplierAllowed(s.id))
-              .flatMap((s) => {
-                const view = projectSupplier(ctx, s);
-                return view ? [view] : [];
-              })
-          : [],
       );
     },
     async listChannels(filter = {}) {

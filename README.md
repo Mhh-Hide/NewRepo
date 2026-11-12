@@ -1,6 +1,6 @@
 # MaaS 模型资源全生命周期管理平台
 
-MaaS Resource Lifecycle Management。第 02 阶段应用外壳与只读工作台；所有展示数据均为模拟数据，不连接生产系统。
+MaaS Resource Lifecycle Management。第 03 阶段供应商主档管理与只读工作台；所有展示数据均为模拟数据，不连接生产系统。
 
 ## 安装与启动
 
@@ -59,9 +59,9 @@ harness/
 AGENTS.md
 ```
 
-先阅读 AGENTS.md 与 docs。统一 API 出口为 src/services/api.ts；页面禁止直接依赖未来 OP、Monitor 或测试平台接口。领域查询与工作台聚合均通过已授权 Mock Adapter；没有业务写接口。真实权限未来由后端执行。
+先阅读 AGENTS.md 与 docs。统一 API 出口为 src/services/api.ts；页面禁止直接依赖未来 OP、Monitor 或测试平台接口。领域查询与工作台聚合均通过已授权 Mock Adapter；供应商主档提供本地 Mock 写接口，其他业务仍只读。真实权限未来由后端执行。
 
-原有 MyNewFile 原样保留。当前只有工作台和其余模块占位，不涉及生产凭据或部署。未确认事项见 docs 与 harness/ROADMAP.md；第 02 阶段完成后停止，等待验收。
+原有 MyNewFile 原样保留。当前开放工作台与供应商主档，其他模块仍为占位，不涉及生产凭据或部署。未确认事项见 docs 与 harness/ROADMAP.md；第 03 阶段完成后停止，等待验收。
 
 ## 云环境已有 Chromium 时
 
@@ -88,3 +88,13 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify
 页面包括授权统计、独立状态概览、角色范围待办、每类最近活动及资源速览。指标口径见 docs/DECISIONS.md D02，路由见 docs/PRODUCT_SCOPE.md。测试覆盖加载、空态、错误重试、角色切换竞态、权限、业务域、导航、刷新及窄屏。
 
 分支 stage-02-app-shell 基于已验收 6b0324d；不合并 main，不自动开始 Stage 03。
+
+## Stage 03 供应商管理
+
+进入 /suppliers。产品运营可新增、编辑、调整负责人及确认启停；点击名称进入详情，查看授权资源摘要和变更历史。采购可编辑明确分配的供应商，但不能新增、转交或启停。测试/运维只读摘要；供应商用户仅自身资料；前台拒绝访问。
+
+业务演示数据保存到独立 localStorage 键 maas-supplier-demo-v1（schemaVersion=1），刷新可恢复；身份选择仍只存 sessionStorage。页面与工作台共用同一供应商 Repository。禁止输入真实联系人、客户、密码、Key 或商业敏感信息。
+
+资料 version 冲突时需重新加载，不静默覆盖。数据损坏/版本不兼容会显示错误；双域运营在全部业务域视角可通过“重置演示数据”二次确认恢复初始主档。重置不会改报价、渠道、测试或事件。
+
+当前分支 stage-03-supplier-management 基于已验收 d996d0e。localStorage 只用于 Demo，不代表生产安全、多用户一致性或真正审计。截图和交接见 harness/build/stage-03.md 与 harness/context/stage-03.md。停止在 Stage 03，不开始 Stage 04。

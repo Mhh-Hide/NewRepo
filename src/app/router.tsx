@@ -1,3 +1,4 @@
+import { SupplierRoute } from '../features/suppliers/SupplierRoute';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { WelcomePage } from './WelcomePage';
 import { AppShell } from './AppShell';
@@ -11,8 +12,10 @@ export const router = createBrowserRouter([
     children: [
       { path: '/', element: <Navigate to="/dashboard" replace /> },
       { path: '/dashboard', element: <DashboardRoute /> },
+      { path: '/suppliers', element: <SupplierRoute /> },
+      { path: '/suppliers/:supplierId', element: <SupplierRoute /> },
       ...navigation
-        .filter((n) => n.id !== 'dashboard')
+        .filter((n) => n.id !== 'dashboard' && n.id !== 'suppliers')
         .map((n) => ({ path: n.path, element: <ComingSoonPage /> })),
       { path: '*', element: <ComingSoonPage /> },
     ],

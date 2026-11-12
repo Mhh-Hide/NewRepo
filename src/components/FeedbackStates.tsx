@@ -19,12 +19,18 @@ export function EmptyState({
     </div>
   );
 }
-export function ErrorState({ onRetry }: { onRetry: () => void }) {
+export function ErrorState({
+  onRetry,
+  message,
+}: {
+  onRetry: () => void;
+  message?: string;
+}) {
   return (
     <Result
       status="error"
       title="授权数据查询失败"
-      subTitle="未展示不完整的统计结果，请重试。"
+      subTitle={message ?? '未展示不完整的统计结果，请重试。'}
       extra={<Button onClick={onRetry}>重新加载</Button>}
     />
   );

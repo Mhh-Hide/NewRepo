@@ -32,15 +32,32 @@ export function projectSupplier(
   return {
     source: s.source,
     id: s.id,
-    status: s.status,
     name: s.name,
     shortCode: s.shortCode,
+    status: s.status,
+    supplierCategory: s.supplierCategory,
+    cooperationStatus: s.cooperationStatus,
+    countryOrRegion: s.countryOrRegion,
+    version: s.version,
+    createdAt: s.createdAt,
+    updatedAt: s.updatedAt,
     ...(canSeeField(ctx, 'supplierContact')
       ? {
           contactName: s.contactName,
           contactEmail: s.contactEmail,
           contactPhone: s.contactPhone,
+          contactPosition: s.contactPosition,
+          alternativeContact: s.alternativeContact,
+          description: s.description,
           ownerUserId: s.ownerUserId,
+        }
+      : {}),
+    ...(['ProductOperations', 'Procurement'].includes(ctx.user.role)
+      ? {
+          remark: s.remark,
+          createdBy: s.createdBy,
+          updatedBy: s.updatedBy,
+          externalAccountStatus: s.externalAccountStatus,
         }
       : {}),
   };

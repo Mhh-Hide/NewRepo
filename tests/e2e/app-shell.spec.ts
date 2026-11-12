@@ -21,17 +21,17 @@ test('default dashboard, navigation and placeholder survive browser refresh', as
   await page.goto('/dashboard');
   await expect(page.getByTestId('metric-channels')).toContainText('7');
   await expect(page.getByRole('navigation', { name: '主导航' })).toBeVisible();
-  await page.getByRole('menuitem', { name: /供应商管理/ }).click();
-  await expect(page).toHaveURL(/\/suppliers$/);
+  await page.getByRole('menuitem', { name: /模型资源池/ }).click();
+  await expect(page).toHaveURL(/\/models$/);
   await expect(
-    page.getByRole('heading', { name: '供应商管理', exact: true }),
+    page.getByRole('heading', { name: '模型资源池', exact: true }),
   ).toBeVisible();
   await expect(page.getByText('即将开放', { exact: true })).toBeVisible();
   await page.reload();
   await expect(
-    page.getByRole('heading', { name: '供应商管理', exact: true }),
+    page.getByRole('heading', { name: '模型资源池', exact: true }),
   ).toBeVisible();
-  await expect(page.getByText(/规划阶段：03/)).toBeVisible();
+  await expect(page.getByText(/规划阶段：04/)).toBeVisible();
 });
 test('domain filters change real metrics and single-domain identity cannot expand access', async ({
   page,

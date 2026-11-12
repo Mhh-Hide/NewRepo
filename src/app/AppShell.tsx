@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Alert, Drawer, Layout, Tag } from 'antd';
 import { Outlet } from 'react-router-dom';
 import { createDemoSession, listDemoProfiles } from '../services/demo-session';
@@ -36,19 +36,25 @@ function initialSelection(): Selection {
   return { id: 'u-ops', domain: 'all' };
 }
 export function AppShell() {
-  const [selection, setSelection] = useState<Selection>(initialSelection);
+  const [{ selection, session }, setSelection] = useState(() => {
+    const selection = initialSelection();
+    return {
+      selection,
+      session: createDemoSession(selection.id, selection.domain),
+    };
+  });
   const choose = (next: Selection) => {
-    setSelection(next);
+    session.revokeWrites();
+    setSelection({
+      selection: next,
+      session: createDemoSession(next.id, next.domain),
+    });
     try {
       sessionStorage.setItem(selectionKey, JSON.stringify(next));
     } catch {
-      /* A read-only demo remains usable without storage. */
+      /* Metadata persistence is optional. */
     }
   };
-  const session = useMemo(
-    () => createDemoSession(selection.id, selection.domain),
-    [selection],
-  );
   const [collapsed, setCollapsed] = useState(false);
   const [mobile, setMobile] = useState(false);
   const [drawer, setDrawer] = useState(false);
@@ -77,7 +83,7 @@ export function AppShell() {
       />
       {!collapsed && (
         <div className="sidebar-footer">
-          <Tag>只读演示</Tag>
+          <Tag>Mock 演示</Tag>
           <small>资源 · 协作 · 治理</small>
         </div>
       )}
@@ -122,7 +128,7 @@ export function AppShell() {
             type="info"
             showIcon
             title="演示身份 · 所有展示数据均为模拟数据"
-            description="仅提供授权范围内的只读演示；角色切换不是真实登录，未连接生产系统。"
+            description="仅作用于本地模拟数据；角色切换不是真实登录，未连接生产系统。"
           />
         </div>
         <Layout.Content className="page-content">
@@ -132,7 +138,7 @@ export function AppShell() {
           />
         </Layout.Content>
         <footer className="app-footer">
-          MaaS Resource Lifecycle Management · Stage 02 · Mock Demo
+          MaaS Resource Lifecycle Management · Stage 03 · Mock Demo
         </footer>
       </Layout>
     </Layout>

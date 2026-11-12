@@ -56,7 +56,7 @@ export const navigation: readonly NavigationItem[] = [
     group: '资源管理',
     icon: <TeamOutlined />,
     permission: 'supplier:read',
-    available: false,
+    available: true,
     stage: '03',
     description: '维护供应商档案与授权合作关系。',
   },

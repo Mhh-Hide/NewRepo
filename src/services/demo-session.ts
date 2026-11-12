@@ -13,6 +13,7 @@ export interface DemoSession {
   readonly profile: DemoProfile;
   readonly domain: DomainSelection;
   readonly api: ApiAdapter;
+  readonly revokeWrites: () => void;
   readonly permits: (action: PermissionAction) => boolean;
 }
 /** Only non-sensitive demo identity metadata; never exposes customer/supplier grants. */
@@ -31,10 +32,19 @@ export function createDemoSession(
     supplierIds: [],
     customerIds: [],
   };
+  let writeActive = true;
   return {
     profile,
     domain,
-    api: createMockAdapter(userId, domain === 'all' ? undefined : domain),
+    api: createMockAdapter(
+      userId,
+      domain === 'all' ? undefined : domain,
+      undefined,
+      () => writeActive,
+    ),
+    revokeWrites: () => {
+      writeActive = false;
+    },
     permits: (action) => can(ctx, action),
   };
 }

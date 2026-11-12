@@ -41,3 +41,23 @@ TBD：业务字段最终字典、时间校验的服务端契约、审计快照�
 - SupplierIncident 保留 `description`，但作为可能混合敏感信息的受限全文；增加受控 `summaryCode`（resource_unavailable/service_feedback/compliance_review/other_issue），投影生成固定摘要，不复制自由文本。另设 `customer`（id/name 或 null）、`salesPriceMinorUnits`（或 null）、`purchaseDiscount`（DiscountBps 或 null），分别授权。
 - `SupplierIncidentView` 显式列举允许返回的字段；原始实体不再作为 listIncidents 返回类型。事件客户引用与商业数值在夹具校验中检查。
 - ChannelView 新增 `anonymousCode`，Demo 使用 `DEMO-` 加内部渠道 ID；前台 displayName 使用该代号，可稳定区分渠道。它与供应商 shortCode 无关，不是加密或安全凭证；内部 ID 必须保持不含供应商身份语义。没有新增 UI。
+
+## Stage 03：供应商主档
+
+继续使用 Supplier.id/name（界面分别显示“内部 ID / 供应商名称”），不改名为第二套 supplierId/supplierName 实体。新增 cooperationStatus、supplierCategory、countryOrRegion、description、contactPosition、alternativeContact、remark、externalAccountStatus、createdBy、updatedBy、version。选填文本持久化为空字符串；首次创建 version=1，真正变更时递增。内部 ID、创建人/时间、版本及外部账号状态不接受表单写入。
+
+- cooperationStatus：potential / negotiating / cooperating / paused / terminated，与 enabled/disabled 独立。
+- supplierCategory：official_vendor / cloud_provider / third_party / other。
+- externalAccountStatus：not_created / invited / active / disabled；当前只预留，默认 not_created，无邀请、密码、外部登录或编辑功能。
+- name 与 shortCode 分别全局唯一，忽略首尾空格和英文大小写；停用或终止也不释放唯一性。更名不改变 ID。
+- ownerUserId 从模拟采购用户目录选择；不是供应商账号，也不是模型业务域。新增 u-proc-alt（采购，国内授权）用于负责人调整验收。
+
+SupplierMasterScope 独立记录主档管理域授权，不是供应商模型业务域。新建时取创建者当前选中且已授权的管理范围；全部域视角取其全部授权域。既有主档的初始管理范围由 fixture 渠道厂商域推导，只用于兼容基线。供应商主档仍无 businessDomain 真值。
+
+采购维护授权复用 UserSupplierGrant 形状，持久化在 repository.maintenance，与供应商用户静态所属关系分离。本期主要采购负责人就是明确的主档维护受让人；调整负责人时回收旧维护授权并授予新负责人。明确授权的采购可以读取无渠道主档；域筛选仍限制可见渠道，不能因负责人属国内就把供应商限制为国内模型。
+
+供应商专用审计 SupplierChangeEvent：id、supplierId、action、actorUserId、occurredAt、reason、changedFields、beforeSnapshot、afterSnapshot。action 为 created/edited/status_changed/owner_assigned；快照是同一 Supplier 类型，接口通过字段投影后返回。没有将客户、报价、密码或凭据加入快照。原 AuditEvent 及报价/测试审计查询不改变。
+
+Mock Repository 是唯一可变供应商主档来源；原 fixture 只作初始化/重置基线。legacy listSuppliers、工作台与管理 API 均读取同一 repository。单一 localStorage 键 maas-supplier-demo-v1 保存 schemaVersion=1、全局 revision、suppliers、scopes、maintenance 和 history。写前检查记录 version、结构、全局名称/缩写唯一性；持久化成功后才返回成功。不变字段不生成新版本/审计。没有数据库、物理删除或渠道级联更新。
+
+TBD：组织/部门级主档管理授权、多采购协作与转交规则、账号邀请流程、生产审计保留及防篡改、未来 schema 迁移。浏览器同步写入及版本校验不是生产事务或跨标签页原子锁。

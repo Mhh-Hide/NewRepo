@@ -12,12 +12,32 @@ import type {
 /** Sensitive properties are absent rather than present with undefined or masked values. */
 export type SupplierView = Pick<
   Supplier,
-  'source' | 'id' | 'status' | 'name' | 'shortCode'
+  | 'source'
+  | 'id'
+  | 'status'
+  | 'name'
+  | 'shortCode'
+  | 'supplierCategory'
+  | 'cooperationStatus'
+  | 'countryOrRegion'
+  | 'version'
+  | 'createdAt'
+  | 'updatedAt'
 > &
   Partial<
     Pick<
       Supplier,
-      'contactName' | 'contactEmail' | 'contactPhone' | 'ownerUserId'
+      | 'contactName'
+      | 'contactEmail'
+      | 'contactPhone'
+      | 'ownerUserId'
+      | 'contactPosition'
+      | 'alternativeContact'
+      | 'description'
+      | 'remark'
+      | 'createdBy'
+      | 'updatedBy'
+      | 'externalAccountStatus'
     >
   >;
 export type ChannelView = { readonly anonymousCode: string } & Pick<

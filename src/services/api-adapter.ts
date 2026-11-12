@@ -1,3 +1,4 @@
+import type { SupplierApi } from './supplier-types';
 import type { DemoInfo } from '../domain/demo';
 import type {
   AuditEvent,
@@ -23,8 +24,8 @@ export interface DemandDetail {
   readonly matches: readonly DemandChannelMatch[];
   readonly channels: readonly ChannelView[];
 }
-/** Read-only domain contract. No upstream DTOs and no raw store escape hatch. */
-export interface ApiAdapter {
+/** Unified domain contract. Supplier writes are Demo-only; no raw store escape hatch. */
+export interface ApiAdapter extends SupplierApi {
   getDemoInfo(): Promise<DemoInfo>;
   listVendors(): Promise<readonly ModelVendor[]>;
   listModels(): Promise<readonly Model[]>;

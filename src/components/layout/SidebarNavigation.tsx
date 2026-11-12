@@ -32,7 +32,13 @@ export function SidebarNavigation({
       <Menu
         mode="inline"
         theme="dark"
-        selectedKeys={[location.pathname]}
+        selectedKeys={[
+          entries.find(
+            (n) =>
+              location.pathname === n.path ||
+              location.pathname.startsWith(n.path + '/'),
+          )?.path ?? '',
+        ]}
         inlineCollapsed={collapsed}
         items={
           collapsed

@@ -1,4 +1,9 @@
 import type {
+  CooperationStatus,
+  SupplierCategory,
+  SupplierAccountStatus,
+} from './suppliers';
+import type {
   AvailabilityStatus,
   ChannelType,
   ConnectivityStatus,
@@ -47,6 +52,17 @@ export interface Supplier extends Identified, Timestamps {
   readonly contactEmail: string;
   readonly contactPhone: string;
   readonly ownerUserId: string;
+  readonly cooperationStatus: CooperationStatus;
+  readonly supplierCategory: SupplierCategory;
+  readonly countryOrRegion: string;
+  readonly description: string;
+  readonly contactPosition: string;
+  readonly alternativeContact: string;
+  readonly remark: string;
+  readonly externalAccountStatus: SupplierAccountStatus;
+  readonly createdBy: string;
+  readonly updatedBy: string;
+  readonly version: number;
 }
 export interface Channel extends Identified, Timestamps {
   readonly supplierId: string;

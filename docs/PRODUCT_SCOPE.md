@@ -30,3 +30,7 @@ MVP 模块职责：
 路由：/dashboard；/models、/suppliers、/channels；/sourcing、/quotes、/tests、/remediations、/governance；/analysis/purchase、/analysis/tests；/system/roles、/system/about。除工作台外均为统一占位；未授权直接访问返回无权限提示，未知路径返回未找到。/welcome 保留原页面，/ 重定向到工作台。
 
 规划标识仅供验收：供应商 Stage 03；模型/渠道 Stage 04；寻源 Stage 05；报价 Stage 05—06；测试/整改 Stage 07；治理 Stage 08；分析阶段待确认。这不是后续开发授权。
+
+## Stage 03 开放范围
+
+供应商管理 /suppliers 及 /suppliers/:supplierId 已开放主档列表、新增、编辑、负责人分配、启停、详情和变更历史，支持本地 Mock 持久化。其余业务模块继续占位；不新增报价、渠道编辑、测试结果、供应商门户或真实生产接口。Stage 04 未开始。
