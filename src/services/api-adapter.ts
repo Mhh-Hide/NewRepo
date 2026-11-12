@@ -1,3 +1,4 @@
+import type { ResourceApi } from './resource-types';
 import type { SupplierApi } from './supplier-types';
 import type { DemoInfo } from '../domain/demo';
 import type {
@@ -25,7 +26,7 @@ export interface DemandDetail {
   readonly channels: readonly ChannelView[];
 }
 /** Unified domain contract. Supplier writes are Demo-only; no raw store escape hatch. */
-export interface ApiAdapter extends SupplierApi {
+export interface ApiAdapter extends SupplierApi, ResourceApi {
   getDemoInfo(): Promise<DemoInfo>;
   listVendors(): Promise<readonly ModelVendor[]>;
   listModels(): Promise<readonly Model[]>;

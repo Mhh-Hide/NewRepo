@@ -325,7 +325,20 @@ export function SupplierDetailPage({
             <EmptyState description="当前身份仅可查看供应商身份及技术摘要" />
           )}
         </Card>
-        <Card title="关联资源概览" extra={<Tag>当前授权范围</Tag>}>
+        <Card
+          title="关联资源概览"
+          extra={
+            <Space wrap>
+              <Tag>当前授权范围</Tag>
+              {detail.resources.modelCount > 0 &&
+                session.permits('model:read') && (
+                  <Link to={`/models?supplierId=${encodeURIComponent(s.id)}`}>
+                    查看关联模型
+                  </Link>
+                )}
+            </Space>
+          }
+        >
           <div className="supplier-resource-stats">
             <div>
               <strong>{detail.resources.modelCount}</strong>

@@ -1,6 +1,6 @@
 # MaaS 模型资源全生命周期管理平台
 
-MaaS Resource Lifecycle Management。第 03 阶段供应商主档管理与只读工作台；所有展示数据均为模拟数据，不连接生产系统。
+MaaS Resource Lifecycle Management。Stage 04A 模型资源池与渠道只读管理，保留供应商主档与工作台；所有展示数据均为模拟数据，不连接生产系统。
 
 ## 安装与启动
 
@@ -61,7 +61,7 @@ AGENTS.md
 
 先阅读 AGENTS.md 与 docs。统一 API 出口为 src/services/api.ts；页面禁止直接依赖未来 OP、Monitor 或测试平台接口。领域查询与工作台聚合均通过已授权 Mock Adapter；供应商主档提供本地 Mock 写接口，其他业务仍只读。真实权限未来由后端执行。
 
-原有 MyNewFile 原样保留。当前开放工作台与供应商主档，其他模块仍为占位，不涉及生产凭据或部署。未确认事项见 docs 与 harness/ROADMAP.md；第 03 阶段完成后停止，等待验收。
+原有 MyNewFile 原样保留。当前开放工作台、供应商主档、模型资源池与渠道只读详情，其他模块仍为占位，不涉及生产凭据或部署。未确认事项见 docs 与 harness/ROADMAP.md；Stage 04A 完成后停止，等待验收，不开始 Stage 04B。
 
 ## 云环境已有 Chromium 时
 
@@ -98,3 +98,11 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify
 资料 version 冲突时需重新加载，不静默覆盖。数据损坏/版本不兼容会显示错误；双域运营在全部业务域视角可通过“重置演示数据”二次确认恢复初始主档。重置不会改报价、渠道、测试或事件。
 
 当前分支 stage-03-supplier-management 基于已验收 d996d0e。localStorage 只用于 Demo，不代表生产安全、多用户一致性或真正审计。截图和交接见 harness/build/stage-03.md 与 harness/context/stage-03.md。停止在 Stage 03，不开始 Stage 04。
+
+## Stage 04A 模型资源池
+
+运行开发服务后进入 /models，可按模型名称/代码、授权厂商、类别、地区、启用状态、可见渠道及获准的供应商覆盖筛选。打开模型详情查看当前供应商主档、渠道能力和四个独立状态，再进入 /channels/:channelId 只读详情；/channels 管理列表继续占位。
+
+供应商改名/缩写/启停沿用 Stage 03 存储，刷新资源视图可见最新主档；无渠道供应商不增加覆盖数。前台只获得匿名渠道，不返回供应商身份/覆盖家数、技术引用或商业价格。资源页不写 localStorage，也不修改模型、渠道或 OP ID。
+
+分支 stage-04a-model-resource-pool，基于已验收 b1a6bb1。完整验证仍使用既有 verify 命令；截图和交接见 harness/build/stage-04a.md、harness/context/stage-04a.md。停止于 Stage 04A，不开始 Stage 04B。

@@ -61,3 +61,27 @@ SupplierMasterScope 独立记录主档管理域授权，不是供应商模型业
 Mock Repository 是唯一可变供应商主档来源；原 fixture 只作初始化/重置基线。legacy listSuppliers、工作台与管理 API 均读取同一 repository。单一 localStorage 键 maas-supplier-demo-v1 保存 schemaVersion=1、全局 revision、suppliers、scopes、maintenance 和 history。写前检查记录 version、结构、全局名称/缩写唯一性；持久化成功后才返回成功。不变字段不生成新版本/审计。没有数据库、物理删除或渠道级联更新。
 
 TBD：组织/部门级主档管理授权、多采购协作与转交规则、账号邀请流程、生产审计保留及防篡改、未来 schema 迁移。浏览器同步写入及版本校验不是生产事务或跨标签页原子锁。
+
+## Stage 04A：资源查询 ViewModel
+
+ModelVendor、Model、Supplier、Channel 和各独立状态定义不变。新增只读契约位于 src/services/resource-types.ts，不是第二套主档：
+
+| ViewModel              | 内容                                                                                                       |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------- |
+| ModelResourceSummary   | 原 Model、授权厂商、modelDomain 推导的业务域、渠道数量、可见时的不同供应商数量、类型分布及四个独立状态计数 |
+| ModelResourcePage      | 分页模型汇总、授权厂商选项、授权目录统计、可选供应商关联筛选摘要                                           |
+| ModelResourceDetail    | 模型汇总、当前主档供应商覆盖、授权渠道清单、身份可见标记                                                   |
+| ChannelResourceSummary | 显式选择的渠道代号、类型、能力、资源及四个独立状态；身份允许时附当前供应商的 id/name/shortCode/status 摘要 |
+| ChannelResourceDetail  | 渠道摘要、关联模型/厂商/派生域，以及原 ChannelView 已授权的调用名、Endpoint 引用、OP ID 和来源核验状态     |
+
+未知能力保留 null，显示为“未知”，不补零；OP ID 的 null 显示“未绑定”，不是未授权字段。未授权技术属性直接缺席，不填假值。资源 ViewModel 不包含报价、客户、联系人、备注或审计快照。
+
+供应商覆盖按当前授权渠道的不同 supplierId 去重，同供应商同模型多渠道仅算一家；不按名称判断身份，也不把模型覆盖阈值当成需求匹配达标。无渠道供应商仍存在于 Stage 03 主档，但不会进入任何模型的覆盖统计。
+
+前台没有 supplierCount/threeSupplierModels 属性，不返回供应商身份列表；仅返回可见渠道数量、匿名代号、类型和能力/状态。供应商覆盖数量筛选对前台拒绝，防止用筛选反推隐藏身份关系。
+
+queryModelResources 的顶部统计以当前授权目录为基准，不随名称等普通筛选变化；供应商关联入口先约束模型集合，再对这些模型的全部授权渠道统计覆盖。因此“查看关联模型”不是把模型详情限制成某一家供应商渠道。分页总数始终对应全部筛选后的结果。
+
+所有供应商名称/缩写/启停来自原 listSuppliers → Stage 03 SupplierRepository 的当前主档，不读取初始 fixture 替代它；没有新增供应商或渠道存储。供应商更名/停用不改模型关联 ID、渠道数量及渠道状态。资源与 Dashboard 对相同身份/业务域的模型/渠道计数保持一致；主档总数可以包含无渠道供应商，不能与资源提供方数量混用。
+
+未来 Stage 04B：createResourceApi 只依赖 ResourceReaders 的既有授权批量读方法，不内嵌 fixture。模型/渠道变为可变 Repository 时应统一接入原 listModels/listChannels，再供资源页、Dashboard 和供应商摘要共同读取；本阶段不预先实现渠道写入、OP 绑定、价格或测试执行。

@@ -45,8 +45,8 @@ export const navigation: readonly NavigationItem[] = [
     group: '资源管理',
     icon: <AppstoreOutlined />,
     permission: 'model:read',
-    available: false,
-    stage: '04',
+    available: true,
+    stage: '04A',
     description: '管理模型厂商、模型版本与资源关联。',
   },
   {
@@ -68,8 +68,9 @@ export const navigation: readonly NavigationItem[] = [
     icon: <ApartmentOutlined />,
     permission: 'channel:read',
     available: false,
-    stage: '04',
-    description: '管理模型渠道、能力与独立接入状态。',
+    stage: '04B 待确认',
+    description:
+      '渠道管理与写入尚未开放；本期可从模型详情查看授权渠道只读详情。',
   },
   {
     id: 'sourcing',

@@ -97,3 +97,23 @@ Mock Repository 统一支撑旧 listSuppliers、工作台与管理 API。localSt
 截图：harness/build/stage-03-suppliers-1440.png 与 stage-03-supplier-detail-1440.png，均为真实 Chromium 1440px 截图，已查看；截图运行 pageerror 为 0。没有真实客户、供应商联系人、密码或 Key。
 
 限制：localStorage 可被浏览器工具修改，非生产安全、真实审计或多用户一致性；版本校验不是跨标签页原子锁。组织管理范围、多采购维护、外部账号流程、schema 迁移及生产备注/附件分级仍 TBD。保留构建大包提示，当前 JS 约 1.24 MB，gzip 约 391 kB；未提高阈值掩盖。文档和 Stage 03 交接已更新，停止等待验收，不开始 Stage 04，不合并 main 或强制推送。
+
+## Stage 04A — 2026-11-13（Asia/Shanghai）
+
+基线：已验收 b1a6bb121e8e108cf3855578d118d21ceb161b6e，本地/远程核对一致，工作区干净，目标分支不存在；从该提交创建 stage-04a-model-resource-pool，不使用 main。
+
+页面：开放 /models 列表、/models/:modelId 详情和 /channels/:channelId 只读详情。支持名称/代码、授权厂商、类别、地区、启用、可见渠道、获准的供应商覆盖筛选，排序/分页/重置；展示模型覆盖、类型分布、能力与四个独立状态。供应商身份可链接到现有详情，供应商详情仅增加“查看关联模型”入口；/channels 管理列表及历史能力继续占位，无写入表单。
+
+数据/一致性：ApiAdapter 只新增 ResourceApi；createResourceApi 从既有授权 readers 批量查询后按模型/供应商 ID 汇总。无 per-model API 请求，测试验证每个 reader 每次查询仅调用一次。SupplierIdentity 摘要来自原 listSuppliers 的当前 Repository，不导入或复制供应商 fixture；改名/缩写/停用后刷新同步，新增无渠道主档不增加覆盖，停用不删除渠道或修改状态。领域模型、auth、SupplierRepository、SupplierApi 写入、报价、OP 绑定和测试状态定义均未修改。
+
+权限：继续使用原角色/域/所属范围；未知和未授权详情返回 null。资源接口不含客户、价格、联系人、备注或审计快照。前台不调用供应商主档 reader，不返回身份/覆盖家数或技术引用，并拒绝 supplierId/覆盖参数探测。技术字段仅从已授权 ChannelView 存在的属性复制，null 能力保留“未知”，OP null 为“未绑定”。渠道匿名代号由原投影提供。
+
+界面/兼容：复用已有 Shell/Header/统计卡/状态与反馈；新增三个页面懒加载包装，保持 Fast Refresh 规则，不改 ESLint。SupplierDetail 仅在已有授权资源摘要有模型时显示关联模型链接，原编辑和保存逻辑不动；Shell 仅更新阶段文案。新请求 hook 忽略旧响应，继承身份/域子树隔离。无新增依赖、无 localStorage 直读写、无真实 OP/测试平台/Monitor。
+
+测试：执行 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify` 最终退出码 0；严格类型、Lint、格式通过；Vitest 10 文件 / 161 测试（原 130 + 新 31）全部通过；Playwright 16 测试（原 11 + 新 5）全部通过；生产构建通过。覆盖模型多供应商/同供应商多渠道去重、厂商域/地区版本、主档改名同步与停用保留、无渠道供应商、Dashboard 一致性、各角色字段和记录边界、未知能力、独立状态、空态/错误重试/过期响应、筛选导航/刷新及 1440/1280/390px。
+
+既有测试保留：原占位导航用例因模型模块已开放，改为检验仍未开放的报价页；未删除或跳过断言。完整运行曾复现原 Stage 03 下拉选项指针提交未关闭的时序问题；现用“hover 目标、断言 active、键盘 Enter 提交、断言关闭及正确标签”，不增加重试/等待时间，不改供应商业务逻辑。单独回归与完整验证均通过。新增 E2E 的期望数据取自实际授权 Service，不注入假的页面响应。
+
+截图：stage-04a-model-pool-1440.png、stage-04a-model-detail-channels-1440.png、stage-04a-channel-detail-1440.png，保存在 harness/build，均由真实 Chromium 1440px 截取并查看；运行 pageerror=0。仅虚构业务资料与公开厂商/模型示例。
+
+限制：模型和渠道仍是原只读目录，Stage 04B 应在统一授权 readers 后接入 Repository，不能在页面建立副本；供应商本地存储安全与并发限制沿用 Stage 03。覆盖为存量关联统计，不保证需求匹配或即时可用；前台不提供供应商家数筛选；完整历史尚未开发。三个业务页已独立拆包，仍有共享块约 783 kB（gzip 251 kB）的既有大包提示，未提高阈值，不声称已完成整体性能优化。文档及交接已更新，不合并 main、不强制推送，不开始 Stage 04B。

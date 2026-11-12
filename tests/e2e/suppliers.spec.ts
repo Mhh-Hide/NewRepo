@@ -10,10 +10,13 @@ async function persona(page: Page, label: string) {
 async function owner(page: Page, name: string) {
   const select = page.getByRole('combobox', { name: /主要采购负责人$/ });
   await select.click();
-  await page
+  const option = page
     .locator('.ant-select-dropdown:visible .ant-select-item-option')
-    .filter({ hasText: name })
-    .click();
+    .filter({ hasText: name });
+  // Commit the active option by keyboard, independent of the drawer's pointer geometry.
+  await option.hover();
+  await expect(option).toHaveClass(/ant-select-item-option-active/);
+  await select.press('Enter');
   await expect(select).toHaveAttribute('aria-expanded', 'false');
   await expect(
     page.locator('.ant-form-item').filter({ has: select }),

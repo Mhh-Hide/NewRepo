@@ -1,3 +1,5 @@
+import { createResourceApi } from './resource-api';
+import type { ResourceApi } from '../services/resource-types';
 import { createSupplierApi } from './supplier-api';
 import {
   supplierRepository,
@@ -105,7 +107,7 @@ export function createMockAdapter(
     channels,
     writeActive,
   });
-  return {
+  const base: Omit<ApiAdapter, keyof ResourceApi> = {
     ...supplierApi,
     async getDemoInfo() {
       return {
@@ -278,6 +280,10 @@ export function createMockAdapter(
           : [],
       );
     },
+  };
+  return {
+    ...base,
+    ...createResourceApi(base, !!ctx && canSeeField(ctx, 'supplierIdentity')),
   };
 }
 /** Anonymous until a demo persona is explicitly selected by future application wiring. */
