@@ -21,3 +21,11 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify
 ```
 
 环境已有系统 Chromium；Playwright 配套浏览器下载限制见第 00 阶段记录。没有新增依赖。前端保持欢迎页，第 02 阶段未开始。详细流转、多角色合并、定价优先级、真正鉴权及写入流程全部等待后续确认。
+
+## Stage 01 Patch 交接
+
+本批基线 f5562540456c2472b39b1ede82ea3e9fb61bc2bb，继续在 stage-01-domain-permissions 修复，不进入第 02 阶段。
+
+OP ID 校验：validateStore 检查非 null ID 唯一，bindOpChannelId 第三个参数必须是完整渠道集合；规范记录防止陈旧对象改绑，同值确认允许。未来后端唯一约束与 OP 一对一契约仍需确认。
+
+事件 API 改为 SupplierIncidentView。description 仅产品运营；采购与运维读取受控摘要，分别按原权限取得采购折扣或客户身份，均不取得客户售价。summaryCode 固定映射而非文本清洗；不得把未分类原始对象直接返回。前台 ChannelView 有稳定 anonymousCode，displayName 不再全部相同。真实附件/自由文本的后端保密策略见 PERMISSIONS 待办。

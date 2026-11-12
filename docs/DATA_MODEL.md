@@ -16,7 +16,7 @@
 | TestExecution      | taskId → TestTask、externalTestId、startedAt/finishedAt、result、failureReason、reportReference、createdAt                                                                                                                                                                           |
 | QualityExemption   | channelId、verifiedBy/At、evidenceReference、reason；独立核验/豁免证据                                                                                                                                                                                                               |
 | Remediation        | channelId、relatedTestExecutionId（可空，须属同渠道）、description、status、supplierResponse、submittedBy、updatedBy、时间                                                                                                                                                           |
-| SupplierIncident   | supplierId、channelId（可空，须属同供应商）、category、severity、description、status、reportedBy、时间                                                                                                                                                                               |
+| SupplierIncident   | supplierId、channelId（可空，须属同供应商）、category、severity、summaryCode、description（受限）、customer、salesPriceMinorUnits、purchaseDiscount、status、reportedBy、时间                                                                                                        |
 | AuditEvent         | entityType/entityId、action、actorUserId、occurredAt、reason、changeSummary、beforeSnapshot/afterSnapshot                                                                                                                                                                            |
 | Customer           | name、salesPriceMinorUnits；完全虚构的权限验收夹具，不是销售定价模块                                                                                                                                                                                                                 |
 | DemoUser           | name、role、salesPriceLevel（sales/director/vp/null）；不含密码                                                                                                                                                                                                                      |
@@ -34,3 +34,10 @@
 状态真值与中文映射见 `src/domain/statuses.ts`：模型地区 domestic/overseas/global/other，类别 text/image/video/audio/multimodal/other，基础启停 enabled/disabled。各流程状态见 WORKFLOWS。
 
 TBD：业务字段最终字典、时间校验的服务端契约、审计快照扩展格式（当前标量键值）、历史链冲突解决、OP 绑定纠错流程、客户定价契约、真实账号管理和持久化。
+
+## Stage 01 Patch：绑定与事件分级
+
+- OP ID 暂按与内部渠道一对一绑定处理：非 null 的 opChannelId 全集合唯一，多个 null 合法。`validateStore` 返回 `Duplicate OP channel ID`；`bindOpChannelId(channel, opChannelId, channels)` 要求传入完整渠道集合，冲突抛出 `OP channel ID conflict`。同渠道相同值可幂等确认，且通过集合内当前记录防止旧对象覆盖已有绑定。未来后端需全局唯一约束和事务，调用方不可通过提供局部集合代替全局校验。
+- SupplierIncident 保留 `description`，但作为可能混合敏感信息的受限全文；增加受控 `summaryCode`（resource_unavailable/service_feedback/compliance_review/other_issue），投影生成固定摘要，不复制自由文本。另设 `customer`（id/name 或 null）、`salesPriceMinorUnits`（或 null）、`purchaseDiscount`（DiscountBps 或 null），分别授权。
+- `SupplierIncidentView` 显式列举允许返回的字段；原始实体不再作为 listIncidents 返回类型。事件客户引用与商业数值在夹具校验中检查。
+- ChannelView 新增 `anonymousCode`，Demo 使用 `DEMO-` 加内部渠道 ID；前台 displayName 使用该代号，可稳定区分渠道。它与供应商 shortCode 无关，不是加密或安全凭证；内部 ID 必须保持不含供应商身份语义。没有新增 UI。

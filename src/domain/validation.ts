@@ -56,6 +56,10 @@ export function validateStore(s: DomainStore): readonly string[] {
     s.suppliers.map((v) => v.shortCode.trim().toLowerCase()),
     'supplier shortCode',
   );
+  unique(
+    s.channels.flatMap((c) => (c.opChannelId === null ? [] : [c.opChannelId])),
+    'OP channel ID',
+  );
   const capability = (value: number | null) =>
     value === null || (Number.isFinite(value) && value >= 0);
   for (const m of s.models)
@@ -197,6 +201,27 @@ export function validateStore(s: DomainStore): readonly string[] {
       'incident.supplierId',
     );
     ref(user(i.reportedBy), 'incident.reportedBy');
+    if (i.customer !== null)
+      ref(
+        s.customers.some(
+          (c) => c.id === i.customer?.id && c.name === i.customer.name,
+        ),
+        'incident.customer',
+      );
+    if (i.purchaseDiscount !== null) {
+      try {
+        discountBps(i.purchaseDiscount);
+      } catch {
+        errors.push('Invalid incident purchase discount');
+      }
+    }
+    if (
+      i.salesPriceMinorUnits !== null &&
+      (!Number.isSafeInteger(i.salesPriceMinorUnits) ||
+        i.salesPriceMinorUnits < 0)
+    )
+      errors.push('Invalid incident sales price');
+
     if (i.channelId !== null)
       ref(
         channel(i.channelId)?.supplierId === i.supplierId,

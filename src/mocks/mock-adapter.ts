@@ -10,6 +10,7 @@ import {
 } from '../auth/policy';
 import {
   projectChannel,
+  projectIncident,
   projectDemand,
   projectDemandItem,
   projectExecution,
@@ -210,11 +211,16 @@ export function createMockAdapter(userId?: string): ApiAdapter {
     async listIncidents() {
       return copy(
         ctx && can(ctx, 'incident:read')
-          ? data.incidents.filter(
-              (i) =>
-                supplierAllowed(i.supplierId) &&
-                (i.channelId === null || channelById(i.channelId)),
-            )
+          ? data.incidents
+              .filter(
+                (i) =>
+                  supplierAllowed(i.supplierId) &&
+                  (i.channelId === null || channelById(i.channelId)),
+              )
+              .flatMap((i) => {
+                const view = projectIncident(ctx, i);
+                return view ? [view] : [];
+              })
           : [],
       );
     },

@@ -192,11 +192,13 @@ describe('domain graph and invariants', () => {
       expect(() => discountBps(n)).toThrow();
   });
   it('does not permit replacement of an OP binding', () => {
-    const bound = bindOpChannelId(channel, 'mock-op');
+    const bound = bindOpChannelId(channel, 'mock-op', data.channels);
     expect(channel.opChannelId).toBeNull();
-    expect(bindOpChannelId(bound, 'mock-op').opChannelId).toBe('mock-op');
-    expect(() => bindOpChannelId(bound, 'other')).toThrow();
-    expect(() => bindOpChannelId(channel, ' ')).toThrow();
+    expect(bindOpChannelId(bound, 'mock-op', data.channels).opChannelId).toBe(
+      'mock-op',
+    );
+    expect(() => bindOpChannelId(bound, 'other', data.channels)).toThrow();
+    expect(() => bindOpChannelId(channel, ' ', data.channels)).toThrow();
   });
   it('retains repeated executions of one channel test task', () => {
     expect(data.testExecutions.filter((e) => e.taskId === 'tt-1')).toHaveLength(

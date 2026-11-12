@@ -5,6 +5,7 @@ import type {
   DemandItem,
   Remediation,
   Supplier,
+  SupplierIncident,
   TestExecution,
   TestTask,
 } from '../domain/entities';
@@ -19,7 +20,7 @@ export type SupplierView = Pick<
       'contactName' | 'contactEmail' | 'contactPhone' | 'ownerUserId'
     >
   >;
-export type ChannelView = Pick<
+export type ChannelView = { readonly anonymousCode: string } & Pick<
   Channel,
   | 'source'
   | 'id'
@@ -69,3 +70,24 @@ export type TestExecutionView = Omit<
   Partial<Pick<TestExecution, 'externalTestId' | 'reportReference'>>;
 export type RemediationView = Omit<Remediation, 'submittedBy' | 'updatedBy'> &
   Partial<Pick<Remediation, 'submittedBy' | 'updatedBy'>>;
+
+/** Explicit allowlist so future raw fields do not silently enter API responses. */
+export type SupplierIncidentView = Pick<
+  SupplierIncident,
+  | 'source'
+  | 'id'
+  | 'supplierId'
+  | 'channelId'
+  | 'category'
+  | 'severity'
+  | 'summaryCode'
+  | 'status'
+  | 'reportedBy'
+  | 'createdAt'
+  | 'updatedAt'
+> & { readonly summary: string } & Partial<
+    Pick<
+      SupplierIncident,
+      'description' | 'customer' | 'salesPriceMinorUnits' | 'purchaseDiscount'
+    >
+  >;

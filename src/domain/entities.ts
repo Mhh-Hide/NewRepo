@@ -138,12 +138,22 @@ export interface Remediation extends Identified, Timestamps {
   readonly submittedBy: string;
   readonly updatedBy: string;
 }
+export type IncidentSummaryCode =
+  | 'resource_unavailable'
+  | 'service_feedback'
+  | 'compliance_review'
+  | 'other_issue';
 export interface SupplierIncident extends Identified, Timestamps {
   readonly supplierId: string;
   readonly channelId: string | null;
   readonly category: 'complaint' | 'outage' | 'violation' | 'other';
   readonly severity: 'low' | 'medium' | 'high' | 'critical';
+  readonly summaryCode: IncidentSummaryCode;
+  /** Unclassified free text may mix sensitivities; ProductOperations only. */
   readonly description: string;
+  readonly customer: Pick<Customer, 'id' | 'name'> | null;
+  readonly salesPriceMinorUnits: number | null;
+  readonly purchaseDiscount: DiscountBps | null;
   readonly status: IncidentStatus;
   readonly reportedBy: string;
 }

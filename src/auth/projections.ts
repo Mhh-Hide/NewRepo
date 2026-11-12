@@ -6,6 +6,8 @@ import type {
   DemandItem,
   Remediation,
   Supplier,
+  SupplierIncident,
+  IncidentSummaryCode,
   TestExecution,
   TestTask,
 } from '../domain/entities';
@@ -16,10 +18,11 @@ import type {
   DemandView,
   RemediationView,
   SupplierView,
+  SupplierIncidentView,
   TestExecutionView,
   TestTaskView,
 } from './view-models';
-import { canSeeField } from './policy';
+import { can, canSeeField } from './policy';
 /** Record authorization happens before these pure field projections in the Adapter. */
 export function projectSupplier(
   ctx: AccessContext,
@@ -43,14 +46,16 @@ export function projectSupplier(
   };
 }
 export function projectChannel(ctx: AccessContext, c: Channel): ChannelView {
+  const anonymousCode = `DEMO-${c.id}`;
   return {
     source: c.source,
     id: c.id,
     modelId: c.modelId,
+    anonymousCode,
     channelType: c.channelType,
     displayName: canSeeField(ctx, 'supplierIdentity')
       ? c.displayName
-      : '模拟资源（供应商已脱敏）',
+      : `模拟匿名渠道 ${anonymousCode}`,
     tpm: c.tpm,
     rpm: c.rpm,
     concurrencyLimit: c.concurrencyLimit,
@@ -177,6 +182,53 @@ export function projectRemediation(
     updatedAt: r.updatedAt,
     ...(canSeeField(ctx, 'internalMetadata')
       ? { submittedBy: r.submittedBy, updatedBy: r.updatedBy }
+      : {}),
+  };
+}
+
+const incidentSummaryLabels: Record<IncidentSummaryCode, string> = {
+  resource_unavailable: '模拟资源不可用事件',
+  service_feedback: '模拟服务反馈事件',
+  compliance_review: '模拟合规核查事件',
+  other_issue: '模拟其他事件',
+};
+export function projectIncident(
+  ctx: AccessContext,
+  i: SupplierIncident,
+): SupplierIncidentView | null {
+  if (!can(ctx, 'incident:read')) return null;
+  const validCode = Object.hasOwn(incidentSummaryLabels, i.summaryCode)
+    ? i.summaryCode
+    : 'other_issue';
+  return {
+    source: i.source,
+    id: i.id,
+    supplierId: i.supplierId,
+    channelId: i.channelId,
+    category: i.category,
+    severity: i.severity,
+    summaryCode: validCode,
+    summary: incidentSummaryLabels[validCode],
+    status: i.status,
+    reportedBy: i.reportedBy,
+    createdAt: i.createdAt,
+    updatedAt: i.updatedAt,
+    ...(ctx.user.role === 'ProductOperations'
+      ? { description: i.description }
+      : {}),
+    ...(canSeeField(ctx, 'customerIdentity')
+      ? {
+          customer:
+            i.customer === null
+              ? null
+              : { id: i.customer.id, name: i.customer.name },
+        }
+      : {}),
+    ...(canSeeField(ctx, 'customerPrice')
+      ? { salesPriceMinorUnits: i.salesPriceMinorUnits }
+      : {}),
+    ...(canSeeField(ctx, 'purchaseDiscount')
+      ? { purchaseDiscount: i.purchaseDiscount }
       : {}),
   };
 }

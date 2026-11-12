@@ -6,7 +6,6 @@ import type {
   Model,
   ModelVendor,
   QualityExemption,
-  SupplierIncident,
 } from '../domain/entities';
 import type {
   ChannelView,
@@ -14,6 +13,7 @@ import type {
   DemandView,
   RemediationView,
   SupplierView,
+  SupplierIncidentView,
   TestExecutionView,
   TestTaskView,
 } from '../auth/view-models';
@@ -42,6 +42,6 @@ export interface ApiAdapter {
     channelId: string,
   ): Promise<readonly QualityExemption[]>;
   listRemediations(channelId?: string): Promise<readonly RemediationView[]>;
-  listIncidents(): Promise<readonly SupplierIncident[]>;
+  listIncidents(): Promise<readonly SupplierIncidentView[]>;
   listAuditEvents(): Promise<readonly AuditEvent[]>;
 }

@@ -39,12 +39,20 @@ export function canExemptQuality(
 export function bindOpChannelId(
   channel: Channel,
   opChannelId: string,
+  channels: readonly Channel[],
 ): Channel {
+  const registered = channels.find((c) => c.id === channel.id);
+  if (!registered) throw new Error('Channel not found in OP binding registry');
   if (
     !opChannelId.trim() ||
-    (channel.opChannelId !== null && channel.opChannelId !== opChannelId)
+    (channel.opChannelId !== null && channel.opChannelId !== opChannelId) ||
+    (registered.opChannelId !== null && registered.opChannelId !== opChannelId)
   )
     throw new Error('OP binding cannot be overwritten');
+  if (
+    channels.some((c) => c.id !== channel.id && c.opChannelId === opChannelId)
+  )
+    throw new Error('OP channel ID conflict: already bound to another channel');
   return { ...channel, opChannelId };
 }
 /** Immutable append only: corrections and commercial changes keep separate sourceType/reason. */
