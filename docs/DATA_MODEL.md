@@ -1,16 +1,36 @@
-# 数据模型边界
+# 第 01 阶段数据模型
 
-以下是概念实体，尚不是接口或数据库契约，不预先生成完整实体代码。
+类型真值：`src/domain/entities.ts`；集合契约：`src/domain/store.ts`。本阶段仅内存只读查询，无数据库、写接口或真实商业信息。所有实体含 `source: 'mock'` 与稳定 `id`；除专门记录时间的明细外，主实体含 `createdAt`、`updatedAt`。时间为 ISO 8601 UTC 字符串。
 
-| 实体          | 已知关系与约束                                                 | 待确认                   |
-| ------------- | -------------------------------------------------------------- | ------------------------ |
-| 厂商          | 提供模型；归属决定国内/海外域                                  | 归属字典及判定规则       |
-| 模型          | 一个模型对应多个供应商                                         | 标识、版本规则           |
-| 供应商        | 可提供多个模型                                                 | 档案字段、身份脱敏方式   |
-| 渠道          | 关联供应商、模型及渠道类型；内部 ID 唯一且独立；OP ID 可空     | 类型字典、唯一性执行位置 |
-| 报价/价格历史 | 归属渠道；参考报价、正式价格、临时优惠分别表达；确认后保留历史 | 精度、单位、有效期       |
-| 测试记录      | 归属渠道；质量与连通性独立                                     | 结果格式、豁免证据       |
-| 审计记录      | 覆盖报价、测试、关键状态变化                                   | 事件字段、存储及保留策略 |
-| 整改事项      | 供应商整改职责                                                 | 关联方式与状态待 PRD     |
+| 实体               | 字段与关系（公共 id/source/时间见代码）                                                                                                                                                                                                                                              |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ModelVendor        | name、code（唯一）、businessDomain（domestic/overseas）、status                                                                                                                                                                                                                      |
+| Model              | vendorId → ModelVendor；name、modelCode、version、regionVariant、category、status                                                                                                                                                                                                    |
+| Supplier           | name 与 shortCode 分开且各自唯一；status、contactName/Email/Phone、ownerUserId → DemoUser                                                                                                                                                                                            |
+| Channel            | supplierId → Supplier、modelId → Model；channelType、displayName、opChannelId、modelInvocationName、endpointReference、sourceVerificationStatus、tpm/rpm/concurrencyLimit/ttftMs、resourceStatus；四个独立维度 qualityStatus/connectivityStatus/integrationStatus/availabilityStatus |
+| Demand             | requesterUserId → DemoUser、customerId → Customer、status                                                                                                                                                                                                                            |
+| DemandItem         | demandId → Demand、modelId → Model、targetPurchaseDiscount、requiredTpm/Rpm/TtftMs/Concurrency、status                                                                                                                                                                               |
+| DemandChannelMatch | demandItemId → DemandItem、channelId → Channel、matchStatus、createdAt；模型必须一致                                                                                                                                                                                                 |
+| ChannelQuote       | channelId、discount、priceStatus、reason、sourceType、effectiveFrom/Until、evidenceReference、submittedBy、confirmedBy/At、createdAt、previousQuoteId（历史版本关联）                                                                                                                |
+| TestTask           | channelId、testType、status、assignedTo、时间                                                                                                                                                                                                                                        |
+| TestExecution      | taskId → TestTask、externalTestId、startedAt/finishedAt、result、failureReason、reportReference、createdAt                                                                                                                                                                           |
+| QualityExemption   | channelId、verifiedBy/At、evidenceReference、reason；独立核验/豁免证据                                                                                                                                                                                                               |
+| Remediation        | channelId、relatedTestExecutionId（可空，须属同渠道）、description、status、supplierResponse、submittedBy、updatedBy、时间                                                                                                                                                           |
+| SupplierIncident   | supplierId、channelId（可空，须属同供应商）、category、severity、description、status、reportedBy、时间                                                                                                                                                                               |
+| AuditEvent         | entityType/entityId、action、actorUserId、occurredAt、reason、changeSummary、beforeSnapshot/afterSnapshot                                                                                                                                                                            |
+| Customer           | name、salesPriceMinorUnits；完全虚构的权限验收夹具，不是销售定价模块                                                                                                                                                                                                                 |
+| DemoUser           | name、role、salesPriceLevel（sales/director/vp/null）；不含密码                                                                                                                                                                                                                      |
 
-当前唯一实现的类型为 `src/domain/demo.ts` 的 DemoInfo，用 source: mock 明示来源。未来关键实体必须显式定义 TypeScript 类型；禁止页面直接使用上游原始 DTO。不得随意重命名已确认核心字段。
+关系：厂商 1:N 模型；供应商 N:M 模型由渠道关联；同供应商同模型允许多渠道。需求 1:N 明细，明细 N:M 渠道由匹配记录关联。渠道 1:N 报价/测试任务/整改；测试任务 1:N 执行。供应商 1:N 事件。
+
+模型业务域唯一真值是厂商，`modelDomain` 关联推导；模型没有独立 businessDomain。模型身份组合为 vendorId + modelCode + version + regionVariant，不使用显示名称。供应商不存 businessDomain，一份主档可跨域。渠道 displayName 不唯一，内部 id 唯一，OP ID 可 null；`bindOpChannelId` 允许初次绑定及幂等绑定，拒绝覆盖。没有任何 API Key 字段。
+
+折扣采用品牌类型 `DiscountBps`，通过 `discountBps` 验证为 0..10000 安全整数，10000 为原价，8000 为八折。此范围是 Demo 的明确实现假设；超原价采购、零折扣可用性及币种/商业精度仍为 TBD。能力未知使用 null，不能转换为 0。报价更正 sourceType=correction 并引用 previousQuoteId；追加新 id，不覆盖历史；接口只返回历史列表，不推断当前结算价或叠加促销。
+
+`validateStore` 校验各集合 ID、供应商名称/缩写、模型组合身份、外键、明细/匹配模型一致、整改执行归属、事件供应商归属、报价确认与有效期、能力非负、每渠道连通性任务及豁免证据。Mock Adapter 加载时校验失败会报错。类型不是数据库约束；未来真实写入仍需后端校验与事务。
+
+用户范围由 `UserDomainGrant`、`UserSupplierGrant`、`UserCustomerGrant` 分别表达。供应商授权关系不是登录认证；角色与销售价格等级分开存储。暂用单一活动角色，组合角色冲突规则 TBD。
+
+状态真值与中文映射见 `src/domain/statuses.ts`：模型地区 domestic/overseas/global/other，类别 text/image/video/audio/multimodal/other，基础启停 enabled/disabled。各流程状态见 WORKFLOWS。
+
+TBD：业务字段最终字典、时间校验的服务端契约、审计快照扩展格式（当前标量键值）、历史链冲突解决、OP 绑定纠错流程、客户定价契约、真实账号管理和持久化。

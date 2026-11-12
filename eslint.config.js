@@ -12,6 +12,27 @@ export default tseslint.config(
       'node_modules/**',
     ],
   },
+  {
+    files: [
+      'src/app/**/*.{ts,tsx}',
+      'src/components/**/*.{ts,tsx}',
+      'src/features/**/*.{ts,tsx}',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/mocks/**'],
+              message:
+                'UI must use the unified services API, not raw Mock sources.',
+            },
+          ],
+        },
+      ],
+    },
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

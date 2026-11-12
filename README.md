@@ -1,6 +1,6 @@
 # MaaS 模型资源全生命周期管理平台
 
-MaaS Resource Lifecycle Management。第 00 阶段独立前端 Demo，所有展示数据均为模拟数据，不连接生产系统，仅欢迎页。
+MaaS Resource Lifecycle Management。第 01 阶段核心领域与权限基础（UI 保持第 00 阶段欢迎页），所有展示数据均为模拟数据，不连接生产系统，仅欢迎页。
 
 ## 安装与启动
 
@@ -61,7 +61,7 @@ AGENTS.md
 
 先阅读 AGENTS.md 与 docs。统一 API 出口为 src/services/api.ts；页面禁止直接依赖未来 OP、Monitor 或测试平台接口。当前 Adapter 元信息方法用于验证契约，不代表业务 API 已完成。真实权限未来由后端执行。
 
-原有 MyNewFile 原样保留。本阶段不开发任何业务页面，不涉及生产凭据、部署或推送。未确认事项见 docs 与 harness/ROADMAP.md；完成第 00 阶段后停止。
+原有 MyNewFile 原样保留。本阶段不开发任何业务页面，不涉及生产凭据或部署。未确认事项见 docs 与 harness/ROADMAP.md；第 01 阶段完成后停止，等待验收。
 
 ## 云环境已有 Chromium 时
 
@@ -72,3 +72,9 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify
 ```
 
 此方式不需要下载 Playwright 浏览器；浏览器版本由环境提供，与 Playwright 固定版本的兼容性须以实际测试为准。默认不设置此变量时仍使用 Playwright 配套浏览器。
+
+## 第 01 阶段领域验收
+
+只读 ApiAdapter 见 src/services/api-adapter.ts；createMockAdapter(userId) 通过模拟用户选择绑定权限。默认 api 匿名，不返回业务数据。演示 ID 包含 u-ops、u-proc、u-test、u-support、u-supplier、u-sales、u-account、u-solution；详见 Mock 夹具与权限文档。页面不能直接导入 mocks；本期没有新增页面或真实登录。
+
+运行原有 verify 命令同时验证领域与权限测试；模型/权限矩阵见 docs/DATA_MODEL.md 与 docs/PERMISSIONS.md，交接见 harness/context/stage-01.md。不得自动开始第 02 阶段。

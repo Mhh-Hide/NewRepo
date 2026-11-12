@@ -1,6 +1,6 @@
 # 集成设计
 
-当前 `src/services/api.ts` 统一选择 Mock Adapter。`ApiAdapter` 暴露领域契约，`src/mocks` 实现模拟数据。当前仅提供项目元信息，不预先构造业务 API。
+当前 `src/services/api.ts` 统一选择 Mock Adapter。`ApiAdapter` 暴露领域契约，`src/mocks` 实现模拟数据。第 01 阶段已扩展只读领域查询，包含厂商、模型、供应商、渠道、报价历史、需求及候选资源、测试、整改、事件和审计。Mock Adapter 在返回前实施授权与字段投影。
 
 未来 OP 生产运营后台、MaaS Monitor、模型自动化测试平台应分别用 Adapter 转换原始 DTO、错误与状态到领域模型；页面与业务逻辑不得依赖上游原始接口。
 新增集成须先确认契约、认证、权限、超时、错误处理和测试方式。本期无真实 URL、请求、生产写入或实时监控。
