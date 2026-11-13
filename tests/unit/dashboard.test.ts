@@ -24,7 +24,8 @@ describe('scoped dashboard aggregates', () => {
       ['suppliers', 3],
       ['models', 6],
       ['channels', 7],
-      ['gaps', 2],
+      ['demands', 2],
+      ['gaps', 1],
       ['quality', 4],
       ['connectivity', 6],
       ['remediations', 2],
@@ -42,7 +43,7 @@ describe('scoped dashboard aggregates', () => {
     expect(overseas.channels).toHaveLength(2);
     expect(domestic.metrics.find((m) => m.id === 'models')?.value).toBe(2);
     expect(domestic.metrics.find((m) => m.id === 'gaps')?.value).toBe(0);
-    expect(overseas.metrics.find((m) => m.id === 'gaps')?.value).toBe(2);
+    expect(overseas.metrics.find((m) => m.id === 'gaps')?.value).toBe(1);
     expect(domestic.suppliers).toHaveLength(3);
     expect(overseas.suppliers).toHaveLength(2);
     expect(new Set(domestic.suppliers.map((s) => s.id)).size).toBe(3);

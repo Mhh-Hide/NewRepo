@@ -1,6 +1,6 @@
 # MaaS 模型资源全生命周期管理平台
 
-MaaS Resource Lifecycle Management。Stage 04B 渠道主档与资源一致性，保留供应商主档与工作台；所有展示数据均为模拟数据，不连接生产系统。
+MaaS Resource Lifecycle Management。Stage 05A 采购需求与多供应商资源寻源，保留供应商主档与工作台；所有展示数据均为模拟数据，不连接生产系统。
 
 ## 安装与启动
 
@@ -114,3 +114,13 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify
 渠道和待测试任务/历史保存在 `maas-channel-demo-v1`，供应商仍用原 Stage 03 存储；新建成功在模型资源池、供应商详情和工作台重新查询时同步。重置渠道会恢复初始渠道/任务并清除渠道变更历史，保留供应商。若供应商重置会破坏引用，先被阻止，需先独立确认渠道重置。存储不兼容时不自动清空，显示错误，可由双域运营明确重置渠道恢复。
 
 完整检查：`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify`（有 Playwright 自带 Chromium 时可直接 `npm run verify`）。交付见 `harness/build/stage-04b.md`、`harness/context/stage-04b.md`。旧阶段章节为历史记录，以本节为当前入口和行为。只提交/普通推送 stage-04b-channel-management，不合并 main，不开始 Stage 05。
+
+## Stage 05A 采购寻源（当前入口）
+
+运行 `npm run dev` 后进入 `/sourcing`。产品运营点击“新增采购需求”，分别填写受限信息/客户关联和独立共享标题/摘要，添加至少一条模型明细与整数基点采购目标（8000=八折）。保存后进入详情，可维护需求要求、添加候选、人工评估、查看覆盖和跟进。
+
+切换采购身份只能看到共享内容，可选择同模型的当前授权渠道、修改人工匹配状态和寻源进度；其他角色不开放内部商业详情，原授权需求摘要 API 保留。零候选明确为“尚未开展”，不自动当作已调查缺口；初步覆盖按不同供应商计数，不表示采购/测试完成。
+
+新增独立 `maas-sourcing-demo-v1`，不改变已有供应商/渠道存储。渠道被寻源候选（含排除历史）引用时，渠道重置会被阻止；必须先独立确认重置寻源，再确认渠道，必要时再按原依赖规则重置供应商。寻源重置保留其他模块数据，不自动清空浏览器。
+
+完整检查仍为 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify`（已安装 Playwright Chromium 时直接 `npm run verify`）。交接、测试与截图见 `harness/build/stage-05a.md`、`harness/context/stage-05a.md`。仅普通推送 stage-05a-procurement-sourcing，不合并 main，不进入 Stage 05B。旧章节为各历史阶段记录，以此节为当前行为。

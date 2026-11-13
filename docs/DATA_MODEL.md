@@ -97,3 +97,17 @@ ChannelRepository 的独立 `maas-channel-demo-v1` 存储 envelope 为 schemaVer
 ChannelChange 保存 channelId/action/actorUserId/occurredAt/changedFields/beforeSnapshot/afterSnapshot/reason，创建 before=null，其余为同一渠道前后快照。主档写入与事件同一存储单元，普通操作只追加；无实质变更不写入、不增 version、不产生事件。历史限获准产品运营及当前业务域读取。
 
 SupplierRepository 是唯一供应商主档，ChannelRepository 只存 supplierId。模型覆盖按 supplierId 去重，主档名称/状态实时从 SupplierRepository 取得。渠道重置恢复初始渠道/任务并清除本阶段渠道历史，保留供应商与既有静态历史；供应商重置若将使新增渠道关联悬空则拒绝，要求先明确重置渠道，再单独确认供应商重置。
+
+## Stage 05A：采购寻源持久化与分级文本
+
+继续使用 Demand/DemandItem/DemandChannelMatch。Demand.customerId 兼容扩展为 string|null，内部资源优化可无客户；已有 ID、状态和折扣品牌类型不变。Match 保留 candidate/suitable/unsuitable，并增加 excluded，排除保留原关联及历史，可通过原 ID 重新评估。
+
+ManagedDemand 是原 Demand 的交叉扩展：demandCode、title/description（运营受限）、sharedTitle/sharedSummary（采购共享）、priority（normal/high/urgent）、dueAt、version、createdBy/updatedBy。创建请求使用每次表单独立的 UUID 幂等标识，内部 ID 与可读 MOCK-REQ 编号分离；重试不会创建第二套主单和明细。主单版本覆盖所有编辑、候选和进度写入。
+
+ManagedDemandItem 交叉扩展 requiredRegion、priority、createdAt/updatedAt；模型关联已有明细后不可普通迁移或删除，可追加明细。能力为空表示未知，TPM/RPM/并发为非负安全整数，TTFT 为有限非负毫秒数；targetPurchaseDiscount 仍为 0..10000 的 DiscountBps，UI 展示折数不改变存储真值。requiredRegion 不决定模型业务域。ManagedMatch 交叉扩展共享 assessment、createdBy/updatedAt，一对明细/渠道只能存在一条关系（含排除），同供应商多个渠道合法。
+
+SourcingRepository 独立键 maas-sourcing-demo-v1，schemaVersion=1、revision、demands/items/matches/history。从 fixture 初始化并保留原 ID，已知缺少的分级字段使用独立模拟内容补齐，不从受限文本自动复制共享摘要。一次 setItem 保存主单、明细/候选及追加历史；写前检查结构、完整领域引用、模型一致、唯一关系、版本/revision，失败无部分提交。无变化不写入或生成新历史。
+
+SourcingEvent 记录 demandId/demandItemId/matchId、action、actorUserId、occurredAt、共享 note 以及字段 before/after 差异，不采用通用原始快照返回。查询显式投影主单、明细、候选及历史；采购历史仅允许共享/采购技术字段，不接受未知字段自动透传。
+
+供应商与渠道仍分别由原 Repository 管理，不改其持久化格式；寻源只存稳定关联 ID。查询当前渠道能力/状态与当前供应商主档，停用保留历史关系但影响辅助判断和初步覆盖。渠道重置若会移除任何被候选（含排除）引用的新增渠道则被阻止；需先明确重置寻源，再单独确认渠道重置。寻源重置只恢复原需求/明细/匹配并清空本阶段跟进，不清除供应商、渠道、测试或报价。

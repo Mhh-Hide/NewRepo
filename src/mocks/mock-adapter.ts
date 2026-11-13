@@ -1,4 +1,9 @@
 import {
+  sourcingRepository,
+  type SourcingRepository,
+} from './sourcing-repository';
+import { createSourcingApi } from './sourcing-api';
+import {
   channelRepository,
   type ChannelRepository,
 } from './channel-repository';
@@ -47,6 +52,7 @@ export function createMockAdapter(
   repository: SupplierRepository = supplierRepository,
   writeActive: () => boolean = () => true,
   channelRepo: ChannelRepository = channelRepository,
+  sourcingRepo: SourcingRepository = sourcingRepository,
 ): ApiAdapter {
   const user = data.users.find((u) => u.id === userId);
   if (userId !== undefined && !user) throw new Error('Unknown demo user');
@@ -96,16 +102,20 @@ export function createMockAdapter(
     hasSupplier(ctx, id) &&
     channels().some((c) => c.supplierId === id);
   const itemsFor = (d: Demand) =>
-    data.demandItems.filter(
-      (i) =>
-        i.demandId === d.id &&
-        data.models.some((m) => m.id === i.modelId && modelAllowed(m)),
-    );
+    sourcingRepo
+      .read()
+      .items.filter(
+        (i) =>
+          i.demandId === d.id &&
+          data.models.some((m) => m.id === i.modelId && modelAllowed(m)),
+      );
   const demandAllowed = (d: Demand): boolean =>
     ctx !== null &&
     can(ctx, 'demand:read') &&
     itemsFor(d).length > 0 &&
-    (ctx.user.role === 'Procurement' || hasCustomer(ctx, d.customerId));
+    (ctx.user.role === 'Procurement' ||
+      ctx.user.role === 'ProductOperations' ||
+      (d.customerId !== null && hasCustomer(ctx, d.customerId)));
   const channelById = (id: string) => channels().find((c) => c.id === id);
   // Clone each response so client mutation cannot contaminate the backing fixture or another role.
   const copy = <T>(value: T): T => structuredClone(value);
@@ -116,16 +126,50 @@ export function createMockAdapter(
     channels,
     writeActive,
   });
+  const channelApi = createChannelApi(
+    ctx,
+    businessDomain,
+    channelRepo,
+    repository,
+    channels,
+    writeActive,
+  );
   const base: Omit<ApiAdapter, keyof ResourceApi> = {
     ...supplierApi,
-    ...createChannelApi(
+    ...channelApi,
+    ...createSourcingApi(
       ctx,
       businessDomain,
+      sourcingRepo,
       channelRepo,
       repository,
       channels,
       writeActive,
     ),
+    async resetChannelDemo(confirmed) {
+      if (
+        !ctx ||
+        !writeActive() ||
+        !can(ctx, 'channel:create') ||
+        businessDomain ||
+        ctx.domains.length !== 2 ||
+        confirmed !== true
+      )
+        throw new SupplierError(
+          'FORBIDDEN',
+          '须由双域运营在全部域二次确认重置。',
+        );
+      if (
+        sourcingRepo
+          .read()
+          .matches.some((m) => !data.channels.some((c) => c.id === m.channelId))
+      )
+        throw new SupplierError(
+          'VALIDATION',
+          '渠道被寻源候选或历史引用，请先独立确认重置寻源演示数据，再重置渠道；不会静默删除寻源记录。',
+        );
+      return channelApi.resetChannelDemo(confirmed);
+    },
     async resetSupplierDemo(confirmed) {
       if (
         !ctx ||
@@ -199,33 +243,47 @@ export function createMockAdapter(
     async listDemands() {
       return copy(
         ctx
-          ? data.demands.filter(demandAllowed).map((d) =>
-              projectDemand(
-                ctx,
-                d,
-                data.customers.find((c) => c.id === d.customerId)!,
-              ),
-            )
+          ? sourcingRepo
+              .read()
+              .demands.filter(demandAllowed)
+              .map((d) =>
+                projectDemand(
+                  ctx,
+                  d,
+                  data.customers.find((c) => c.id === d.customerId) ?? null,
+                ),
+              )
           : [],
       );
     },
     async getDemand(id) {
-      const d = data.demands.find((d) => d.id === id && demandAllowed(d));
+      const d = sourcingRepo
+        .read()
+        .demands.find((d) => d.id === id && demandAllowed(d));
       if (!ctx || !d) return null;
       const items = itemsFor(d);
-      const matches = data.matches.filter(
-        (m) =>
-          items.some((i) => i.id === m.demandItemId) &&
-          channelById(m.channelId),
-      );
+      const matches = sourcingRepo
+        .read()
+        .matches.filter(
+          (m) =>
+            items.some((i) => i.id === m.demandItemId) &&
+            channelById(m.channelId),
+        );
       return copy({
         demand: projectDemand(
           ctx,
           d,
-          data.customers.find((c) => c.id === d.customerId)!,
+          data.customers.find((c) => c.id === d.customerId) ?? null,
         ),
         items: items.map((i) => projectDemandItem(ctx, i)),
-        matches,
+        matches: matches.map((m) => ({
+          source: m.source,
+          id: m.id,
+          demandItemId: m.demandItemId,
+          channelId: m.channelId,
+          matchStatus: m.matchStatus,
+          createdAt: m.createdAt,
+        })),
         channels: channels()
           .filter((c) => matches.some((m) => m.channelId === c.id))
           .map((c) => projectChannel(ctx, c)),

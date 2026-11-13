@@ -53,24 +53,11 @@ export async function loadDashboard(
   const remediationPending = remediations.filter(
     (r) => r.status !== 'closed',
   ).length;
-  // Count demands with any item having <3 distinct suitable authorized suppliers.
-  const gapCount = details.filter(
-    (d) =>
-      d &&
-      d.items.some(
-        (i) =>
-          new Set(
-            d.matches
-              .filter(
-                (m) => m.demandItemId === i.id && m.matchStatus === 'suitable',
-              )
-              .flatMap((m) => {
-                const c = d.channels.find((c) => c.id === m.channelId);
-                return c?.supplierId ? [c.supplierId] : [];
-              }),
-          ).size < 3,
-      ),
-  ).length;
+  const sourcing =
+    permits('sourcing:read') && models.length
+      ? await api.querySourcing({ pageSize: 1 })
+      : null;
+  const gapCount = sourcing?.stats.gaps ?? 0;
   const metrics: Metric[] = [];
   const add = (id: string, label: string, value: number, note: string) =>
     metrics.push({ id, label, value, note });
@@ -78,10 +65,20 @@ export async function loadDashboard(
     add('suppliers', '授权供应商', suppliers.length, '按稳定供应商 ID 去重');
   add('models', '模型资源', models.length, '按模型版本与地区记录计数');
   add('channels', '资源渠道', channels.length, '同模型的多条渠道分别计数');
+  if (permits('demand:read'))
+    add(
+      'demands',
+      '授权需求',
+      demands.length,
+      '当前授权需求主单；未开展寻源不直接视为已确认缺口',
+    );
   if (permits('demand:read') && permits('quote:read'))
-    add('gaps', '资源缺口需求', gapCount, '任一明细的合适候选不足三家供应商');
-  else if (permits('demand:read'))
-    add('demands', '授权需求', demands.length, '仅统计授权客户及业务域');
+    add(
+      'gaps',
+      '资源缺口需求',
+      gapCount,
+      '已有寻源记录或明确标记缺口的明细，人工初步符合供应商不足三家；未开展不计入',
+    );
   if (permits('test:read')) {
     add(
       'quality',

@@ -1,0 +1,27 @@
+export const sourcingFieldLabels: Readonly<Record<string, string>> = {
+  title: '运营受限标题',
+  description: '运营受限说明',
+  customerId: '客户关联',
+  sharedTitle: '采购共享标题',
+  sharedSummary: '采购共享摘要',
+  priority: '优先级',
+  dueAt: '预计完成日期',
+  modelId: '模型',
+  requiredTpm: 'TPM 需求',
+  requiredRpm: 'RPM 需求',
+  requiredConcurrency: '并发需求',
+  requiredTtftMs: 'TTFT 需求 (ms)',
+  targetPurchaseDiscount: '采购目标（基点）',
+  requiredRegion: '地区或部署限制',
+  channelId: '候选渠道',
+  matchStatus: '候选匹配状态',
+  assessment: '共享判断依据',
+  status: '寻源状态',
+};
+export const sourcingActionLabels = {
+  created: '建立需求记录',
+  updated: '维护需求资料',
+  candidate_added: '添加候选渠道',
+  candidate_updated: '更新候选判断',
+  progress: '更新寻源进度',
+} as const;

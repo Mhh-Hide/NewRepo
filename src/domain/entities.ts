@@ -87,7 +87,7 @@ export interface Channel extends Identified, Timestamps {
 export type DiscountBps = number & { readonly __discountBps: unique symbol };
 export interface Demand extends Identified, Timestamps {
   readonly requesterUserId: string;
-  readonly customerId: string;
+  readonly customerId: string | null;
   readonly status: SourcingStatus;
 }
 export interface DemandItem extends Identified {
@@ -103,7 +103,7 @@ export interface DemandItem extends Identified {
 export interface DemandChannelMatch extends Identified {
   readonly demandItemId: string;
   readonly channelId: string;
-  readonly matchStatus: 'candidate' | 'suitable' | 'unsuitable';
+  readonly matchStatus: 'candidate' | 'suitable' | 'unsuitable' | 'excluded';
   readonly createdAt: string;
 }
 export interface ChannelQuote extends Identified {

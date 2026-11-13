@@ -1,3 +1,4 @@
+import { SourcingRoute } from './SourcingRoutes';
 import {
   ModelPoolRoute,
   ModelDetailRoute,
@@ -31,6 +32,8 @@ export const router = createBrowserRouter([
         path: '/channels/:channelId',
         element: <ChannelDetailRoute />,
       },
+      { path: '/sourcing', element: <SourcingRoute /> },
+      { path: '/sourcing/:demandId', element: <SourcingRoute /> },
       { path: '/channels', element: <ChannelListRoute /> },
       { path: '/suppliers', element: <SupplierRoute /> },
       { path: '/suppliers/:supplierId', element: <SupplierRoute /> },
@@ -40,7 +43,8 @@ export const router = createBrowserRouter([
             n.id !== 'dashboard' &&
             n.id !== 'suppliers' &&
             n.id !== 'models' &&
-            n.id !== 'channels',
+            n.id !== 'channels' &&
+            n.id !== 'sourcing',
         )
         .map((n) => ({ path: n.path, element: <ComingSoonPage /> })),
       { path: '*', element: <ComingSoonPage /> },

@@ -137,3 +137,27 @@ Mock Repository 统一支撑旧 listSuppliers、工作台与管理 API。localSt
 截图：harness/build/stage-04b-channels-1440.png、stage-04b-editor-1440.png、stage-04b-detail-1440.png、stage-04b-op-preview-1440.png。真实 Chromium 截取并逐张查看，仅虚构主档与公开模型示例，截图流程 pageerror=0。
 
 风险与交接：本地 Mock revision 不能保证跨标签页/多用户事务或真实鉴权；生产后端、附件/自由文本保密、OP 一对一契约/真实格式/解绑、关联迁移及停用合作例外继续待确认。无新依赖，但新增组件使共享块约 1,047 kB（gzip 333 kB），保留构建提示，不放宽阈值，不声称已完成性能优化。README 额外更新当前操作入口/重置影响/停止阶段，指定 docs、ROADMAP、build/stage-04b.md、context/stage-04b.md 已更新。检查忽略规则和变更范围，无真实接口/凭据、运行产物或敏感数据。只提交/普通推送本分支，不合并 main、不强制推送，完成后等待验收。
+
+## Stage 05A — 2026-11-13（Asia/Shanghai）
+
+基线：确认 HEAD=4dc3c1af4915765e61699b4368a57fd9de0ad6b9、工作区干净，从该已验收提交创建 stage-05a-procurement-sourcing，不使用旧 main；远程目标分支不存在。阅读 AGENTS、docs、04B 交接、相关领域/权限/Adapter/Repository 与页面和原测试，实施计划先于编码。只交付 05A，不推进 05B。
+
+页面：/sourcing 由占位升级为正式列表，授权主单统计、编号/当前角色标题、模型/状态/优先级/日期区间筛选、排序分页/重置/空态；运营抽屉新建、维护主单与多模型明细，受限信息和采购共享内容独立填写，客户可空。/sourcing/:demandId 按模型分卡，展示需求状态/目标/能力/地区与候选、独立覆盖、人工匹配与进度、追加跟进的中文前后差异。候选抽屉支持供应商、类型、能力阈值和资源/质量/连通/接入/开放筛选；同模型、当前授权渠道，允许同供应商多渠道。复用已有 Shell/Header/StatCard/StatusBadge/反馈与资源 hook，新增路由懒加载，不复制整页或引入依赖。
+
+领域与存储：兼容复用 Demand/DemandItem/Match，仅 Demand.customerId 支持 null、Match 新增 excluded；其余信息通过 Managed 交叉类型扩展，保留旧 ID 和 DiscountBps 定点整数。新建至少一条有效授权模型，未知能力 null，TPM/RPM/并发非负安全整数、TTFT 有限非负毫秒。已有明细普通编辑不能改模型/ID/删除，可追加明细。独立 SourcingRepository（maas-sourcing-demo-v1、schemaVersion/revision）存 demands/items/matches/history，从 fixture 初始化；创建请求 UUID 幂等，内部 ID 和可读模拟编号分离；主单、明细/候选和历史单次提交。所有保存检查完整领域引用、唯一关系、模型一致、版本及 revision；失败无部分提交，无变化不写入。
+
+数据边界：原 listDemands/getDemand 全部改读 SourcingRepository，继续旧白名单摘要，不透传新增文本、采购受限数据或 assessment。供应商/渠道主档仍各自唯一 Repository，不改其存储格式；候选查询实时读取当前渠道能力和供应商主档，停用保留关系与人工历史，但辅助判断及当前初步覆盖变化。Adapter 渠道重置检查全部候选（含排除）对新增渠道的引用，依赖存在先阻止，必须先单独确认寻源重置再确认渠道；必要时再按 04B 原规则重置供应商。寻源重置仅双域运营全部域二次确认，恢复原需求/明细/匹配、清空新增跟进，保留供应商/渠道/测试/报价。损坏或不兼容存储不自动覆盖，明确重置才恢复。
+
+权限/保密：新 sourcing 动作仅运营/采购；创建/业务需求维护仅运营，采购可在域内查看共享内容、添加/评估获准渠道及维护进度，不继承供应商维护为主单写权。测试/运维/供应商/前台不能读取新内部商业详情，前台原需求摘要保留。运营原始 title/description/customer 与 sharedTitle/sharedSummary 分开；采购查询搜索和返回只含共享内容，无 customer/customerId/requesterUserId/客户售价/运营原文。明细、候选与历史显式投影，历史差异共享字段白名单，受限-only 事件省略；按明细域/当前候选渠道范围过滤，不返回通用原始快照。混合域主单资料/状态写入要求全部明细域授权，单域可维护当前获准明细的候选。旧会话切换后失去所有寻源写能力。
+
+业务规则：能力辅助判断 known failure 优先、其次 unknown、完全已知满足才 yes，地区限制始终需人工核实，测试通过不自动代表采购要求满足。人工 suitable 需共享依据，当前明确不符/停用禁止新增 suitable；未知可人工初步记录但不等于自动验证通过。当前初步覆盖按启用且无明确能力不符的人工 suitable 的不同 supplierId 去重，不把三条渠道当三家，不足三家仍可保存。未开展、候选待核实、初步不足、人工确认 gap 和初步覆盖达标明确区分。主单进度用统一流转表，matched 需每明细三家，gap 需不足并人工说明；closed 终止写入。计数不自动改合同、测试、OP 或主单历史结论。
+
+Dashboard：需求来自当前 SourcingRepository，缺口直接复用 querySourcing 的授权规则；新增主单总数。零关联且未人工标 gap 不直接计缺口，已有候选待核实则计当前覆盖不足并独立显示阶段；初始全域/海外缺口从 2→1，国内仍 0。人工 matched 状态和当前数学覆盖独立，资源变化后可同时计入已匹配和当前缺口；不会自动覆写人工历史。
+
+验证：最终 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify 退出码 0。严格类型、Lint、格式、Vitest 12 文件 / 295 测试（保留原 232 + 新增 63）、Playwright 27 测试（保留原 21 + 新增 6）、生产构建全部通过。覆盖 PRD 25 项及定点/非法数值、原 ID/关联、创建重试幂等、编辑/候选/状态版本、失败原子性/无变化、共享搜索/原文/未知字段/历史泄露防护、混合域与旧会话、供应商去重、未知/TTFT方向/停用、排除与重新评估、显式进度及 Dashboard。E2E 用真实页面保存，不改 fixture 伪造成功，验证多模型、采购视角/历史、候选/去重/匹配/排除、刷新/统计、角色拒绝、390px 和损坏数据显式重置。
+
+回归说明：全部既有测试保留；仅原 Dashboard 主单总数和缺口统计断言按新业务规则更新，没有删除用例/关闭断言/放宽类型或超时。开发期新增历史数量测试期望修正为新增事件后 +1；最终完整测试均通过。所有原供应商/渠道/模型资源池/OP Mock/角色边界浏览器用例正常。最终补上每明细寻源状态展示，并完成类型/Lint 和完整 verify 复核。
+
+截图：harness/build/stage-05a-list-1440.png、stage-05a-multi-detail-1440.png、stage-05a-candidate-picker-1440.png、stage-05a-procurement-detail-1440.png，真实 Chromium 通过实际创建/选择角色/候选流程截取，已视觉检查；仅虚构业务资料与公开模型示例，pageerror=0。另检查 1280px 详情无文档横向溢出，390px 操作由浏览器测试覆盖。
+
+交接/风险：docs 六份本期规则、ROADMAP、build/stage-05a.md、context/stage-05a.md 已更新；README 额外更新当前启动入口、角色操作与重置顺序，避免旧只读说明造成误解。无真实 API、凭据、客户数据、数据库、报价写入、合同流程、自动采购或外发通知；忽略规则继续排除依赖/环境变量/密钥/运行产物。共享块仍约 1,047 kB（gzip 333 kB），保留阈值提示，无新增大型依赖。Mock 不提供生产鉴权/多标签页强事务/防篡改；生产共享文本审查/附件/导出、负责人/组织授权、编号分配事务、关联迁移、关闭重开与真实地区规格仍 TBD。只提交并普通推送本分支，不合并 main、不强制推送，完成后停止等待验收。

@@ -36,6 +36,12 @@ export interface AccessContext {
   readonly customerIds: readonly string[];
 }
 export type PermissionAction =
+  | 'sourcing:read'
+  | 'sourcing:create'
+  | 'sourcing:update'
+  | 'sourcing:match'
+  | 'sourcing:progress'
+  | 'sourcing:history'
   | 'vendor:read'
   | 'model:read'
   | 'supplier:read'

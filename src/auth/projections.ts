@@ -114,9 +114,9 @@ export function projectCustomer(
 export function projectDemand(
   ctx: AccessContext,
   d: Demand,
-  customer: Customer,
+  customer: Customer | null,
 ): DemandView {
-  const view = projectCustomer(ctx, customer);
+  const view = customer ? projectCustomer(ctx, customer) : null;
   return {
     source: d.source,
     id: d.id,

@@ -76,7 +76,7 @@ export type DemandView = Pick<
   'source' | 'id' | 'status' | 'createdAt' | 'updatedAt'
 > & {
   readonly customer?: CustomerView;
-  readonly customerId?: string;
+  readonly customerId?: string | null;
   readonly requesterUserId?: string;
 };
 export type DemandItemView = Omit<DemandItem, 'targetPurchaseDiscount'> &

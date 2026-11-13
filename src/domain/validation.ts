@@ -93,7 +93,7 @@ export function validateStore(s: DomainStore): readonly string[] {
   for (const d of s.demands) {
     ref(user(d.requesterUserId), 'demand.requesterUserId');
     ref(
-      s.customers.some((c) => c.id === d.customerId),
+      d.customerId === null || s.customers.some((c) => c.id === d.customerId),
       'demand.customerId',
     );
   }

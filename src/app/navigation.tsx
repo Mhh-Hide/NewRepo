@@ -77,9 +77,9 @@ export const navigation: readonly NavigationItem[] = [
     name: '采购寻源',
     group: '业务协同',
     icon: <FileSearchOutlined />,
-    permission: 'demand:process',
-    available: false,
-    stage: '05',
+    permission: 'sourcing:read',
+    available: true,
+    stage: '05A',
     description: '围绕需求明细匹配多供应商候选资源。',
   },
   {

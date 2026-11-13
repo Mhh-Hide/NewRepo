@@ -18,6 +18,12 @@ const technical: readonly PermissionAction[] = [
 ];
 const actions: Record<Role, readonly PermissionAction[]> = {
   ProductOperations: [
+    'sourcing:read',
+    'sourcing:create',
+    'sourcing:update',
+    'sourcing:match',
+    'sourcing:progress',
+    'sourcing:history',
     'channel:create',
     'channel:update',
     'channel:toggle',
@@ -43,6 +49,10 @@ const actions: Record<Role, readonly PermissionAction[]> = {
     'incident:record',
   ],
   Procurement: [
+    'sourcing:read',
+    'sourcing:match',
+    'sourcing:progress',
+    'sourcing:history',
     ...technical,
     'supplier:read',
     'quote:read',
