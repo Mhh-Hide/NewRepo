@@ -207,3 +207,13 @@ Dashboard：需求来自当前 SourcingRepository，缺口直接复用 querySour
 验证：PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify完整退出码0；严格类型、ESLint、Prettier、Vitest14文件/420测试（原378+新增42）、Playwright37测试（原33+新增4）、生产构建全部通过。原测试文件/断言未修改，未放宽类型、超时或重试。最终版本复核通过；既有共享块约1,047kB（gzip333kB）警告保留，不提高阈值。开发中新增用例的fixture计数按实际原始ID校正，主档操作用原API；E2E定位修正为多条不可比结果的首行和带必填符号的维度标签。常量移到feature labels文件遵守Fast Refresh Lint，未关闭规则/测试或放宽类型/超时/重试。原378单元/33浏览器断言未改；新增42单元/4浏览器。
 
 交付：docs本期相关规范、ROADMAP、README、build/stage-06a.md、context/stage-06a.md及本日志更新，完整文件清单见build报告。四组真实Chromium截图仅虚构报价，已逐张视觉检查，pageerror=0；1280/390px无文档横向溢出。比较包含第二家虚构供应商报价，趋势包含UI实际录入的同口径文本报价，无fixture伪造。Mock非生产安全与跨窗口事务；真实基准/回复事件/财务/合同/文本附件保密继续TBD。共享大包提示保留阈值，无生产连接、密钥、客户资料、外部通知或部署。只提交并普通推送本分支，不合并main、不强推、不开始06B，完成后停止等待验收。
+
+## Stage 06A Patch — 2026-11-13（Asia/Shanghai）
+
+基线b52304deb9f3c21ee31de948d3ff8eaf16c3d4e5，工作区干净，沿用stage-06a-procurement-analytics。阅读AGENTS、06A交付/交接、业务/数据/权限及比较、分组、API、页面和原测试，先说明局部实施方案。
+
+根因与修复：比较曾以0仅检查区间异常，缺少查询时刻输出；现compareAnalysis必传now，UI取响应asOf，独立返回规格可比、原商业比较及两条记录时效和固定用途提示，不将历史可比当作当前可执行采购价。compareQuotes不改。历史趋势抽出不依赖时钟的区间结构检查，保留历史点。原latestFormal是最近已确认历史但没有当前正式集合；现channelPriceViews(records,now)返回全部activeFormals，isCurrentFormal统一统计/分组/明细，原latestFormal保留并标时效。无当前正式价不回退，多条并存全展示，优惠独立。未改授权、Repository格式、追加保护、价格写入或Dashboard优惠逻辑。
+
+测试：新增26个单元场景，覆盖时效/口径分离、边界、历史确认/当前、多条并存、实际API查询时钟和跨模块一致/只读；原分析单测只加必传参数，不改断言。新增2个浏览器用例涵盖1440/390、未来报价真实创建核验确认后推进时钟生效/到期；未更改fixture伪造保存。完整验证：PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify完整退出码0：严格类型、ESLint、Prettier、Vitest15文件/446测试（原420+新增26）、Playwright39测试（原37+新增2）、生产构建全部通过。未删旧测试/放宽断言/跳过用例或调高超时。构建保留既有约1,047kB共享块提示，未调整阈值。 1440/390px交互、无文档横向溢出及两张截图视觉检查通过。新增E2E先遇多个渠道同状态导致全页定位不唯一，改为按对应渠道行限定，最终完整回归通过。
+
+交付：业务规则/数据模型/06A交接更新，本日志及build/stage-06a-patch.md记录根因/规则/完整清单/验证。无真实服务/凭据/生产数据、新依赖或06B代码。原Mock安全和跨窗口限制不在本次处理范围，未新增本期阻塞。只提交并普通推送原分支，不修改main、不合并其他分支、不强推，完成后停止等待验收。

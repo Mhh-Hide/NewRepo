@@ -421,7 +421,7 @@ describe('conservative temporal and comparable analysis', () => {
           priceSpec: { ...a.quote.priceSpec, [field]: null },
         },
       };
-      expect(compareAnalysis(a, b).comparable).toBe(false);
+      expect(compareAnalysis(a, b, now).comparable).toBe(false);
       expect(buildChannelTrend([b], b.channel.id).series).toEqual([]);
     },
   );
@@ -454,14 +454,14 @@ describe('conservative temporal and comparable analysis', () => {
         ...a,
         quote: { ...a.quote, priceSpec: { ...a.quote.priceSpec, ...extra } },
       };
-      expect(compareAnalysis(a, b).comparable).toBe(false);
-      expect(compareAnalysis(a, b).rates).toEqual([]);
+      expect(compareAnalysis(a, b, now).comparable).toBe(false);
+      expect(compareAnalysis(a, b, now).rates).toEqual([]);
     }
   });
   it('complete same basis reuses quote comparison, with only exact discount basis-point differences', async () => {
     const a = await record();
     const b = await record({ channelId: 'ch-2', discount: discountBps(5500) });
-    expect(compareAnalysis(a, b)).toMatchObject({
+    expect(compareAnalysis(a, b, now)).toMatchObject({
       comparable: true,
       discountDifferenceBps: 500,
     });
@@ -508,7 +508,7 @@ describe('conservative temporal and comparable analysis', () => {
   it('abnormal validity intervals do not produce comparable prices or trend points', async () => {
     const a = await record();
     const invalid = { ...a, quote: { ...a.quote, effectiveFrom: 'bad' } };
-    expect(compareAnalysis(invalid, invalid).comparable).toBe(false);
+    expect(compareAnalysis(invalid, invalid, now).comparable).toBe(false);
     expect(buildChannelTrend([invalid], a.channel.id).series).toEqual([]);
     expect(
       buildChannelTrend([invalid], a.channel.id).issues.join(''),

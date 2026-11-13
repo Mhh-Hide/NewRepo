@@ -71,19 +71,35 @@ export interface AnalyticsQuery {
   readonly createdFrom?: string;
   readonly createdTo?: string;
 }
-export function analysisValidity(q: AnalysisQuote, now: number) {
+/** Structural interval validation is independent of the clock, including for historical trends. */
+function invalidValidityPeriod(q: AnalysisQuote) {
   const start = timestamp(q.effectiveFrom),
     end = timestamp(q.effectiveUntil);
-  if (
+  return (
     (q.effectiveFrom !== null && start === null) ||
     (q.effectiveUntil !== null && end === null) ||
     (start !== null && end !== null && end <= start)
-  )
-    return 'invalid' as const;
+  );
+}
+export function analysisValidity(q: AnalysisQuote, now: number) {
+  if (!Number.isFinite(now)) throw Error('查询时刻必须为有效时间戳。');
+  const start = timestamp(q.effectiveFrom),
+    end = timestamp(q.effectiveUntil);
+  if (invalidValidityPeriod(q)) return 'invalid' as const;
   if (q.priceStatus === 'expired' || (end !== null && end <= now))
     return 'expired' as const;
   if (start !== null && start > now) return 'scheduled' as const;
   return start === null ? ('unspecified' as const) : ('in_period' as const);
+}
+export function isConfirmedFormal(q: AnalysisQuote) {
+  return (
+    q.priceStatus === 'effective' &&
+    !!q.confirmedBy &&
+    timestamp(q.confirmedAt) !== null
+  );
+}
+export function isCurrentFormal(q: AnalysisQuote, now: number) {
+  return isConfirmedFormal(q) && analysisValidity(q, now) === 'in_period';
 }
 export function completeness(spec: PriceSpec): readonly string[] {
   try {
@@ -93,21 +109,42 @@ export function completeness(spec: PriceSpec): readonly string[] {
   }
   return basisDifferences(spec, spec);
 }
-export function compareAnalysis(a: AnalysisRecord, b: AnalysisRecord) {
+export function compareAnalysis(
+  a: AnalysisRecord,
+  b: AnalysisRecord,
+  now: number,
+) {
+  const first = analysisValidity(a.quote, now),
+    second = analysisValidity(b.quote, now);
   const issues = [
     ...completeness(a.quote.priceSpec),
     ...completeness(b.quote.priceSpec),
   ];
-  if ([a, b].some((r) => analysisValidity(r.quote, 0) === 'invalid'))
+  const specComparable =
+    !issues.length &&
+    a.model.id === b.model.id &&
+    !basisDifferences(a.quote.priceSpec, b.quote.priceSpec).length;
+  if (first === 'invalid' || second === 'invalid')
     issues.push('有效期异常，无法比较');
-  if (issues.length)
-    return {
-      comparable: false,
-      reasons: [...new Set(issues)],
-      discountDifferenceBps: null,
-      rates: [],
-    };
-  return compareQuotes(a.quote, b.quote, a.model.id, b.model.id);
+  const comparison = issues.length
+    ? {
+        comparable: false,
+        reasons: [...new Set(issues)],
+        discountDifferenceBps: null,
+        rates: [],
+      }
+    : compareQuotes(a.quote, b.quote, a.model.id, b.model.id);
+  return {
+    ...comparison,
+    specComparable,
+    currentValidity: {
+      first,
+      second,
+      bothInPeriod: first === 'in_period' && second === 'in_period',
+    },
+    procurementNotice:
+      '历史口径可比不等于当前可执行采购价格；时间有效也不替代正式依据与渠道准入核实。',
+  };
 }
 const dateDay = (s: string) =>
   timestamp(s) === null
@@ -141,13 +178,7 @@ export function summarizeAnalysis(
   now: number,
 ) {
   const validity = (r: AnalysisRecord) => analysisValidity(r.quote, now);
-  const formal = records.filter(
-    (r) =>
-      r.quote.priceStatus === 'effective' &&
-      r.quote.confirmedBy !== null &&
-      timestamp(r.quote.confirmedAt) !== null &&
-      validity(r) === 'in_period',
-  );
+  const formal = records.filter((r) => isCurrentFormal(r.quote, now));
   const promotions = records.filter((r) => r.quote.priceStatus === 'temporary');
   const active = promotions.filter((r) => validity(r) === 'in_period');
   const expiring = active.filter((r) => {
@@ -165,7 +196,7 @@ export function summarizeAnalysis(
     suppliers: new Set(records.map((r) => r.supplier.id)).size,
     formalChannels: new Set(
       records
-        .filter((r) => r.quote.priceStatus === 'effective')
+        .filter((r) => isConfirmedFormal(r.quote))
         .map((r) => r.channel.id),
     ).size,
     promotionChannels: new Set(promotions.map((r) => r.channel.id)).size,
@@ -212,7 +243,10 @@ export function summarizeAnalysis(
     },
   };
 }
-export function channelPriceViews(records: readonly AnalysisRecord[]) {
+export function channelPriceViews(
+  records: readonly AnalysisRecord[],
+  now: number,
+) {
   const ids = [...new Set(records.map((r) => r.channel.id))];
   return ids.map((id) => {
     const values = records
@@ -226,14 +260,14 @@ export function channelPriceViews(records: readonly AnalysisRecord[]) {
     return {
       channelId: id,
       latest: values.find((r) => timestamp(r.quote.createdAt) !== null) ?? null,
-      latestFormal:
-        values.find(
-          (r) =>
-            r.quote.priceStatus === 'effective' &&
-            r.quote.confirmedBy !== null &&
-            timestamp(r.quote.confirmedAt) !== null,
-        ) ?? null,
-      // Time filtering is applied explicitly by caller; no unique settlement selection.
+      // Latest confirmed history can be expired or scheduled; never a current-price fallback.
+      latestFormal: values.find((r) => isConfirmedFormal(r.quote)) ?? null,
+      activeFormals: values.filter((r) => isCurrentFormal(r.quote, now)),
+      activePromotions: values.filter(
+        (r) =>
+          r.quote.priceStatus === 'temporary' &&
+          analysisValidity(r.quote, now) === 'in_period',
+      ),
       records: values,
     };
   });
@@ -289,7 +323,7 @@ export function buildChannelTrend(
       );
       continue;
     }
-    if (analysisValidity(r.quote, 0) === 'invalid') {
+    if (invalidValidityPeriod(r.quote)) {
       issues.push(`${r.quote.id}：有效期异常，未绘制可比趋势点`);
       continue;
     }

@@ -5,6 +5,7 @@ import type { QuotationApi, QuoteOptions, QuoteRow } from './quotation-types';
 import { SupplierError } from './supplier-types';
 import {
   analysisValidity,
+  isConfirmedFormal,
   analyticsWeek,
   channelPriceViews,
   completeness,
@@ -139,14 +140,7 @@ export function createAnalysis(
         ),
       ],
     },
-    channelPrices: channelPriceViews(records).map((c) => ({
-      ...c,
-      activePromotions: c.records.filter(
-        (r) =>
-          r.quote.priceStatus === 'temporary' &&
-          analysisValidity(r.quote, now) === 'in_period',
-      ),
-    })),
+    channelPrices: channelPriceViews(records, now),
     promotions: records
       .filter((r) => r.quote.priceStatus === 'temporary')
       .map((r) => ({
@@ -157,9 +151,7 @@ export function createAnalysis(
           timestamp(r.quote.effectiveUntil) !== null &&
           timestamp(r.quote.effectiveUntil)! <= now + analyticsWeek,
         formalExists: all.some(
-          (a) =>
-            a.channel.id === r.channel.id &&
-            a.quote.priceStatus === 'effective',
+          (a) => a.channel.id === r.channel.id && isConfirmedFormal(a.quote),
         ),
       })),
     targets: targetDifferences(

@@ -1,7 +1,10 @@
 import { Table, Tag } from 'antd';
 import { Link } from 'react-router-dom';
 import type { AnalysisRecord } from '../../domain/procurement-analytics';
-import { analysisValidity } from '../../domain/procurement-analytics';
+import {
+  analysisValidity,
+  isCurrentFormal,
+} from '../../domain/procurement-analytics';
 import { quoteStatusLabels } from '../../domain/statuses';
 import { quoteSourceLabels } from '../../domain/quotations';
 import { displayDate, priceSpecText } from '../quotes/quote-format';
@@ -69,6 +72,13 @@ export function AnalysisTable({
                   ]
                 }
               </div>
+              {r.quote.priceStatus === 'effective' && (
+                <div>
+                  {isCurrentFormal(r.quote, Date.parse(asOf))
+                    ? '当前有效正式报价（非唯一结算价）'
+                    : '正式历史记录，当前不可作为有效价'}
+                </div>
+              )}
               <small>{r.verified ? '已独立核验' : '未记录独立核验'}</small>
             </>
           ),

@@ -19,3 +19,11 @@ services/procurement-analytics-types.ts定义只读ProcurementAnalyticsApi，cre
 最终完整verify退出码0：严格类型/Lint/格式、420单元（原378+新增42）、37浏览器（原33+新增4）及构建通过。截图及35个修改/新增文件清单见build/stage-06a.md和build-log。本批新增单元及E2E，不改既有378/33用例、超时、类型或断言。
 
 限制：Mock客户端授权非生产安全，分页读取和多Repository不提供多窗口原子快照；真实后端需行/字段鉴权与一致快照。真实基准目录、目标元数据、财务舍入、用量、实际回复事件、附件/导出保密、审批/结算仍TBD。保留原构建共享大包提示，不引新依赖。完成后普通推送本分支，不合并main、不强制推送，不开始06B。
+
+## Stage 06A验收补丁
+
+本补丁基于b52304deb9f3c21ee31de948d3ff8eaf16c3d4e5在原分支继续，不是06B。compareAnalysis必传Date.parse(analysis.asOf)，规格可比/原商业比较与两条记录查询时刻有效性独立返回。不能将历史同口径数字差当作当前可执行采购价；即使时间有效也须另核正式依据/渠道准入。历史趋势改用无时钟的区间结构检查，保留历史点。
+
+channelPriceViews同样显式传now，latestFormal仍为历史，activeFormals新增为全部当前有效正式报价，activePromotions继续独立。isCurrentFormal供统计、分组、AnalysisTable统一使用，isConfirmedFormal检查历史确认。最近/历史/当前正式/当前优惠四列，历史标当前时效，当前为空不回退。时间起点包含/截止不含，无起点未知，异常区间不计有效。原compareQuotes、所有Repository存储及追加保护、权限、Dashboard优惠逻辑未改。
+
+补丁完整verify已通过：446单元（新增26）、39浏览器（新增2）、类型/Lint/格式及生产构建；1440/390px检查通过。14个修改/新增文件清单与截图见build/stage-06a-patch.md与build-log。原单元测试仅补充新必传参数，既有断言/用例/超时保留。完成后普通推送原分支，不修改main、不强推，不进入06B，等待验收。

@@ -7,6 +7,7 @@ import type {
   AnalysisRecord,
 } from '../../domain/procurement-analytics';
 import {
+  analysisValidity,
   compareAnalysis,
   completeness,
 } from '../../domain/procurement-analytics';
@@ -108,12 +109,32 @@ export default function ProcurementAnalyticsPage() {
     ['expiring', '七天内到期优惠', s.expiring],
   ] as const;
   const compareCell = (r: AnalysisRecord) => {
-    const value = anchor ? compareAnalysis(anchor, r) : null;
-    return value
-      ? value.comparable
-        ? `同口径；基准报价减此报价 ${value.discountDifferenceBps} 基点（非节约率）`
-        : `无法比较：${value.reasons.join('；')}`
-      : `请选择比较基准；${completeness(r.quote.priceSpec).join('；') || '口径已提供，仍须检查状态和有效期'}`;
+    const value = anchor
+      ? compareAnalysis(anchor, r, Date.parse(d.asOf))
+      : null;
+    if (!value)
+      return `请选择比较基准；${completeness(r.quote.priceSpec).join('；') || '口径已提供，仍须检查状态和有效期'}`;
+    return (
+      <div>
+        <div>
+          {value.comparable
+            ? `同口径；基准报价减此报价 ${value.discountDifferenceBps} 基点（非节约率）`
+            : `无法比较：${value.reasons.join('；')}`}
+        </div>
+        <div>规格口径：{value.specComparable ? '一致' : '不同或信息不足'}</div>
+        <div>
+          查询时刻有效性：基准
+          {analyticsValidityLabels[value.currentValidity.first]}；此报价
+          {analyticsValidityLabels[value.currentValidity.second]}
+        </div>
+        <div>
+          {value.currentValidity.bothInPeriod
+            ? '两条均在记录有效期内，仍需核实正式依据及渠道状态。'
+            : '至少一条不在明确有效期内；历史或约定口径比较不能作为当前采购依据。'}
+        </div>
+        <small>{value.procurementNotice}</small>
+      </div>
+    );
   };
   return (
     <div className="procurement-analysis">
@@ -251,7 +272,7 @@ export default function ProcurementAnalyticsPage() {
       />
       <Card title="同模型供应商与渠道价格比较" className="analysis-card">
         <p>
-          先在上方选择模型，再选择一条报价作为明确比较基准。最近一次报价、最近正式记录和当前优惠分别展示；不会自动替代彼此。
+          先在上方选择模型，再选择一条报价作为明确比较基准。最近报价、最近已确认正式历史、全部当前有效正式报价与当前优惠分别展示；均限当前筛选范围，不回退历史价或选择唯一结算价。
         </p>
         <Select
           className="analysis-wide"
@@ -271,7 +292,7 @@ export default function ProcurementAnalyticsPage() {
           <Table
             size="small"
             rowKey="channelId"
-            scroll={{ x: 1350 }}
+            scroll={{ x: 1850 }}
             dataSource={d.channelPrices}
             pagination={{ defaultPageSize: 5 }}
             columns={[
@@ -326,22 +347,81 @@ export default function ProcurementAnalyticsPage() {
                   ),
               },
               {
-                title: '最近正式记录 / 当前有效优惠',
+                title: '最近已确认正式历史报价',
                 width: 240,
                 render: (_, c) => (
-                  <>
+                  <div data-testid={`channel-formal-history-${c.channelId}`}>
                     {c.latestFormal ? (
-                      <Link to={`/quotes/${c.latestFormal.quote.id}`}>
-                        {c.latestFormal.quote.discount} 基点正式记录
-                      </Link>
+                      <>
+                        <Link to={`/quotes/${c.latestFormal.quote.id}`}>
+                          {c.latestFormal.quote.discount} 基点 · 已确认历史
+                        </Link>
+                        <div>
+                          查询时刻：
+                          {
+                            analyticsValidityLabels[
+                              analysisValidity(
+                                c.latestFormal.quote,
+                                Date.parse(d.asOf),
+                              )
+                            ]
+                          }
+                        </div>
+                        <small>历史记录不自动作为当前采购价格</small>
+                      </>
                     ) : (
-                      '无已确认正式记录'
+                      '无已确认正式历史报价'
                     )}
+                  </div>
+                ),
+              },
+              {
+                title: '当前有效正式报价（全部）',
+                width: 250,
+                render: (_, c) => (
+                  <div data-testid={`channel-current-formals-${c.channelId}`}>
+                    {c.activeFormals.length ? (
+                      <>
+                        <div>{c.activeFormals.length} 条当前有效正式报价</div>
+                        {c.activeFormals.map((r) => (
+                          <div key={r.quote.id}>
+                            <Link to={`/quotes/${r.quote.id}`}>
+                              {r.quote.discount} 基点 · 查看正式报价
+                            </Link>
+                            <small>
+                              {' '}
+                              截止：{displayDate(r.quote.effectiveUntil)}
+                              （不含）
+                            </small>
+                          </div>
+                        ))}
+                        <small>
+                          全部保留，不选择唯一结算价；仍需核实渠道准入。
+                        </small>
+                      </>
+                    ) : (
+                      '暂无当前有效正式报价'
+                    )}
+                  </div>
+                ),
+              },
+              {
+                title: '当前有效临时优惠',
+                width: 220,
+                render: (_, c) => (
+                  <div>
                     <div>
                       当前有效优惠 {c.activePromotions.length}{' '}
                       条（不覆盖正式价）
                     </div>
-                  </>
+                    {c.activePromotions.map((r) => (
+                      <div key={r.quote.id}>
+                        <Link to={`/quotes/${r.quote.id}`}>
+                          {r.quote.discount} 基点 · 查看优惠
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
                 ),
               },
               {
