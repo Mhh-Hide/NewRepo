@@ -178,9 +178,13 @@ export function basisDifferences(
     reasons.push('计量维度、数量或单位不同（不混合输入/输出或不同媒体）');
   return reasons;
 }
+export type ComparableQuote = Pick<
+  ManagedQuote,
+  'priceSpec' | 'priceStatus' | 'effectiveFrom' | 'effectiveUntil' | 'discount'
+>;
 export function compareQuotes(
-  a: ManagedQuote,
-  b: ManagedQuote,
+  a: ComparableQuote,
+  b: ComparableQuote,
   modelA: string,
   modelB: string,
 ) {

@@ -125,3 +125,13 @@ QuoteRepository 单键 maas-quote-demo-v1，schemaVersion=1、revision、quotes/
 报价记录及 QuoteDecision/QuoteAudit 只追加，Repository 拒绝旧数组前缀被覆盖。核验和模拟正式确认写独立决策事件，不改旧报价；查询兼容投影将正式确认人/时间/依据/生效时间与 effective 状态合成到 ChannelQuote 视图。原录入状态仍单独展示，操作 version=1+该报价决策数。更正新建 sourceType=correction、previousQuoteId 和原因，真实后续调价仍用原来源类型，均保留全部历史。
 
 请求按操作人+请求标识幂等，内容不一致复用标识报冲突。保存前复用 appendQuote 和完整 validateStore，并校验询价/需求/明细/渠道引用、模型、版本/revision；报价+询价回复+审计单次 setItem，失败无部分记录。其他三个 Repository 格式不变。
+
+## Stage 06A：只读采购分析投影
+
+新增 ProcurementAnalyticsApi.queryProcurementAnalytics(AnalyticsQuery)，契约位于services/procurement-analytics-types.ts，服务通过现有QuotationApi授权批量读（50条分页全量读取）和quoteOptions组合当前Repository数据，不增加持久化字段、分析存储或价格真值。原四Repository格式、QuoteRepository追加保护完全不改。
+
+AnalysisRecord显式选择报价ID/渠道/需求明细关联、整数折扣、来源分类、口径与创建/供应商报价/确认/有效期元数据，附当前渠道/供应商/模型/厂商最小身份和状态。无证据正文、联系人、自由文本备注、询价跟进、受限客户或原始快照。返回统计、同渠道最近/正式/优惠分组、授权选项、目标数字差异、优惠提醒与数据质量原因。模型选项含有授权渠道但无报价的模型，覆盖计数仅含有报价模型。
+
+纯函数位于domain/procurement-analytics.ts：filterAnalysis/summarizeAnalysis/channelPriceViews/targetDifferences/buildChannelTrend/compareAnalysis。日期异常保留诊断，不自动当生效；未知商业字段不补值。compareQuotes参数兼容收窄为只读ComparableQuote所需五项字段，计算逻辑及原ManagedQuote调用保持不变。
+
+时间窗口/询价与目标口径见BUSINESS_RULES。单次分析不建立跨Repository数据库事务，多标签页并发快照一致性仍待真实后端实现。

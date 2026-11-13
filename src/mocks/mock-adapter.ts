@@ -1,3 +1,4 @@
+import { createProcurementAnalyticsApi } from '../services/procurement-analytics';
 import { quoteRepository, type QuoteRepository } from './quote-repository';
 import { createQuotationApi, resolvedQuote } from './quotation-api';
 import {
@@ -146,19 +147,21 @@ export function createMockAdapter(
     channels,
     writeActive,
   );
+  const quotationApi = createQuotationApi(
+    ctx,
+    businessDomain,
+    quoteRepo,
+    channelRepo,
+    repository,
+    sourcingRepo,
+    channels,
+    writeActive,
+  );
   const base: Omit<ApiAdapter, keyof ResourceApi> = {
     ...supplierApi,
     ...channelApi,
-    ...createQuotationApi(
-      ctx,
-      businessDomain,
-      quoteRepo,
-      channelRepo,
-      repository,
-      sourcingRepo,
-      channels,
-      writeActive,
-    ),
+    ...quotationApi,
+    ...createProcurementAnalyticsApi(ctx, writeActive, quotationApi),
     ...sourcingApi,
     async resetChannelDemo(confirmed) {
       if (

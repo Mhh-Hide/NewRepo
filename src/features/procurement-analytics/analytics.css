@@ -1,0 +1,92 @@
+.procurement-analysis {
+  min-width: 0;
+}
+.analysis-card {
+  margin-bottom: 20px;
+  margin-top: 20px;
+  min-width: 0;
+}
+.analysis-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+  align-items: end;
+}
+.analysis-filters > *,
+.analysis-status-grid > * {
+  min-width: 0;
+}
+.analysis-status-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+.analysis-status {
+  padding: 12px;
+  background: #f4f7fc;
+  border-radius: 8px;
+}
+.analysis-status strong {
+  display: block;
+  font-size: 26px;
+  margin-top: 8px;
+  color: #223c5a;
+}
+.analysis-wide {
+  width: 100%;
+  max-width: 680px;
+  margin-bottom: 16px;
+}
+.analysis-select {
+  width: 240px;
+  max-width: 100%;
+}
+.analysis-svg {
+  width: 100%;
+  height: auto;
+  margin-top: 16px;
+  max-height: 310px;
+}
+.analysis-trend {
+  overflow-wrap: anywhere;
+}
+.analysis-trend ul {
+  padding-inline-start: 18px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+.analysis-wrap {
+  overflow-wrap: anywhere;
+}
+.analysis-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.analysis-legend .ant-tag {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 1100px) {
+  .analysis-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .analysis-status-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .analysis-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .analysis-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .analysis-card .ant-card-head-title {
+    white-space: normal;
+  }
+  .procurement-analysis .ant-space {
+    max-width: 100%;
+  }
+}

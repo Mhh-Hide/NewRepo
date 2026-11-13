@@ -193,3 +193,17 @@ Dashboard：需求来自当前 SourcingRepository，缺口直接复用 querySour
 测试：新增18个用例，分别覆盖四集合截尾/清空/修改/重排，嵌套报价内容删除及审计差异篡改；每次拒绝均断言持久化原始文本不变；合法新增、更正、核验、确认保持旧前缀并刷新恢复。修复前复现4个requests保护失败；修复后报价文件83个测试通过。完整验证：PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify 完整退出码0；严格类型、ESLint、Prettier、Vitest 13文件/378测试（原360+新增18）、Playwright 33测试（全部保留）、生产构建通过。未关闭测试、放宽类型、超时或重试。保留既有约1,047kB共享块构建提示，未调整阈值。
 
 修改范围仅quote-repository.ts、quotations.test.ts、本日志和build/stage-05b-patch.md。无新依赖、生产接口或敏感数据；Mock防篡改和并发的生产限制不变。按用户要求只在原分支新增修复提交并普通推送，不合并main、不强制推送，不进入Stage06，完成后停止等待验收。
+
+## Stage 06A — 2026-11-13（Asia/Shanghai）
+
+基线：e67d257abd7f46ce46241b82a4a5e7d888a46c99，开始时工作区干净，从指定SHA创建stage-06a-procurement-analytics；阅读AGENTS、全部规范、05B交接/补丁、相关Repository/权限/Adapter/报价与Dashboard。编码前给出指标/授权/可比性/测试方案。仅只读采购价格分析，不开发06B。
+
+实现：/analytics/procurement三层工作台与旧/analysis/purchase重定向，授权覆盖、报价状态/当前有效性、同模型渠道比较、渠道时间趋势、优惠提醒、目标数字差、询价跟进、质量提示和分页下钻。沿用Shell/导航/PageHeader/StatCard/反馈/查询Hook，懒加载且无新依赖。Dashboard指标保留定义，新增到期优惠待办和分析入口。
+
+数据/授权：ProcurementAnalyticsApi先检查活动会话/quote:read/域，复用QuotationApi授权分页报价/目录读取当前四Repository，再按最小白名单投影。无第二份价格缓存/新持久化/主档格式或报价写流程变更；QuoteRepository四集合追加保护不改。采购供应商范围沿用最新维护授权，模型域按厂商；未授权角色/猜测ID筛选不能读商业统计/选项/图表。无客户/售价/运营原文/证据/联系人/备注/快照或导出原始字段。供应商改名/渠道停用及报价变化重新查询同步。
+
+口径：有报价模型/渠道/供应商分别稳定ID去重；历史正式/优惠覆盖与当前有效记录分开。参考/待确认排除到期/异常；正式需确认及有效时间；优惠提醒(now,now+7×24小时]显示北京时间，Dashboard同定义。趋势按完整币种/基准/规格/维度数量单位及原录入状态分组，以实际创建或供应商报价时间绘点，未知/异常说明原因；确认不新增点，更正菱形单列不接供应商调价线。图例标单位避免不同单位同名。横向compareQuotes逻辑不改，仅类型兼容抽出五字段ComparableQuote；跨状态/有效期等不可比。目标仅整数数字差且标未确认同基准，不计算达成率/节约或自动设置匹配。询价仅sent/quoted当前发起、草稿/关闭单列，逾期按已知截止；无真实发送/回复时间不计算时长。
+
+验证：PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify完整退出码0；严格类型、ESLint、Prettier、Vitest14文件/420测试（原378+新增42）、Playwright37测试（原33+新增4）、生产构建全部通过。原测试文件/断言未修改，未放宽类型、超时或重试。最终版本复核通过；既有共享块约1,047kB（gzip333kB）警告保留，不提高阈值。开发中新增用例的fixture计数按实际原始ID校正，主档操作用原API；E2E定位修正为多条不可比结果的首行和带必填符号的维度标签。常量移到feature labels文件遵守Fast Refresh Lint，未关闭规则/测试或放宽类型/超时/重试。原378单元/33浏览器断言未改；新增42单元/4浏览器。
+
+交付：docs本期相关规范、ROADMAP、README、build/stage-06a.md、context/stage-06a.md及本日志更新，完整文件清单见build报告。四组真实Chromium截图仅虚构报价，已逐张视觉检查，pageerror=0；1280/390px无文档横向溢出。比较包含第二家虚构供应商报价，趋势包含UI实际录入的同口径文本报价，无fixture伪造。Mock非生产安全与跨窗口事务；真实基准/回复事件/财务/合同/文本附件保密继续TBD。共享大包提示保留阈值，无生产连接、密钥、客户资料、外部通知或部署。只提交并普通推送本分支，不合并main、不强推、不开始06B，完成后停止等待验收。

@@ -1,6 +1,6 @@
 # MaaS 模型资源全生命周期管理平台
 
-MaaS Resource Lifecycle Management。Stage 05B 询价、采购报价与价格版本管理，保留供应商主档与工作台；所有展示数据均为模拟数据，不连接生产系统。
+MaaS Resource Lifecycle Management。Stage 06A 采购价格分析，保留询价、报价版本、寻源、主档与工作台；所有展示数据均为模拟数据，不连接生产系统。
 
 ## 安装与启动
 
@@ -134,3 +134,11 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify
 新增 `maas-quote-demo-v1`，不改原三个存储格式。报价/询价引用的新需求或渠道会阻止对应局部重置；先独立确认报价重置，再按既有顺序重置寻源/渠道/供应商。报价重置只清本模块的新记录，保留其他模块。所有数据模拟，无真实合同、价格材料或凭据。
 
 完整检查：`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify`（有自带 Chromium 时直接 verify）。交付见 `harness/build/stage-05b.md`、`harness/context/stage-05b.md`。仅普通推送 stage-05b-quotation-management，不合并 main，不进入 Stage 06。旧阶段章节为历史，以此节为当前行为。
+
+## Stage 06A 采购价格分析（当前入口）
+
+启动后打开/analytics/procurement，运营与采购按授权域/供应商查看分析。选模型及比较基准查看渠道价格，选择渠道/时间轴查看历史趋势；未知口径、异常日期或不足两条同口径记录会解释原因。创建/核验/确认/更正仍用/quotes，返回刷新分析读取最新数据，无新存储或价格副本。
+
+覆盖、报价分类、七天到期提醒、询价台账效率与目标数字差分别展示。无真实响应时间不算时长，目标无基准不算商业达成率，不算实际节约或唯一结算价。旧/analysis/purchase重定向到新入口。测试/运维/供应商/前台无分析权限。
+
+验证命令沿用README上述系统Chromium设置。完整口径、截图与交接见harness/build/stage-06a.md、harness/context/stage-06a.md。本期仅普通推送stage-06a-procurement-analytics，不修改main，不进入Stage06B。旧阶段章节保留历史记录，以本节为当前分析入口。

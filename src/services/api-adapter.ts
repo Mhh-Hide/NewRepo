@@ -1,3 +1,4 @@
+import type { ProcurementAnalyticsApi } from './procurement-analytics-types';
 import type { QuotationApi } from './quotation-types';
 import type { SourcingApi } from './sourcing-types';
 import type { ChannelApi } from './channel-types';
@@ -30,7 +31,13 @@ export interface DemandDetail {
 }
 /** Unified domain contract. Supplier writes are Demo-only; no raw store escape hatch. */
 export interface ApiAdapter
-  extends SupplierApi, ResourceApi, ChannelApi, SourcingApi, QuotationApi {
+  extends
+    SupplierApi,
+    ResourceApi,
+    ChannelApi,
+    SourcingApi,
+    QuotationApi,
+    ProcurementAnalyticsApi {
   getDemoInfo(): Promise<DemoInfo>;
   listVendors(): Promise<readonly ModelVendor[]>;
   listModels(): Promise<readonly Model[]>;

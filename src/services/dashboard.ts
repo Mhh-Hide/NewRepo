@@ -187,6 +187,12 @@ export async function loadDashboard(
   };
   if (permits('quote:read'))
     todo('待合同确认报价', pricing?.stats.pending ?? 0, '/quotes');
+  if (permits('quote:read'))
+    todo(
+      '七天内到期优惠',
+      pricing?.stats.expiring ?? 0,
+      '/analytics/procurement',
+    );
   if (permits('demand:process'))
     todo(
       '待寻源需求（草稿 / 寻源 / 缺口）',

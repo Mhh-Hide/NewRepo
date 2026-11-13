@@ -233,7 +233,7 @@ export function DashboardPage({ session }: { session: DemoSession }) {
         <Card
           title="采购报价摘要"
           className="lower-card"
-          extra={<Link to="/quotes">即将开放 · 查看计划</Link>}
+          extra={<Link to="/analytics/procurement">查看采购价格分析</Link>}
         >
           <Typography.Paragraph type="secondary">
             历史记录仅供演示，不代表当前结算价或真实商业合作。

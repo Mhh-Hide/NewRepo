@@ -1,3 +1,4 @@
+import { ProcurementAnalyticsRoute } from './ProcurementAnalyticsRoute';
 import { QuotationRoute } from './QuotationRoutes';
 import { SourcingRoute } from './SourcingRoutes';
 import {
@@ -33,6 +34,14 @@ export const router = createBrowserRouter([
         path: '/channels/:channelId',
         element: <ChannelDetailRoute />,
       },
+      {
+        path: '/analytics/procurement',
+        element: <ProcurementAnalyticsRoute />,
+      },
+      {
+        path: '/analysis/purchase',
+        element: <Navigate to="/analytics/procurement" replace />,
+      },
       { path: '/quotes', element: <QuotationRoute /> },
       { path: '/quotes/:quoteId', element: <QuotationRoute /> },
       { path: '/sourcing', element: <SourcingRoute /> },
@@ -48,7 +57,8 @@ export const router = createBrowserRouter([
             n.id !== 'models' &&
             n.id !== 'channels' &&
             n.id !== 'sourcing' &&
-            n.id !== 'quotes',
+            n.id !== 'quotes' &&
+            n.id !== 'purchase-analysis',
         )
         .map((n) => ({ path: n.path, element: <ComingSoonPage /> })),
       { path: '*', element: <ComingSoonPage /> },
