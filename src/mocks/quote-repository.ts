@@ -265,20 +265,25 @@ export class QuoteRepository {
     this.validate(next, channels, suppliers, sourcing);
     if (this.read().revision !== before.revision)
       throw new SupplierError('CONFLICT', '报价数据已变化，请重新加载。');
+    const protectedCollections = [
+      'quotes',
+      'decisions',
+      'history',
+      'requests',
+    ] as const;
     if (
-      before.quotes.some(
-        (q, i) => JSON.stringify(next.quotes[i]) !== JSON.stringify(q),
-      ) ||
-      before.decisions.some(
-        (e, i) => JSON.stringify(next.decisions[i]) !== JSON.stringify(e),
-      ) ||
-      before.history.some(
-        (e, i) => JSON.stringify(next.history[i]) !== JSON.stringify(e),
+      protectedCollections.some(
+        (collection) =>
+          next[collection].length < before[collection].length ||
+          before[collection].some(
+            (record, i) =>
+              JSON.stringify(next[collection][i]) !== JSON.stringify(record),
+          ),
       )
     )
       throw new SupplierError(
         'VALIDATION',
-        '报价、确认和审计历史只允许追加，不能覆盖。',
+        '报价、确认、审计和幂等请求历史只允许追加，不能覆盖或删除。',
       );
     try {
       this.storage.setItem(

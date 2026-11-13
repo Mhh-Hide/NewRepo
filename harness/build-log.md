@@ -183,3 +183,13 @@ Dashboard：需求来自当前 SourcingRepository，缺口直接复用 querySour
 截图：harness/build/stage-05b-quotes-1440.png、stage-05b-editor-1440.png、stage-05b-confirm-1440.png、stage-05b-history-1440.png、stage-05b-sourcing-1440.png，真实Chromium操作截图并逐张视觉检查；pageerror=0，1280px页面无整体溢出，390px表单测试通过。文本模型采用明确标记模拟的CNY/输入Token示例，不宣称官方价格，所有业务身份和依据虚构。
 
 交接：指定六份docs、ROADMAP、build/stage-05b.md、context/stage-05b.md已更新；README额外更新入口/操作/重置，完整变更清单见build报告。忽略规则排除node_modules、环境变量/密钥、构建与测试运行产物。无真实接口/合同/密钥/客户资料，无新依赖。共享块仍约1,047kB（gzip333kB）保留构建提示，不提高阈值。Mock不提供生产鉴权、防篡改或跨窗口强事务；生产审批/金融精度与舍入/目标基准/基准目录/附件导出/促销结算优先级继续TBD。只提交并普通推送本分支，不合并main、不强制推送，完成后停止等待验收，不进入Stage06。
+
+## Stage 05B Patch — 2026-11-13（Asia/Shanghai）
+
+基线：3f796260c64cea102d322fa3de4beddd81a34f2c，工作区干净，当前及远程分支均为stage-05b-quotation-management指定基线。阅读AGENTS、05B交接、报价Repository/API与现有测试，先给出局部修复和验证计划。
+
+修复：write原有逐项比较能拒绝quotes/decisions/history截短，但遗漏requests。现在统一检查四个集合的next长度不减与原记录逐索引JSON内容不变，只允许追加新后缀，错误明确禁止覆盖/删除。保留既有validate引用检查、revision冲突、API幂等及写入失败处理；inquiries仍可按原版本/流转/审计跟进，不施加完全不可变约束。不改其他Repository格式或报价业务/UI。
+
+测试：新增18个用例，分别覆盖四集合截尾/清空/修改/重排，嵌套报价内容删除及审计差异篡改；每次拒绝均断言持久化原始文本不变；合法新增、更正、核验、确认保持旧前缀并刷新恢复。修复前复现4个requests保护失败；修复后报价文件83个测试通过。完整验证：PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify 完整退出码0；严格类型、ESLint、Prettier、Vitest 13文件/378测试（原360+新增18）、Playwright 33测试（全部保留）、生产构建通过。未关闭测试、放宽类型、超时或重试。保留既有约1,047kB共享块构建提示，未调整阈值。
+
+修改范围仅quote-repository.ts、quotations.test.ts、本日志和build/stage-05b-patch.md。无新依赖、生产接口或敏感数据；Mock防篡改和并发的生产限制不变。按用户要求只在原分支新增修复提交并普通推送，不合并main、不强制推送，不进入Stage06，完成后停止等待验收。

@@ -309,6 +309,166 @@ describe('compatible append-only quote records', () => {
     ).toThrow();
   });
 });
+describe('repository immutable history boundaries', () => {
+  const protectedCollections = [
+    'quotes',
+    'decisions',
+    'history',
+    'requests',
+  ] as const;
+  async function savedHistory() {
+    const original = await create();
+    await create(
+      input({
+        sourceType: 'correction',
+        previousQuoteId: original.quote.id,
+        reason: '模拟纠错，保留原记录',
+      }),
+    );
+    await api().verifyQuote(
+      original.quote.id,
+      1,
+      'mock:verify',
+      '模拟核验',
+      key(),
+    );
+    await api().confirmQuote(
+      original.quote.id,
+      2,
+      'mock:formal',
+      '2026-11-13T00:00:00Z',
+      '模拟正式确认',
+      key(),
+    );
+    return quotes.read();
+  }
+  for (const collection of protectedCollections) {
+    it.each(['tail', 'all'] as const)(
+      `${collection} rejects %s truncation without changing persistence`,
+      async (mode) => {
+        const before = await savedHistory();
+        const raw = storage.getItem(quoteStorageKey);
+        expect(before[collection].length).toBeGreaterThan(1);
+        const next = {
+          ...before,
+          [collection]: mode === 'all' ? [] : before[collection].slice(0, -1),
+        };
+        expect(() =>
+          quotes.write(before, next, channels, suppliers, sourcing),
+        ).toThrow();
+        expect(storage.getItem(quoteStorageKey)).toBe(raw);
+        expect(quotes.read()).toEqual(before);
+      },
+    );
+    it(`${collection} rejects overwriting an existing field without changing persistence`, async () => {
+      const before = await savedHistory();
+      const raw = storage.getItem(quoteStorageKey);
+      const next = {
+        ...before,
+        [collection]: before[collection].map((record, i) =>
+          i === 0
+            ? {
+                ...record,
+                ...(collection === 'requests'
+                  ? { fingerprint: 'modified' }
+                  : { reason: '修改历史' }),
+              }
+            : record,
+        ),
+      };
+      expect(() =>
+        quotes.write(before, next, channels, suppliers, sourcing),
+      ).toThrow('只允许追加');
+      expect(storage.getItem(quoteStorageKey)).toBe(raw);
+    });
+    it(`${collection} rejects reordering existing records without changing persistence`, async () => {
+      const before = await savedHistory();
+      const raw = storage.getItem(quoteStorageKey);
+      const next = {
+        ...before,
+        [collection]: [...before[collection]].reverse(),
+      };
+      expect(() =>
+        quotes.write(before, next, channels, suppliers, sourcing),
+      ).toThrow();
+      expect(storage.getItem(quoteStorageKey)).toBe(raw);
+    });
+  }
+  it('rejects nested price field deletion and audit difference overwrite without changing persistence', async () => {
+    const before = await savedHistory();
+    const raw = storage.getItem(quoteStorageKey);
+    const next = {
+      ...before,
+      quotes: before.quotes.map((q, i) =>
+        i === before.quotes.length - 1
+          ? {
+              ...q,
+              priceSpec: { ...q.priceSpec, rates: [] },
+            }
+          : q,
+      ),
+    };
+    expect(() =>
+      quotes.write(before, next, channels, suppliers, sourcing),
+    ).toThrow('只允许追加');
+    expect(storage.getItem(quoteStorageKey)).toBe(raw);
+    const changedAudit = {
+      ...before,
+      history: before.history.map((h, i) =>
+        i === 0
+          ? {
+              ...h,
+              changes: h.changes.map((c) => ({ ...c, after: '修改历史差异' })),
+            }
+          : h,
+      ),
+    };
+    expect(() =>
+      quotes.write(before, changedAudit, channels, suppliers, sourcing),
+    ).toThrow('只允许追加');
+    expect(storage.getItem(quoteStorageKey)).toBe(raw);
+  });
+  it('keeps existing prefixes while appending quotes, corrections, verification and confirmation', async () => {
+    const before = await savedHistory();
+    const original = await create();
+    await create(
+      input({
+        previousQuoteId: original.quote.id,
+        sourceType: 'correction',
+        reason: '模拟更正',
+      }),
+    );
+    await api().verifyQuote(
+      original.quote.id,
+      1,
+      'mock:verify',
+      '模拟核验',
+      key(),
+    );
+    await api().confirmQuote(
+      original.quote.id,
+      2,
+      'mock:formal',
+      '2026-11-13T00:00:00Z',
+      '模拟确认',
+      key(),
+    );
+    const after = new QuoteRepository(storage).read();
+    for (const collection of protectedCollections) {
+      expect(after[collection].slice(0, before[collection].length)).toEqual(
+        before[collection],
+      );
+      expect(after[collection].length).toBeGreaterThan(
+        before[collection].length,
+      );
+    }
+    expect(after.quotes.length - before.quotes.length).toBe(2);
+    expect(
+      after.decisions.slice(before.decisions.length).map((d) => d.kind),
+    ).toEqual(['verify', 'confirm']);
+    expect(after.revision).toBe(before.revision + 4);
+  });
+});
 describe('independent verification and formal confirmation', () => {
   it('requires verification, explicit evidence, authorized confirmer and start time', async () => {
     const r = await create(input({ priceStatus: 'pending_contract' }));
