@@ -1,3 +1,9 @@
+import {
+  channelRepository,
+  type ChannelRepository,
+} from './channel-repository';
+import { SupplierError } from '../services/supplier-types';
+import { createChannelApi } from './channel-api';
 import { createResourceApi } from './resource-api';
 import type { ResourceApi } from '../services/resource-types';
 import { createSupplierApi } from './supplier-api';
@@ -40,6 +46,7 @@ export function createMockAdapter(
   businessDomain?: BusinessDomain,
   repository: SupplierRepository = supplierRepository,
   writeActive: () => boolean = () => true,
+  channelRepo: ChannelRepository = channelRepository,
 ): ApiAdapter {
   const user = data.users.find((u) => u.id === userId);
   if (userId !== undefined && !user) throw new Error('Unknown demo user');
@@ -68,9 +75,11 @@ export function createMockAdapter(
     (businessDomain === undefined ||
       modelDomain(m, data.vendors) === businessDomain) &&
     (ctx.user.role !== 'SupplierUser' ||
-      data.channels.some(
-        (c) => c.modelId === m.id && hasSupplier(ctx, c.supplierId),
-      ));
+      channelRepo
+        .read()
+        .channels.some(
+          (c) => c.modelId === m.id && hasSupplier(ctx, c.supplierId),
+        ));
   const channelAllowed = (c: Channel): boolean =>
     ctx !== null &&
     (ctx.user.role === 'Procurement'
@@ -81,7 +90,7 @@ export function createMockAdapter(
           )
       : hasSupplier(ctx, c.supplierId)) &&
     data.models.some((m) => m.id === c.modelId && modelAllowed(m));
-  const channels = () => data.channels.filter(channelAllowed);
+  const channels = () => channelRepo.read().channels.filter(channelAllowed);
   const supplierAllowed = (id: string): boolean =>
     ctx !== null &&
     hasSupplier(ctx, id) &&
@@ -109,6 +118,41 @@ export function createMockAdapter(
   });
   const base: Omit<ApiAdapter, keyof ResourceApi> = {
     ...supplierApi,
+    ...createChannelApi(
+      ctx,
+      businessDomain,
+      channelRepo,
+      repository,
+      channels,
+      writeActive,
+    ),
+    async resetSupplierDemo(confirmed) {
+      if (
+        !ctx ||
+        !writeActive() ||
+        !can(ctx, 'demo:reset') ||
+        businessDomain ||
+        ctx.domains.length !== 2
+      )
+        throw new SupplierError(
+          'FORBIDDEN',
+          '须由双域运营在全部域二次确认重置。',
+        );
+      if (confirmed !== true)
+        throw new SupplierError('VALIDATION', '请先确认重置演示数据。');
+      if (
+        channelRepo
+          .read()
+          .channels.some(
+            (c) => !data.suppliers.some((s) => s.id === c.supplierId),
+          )
+      )
+        throw new SupplierError(
+          'VALIDATION',
+          '请先确认重置渠道演示数据，再重置供应商，避免悬空引用。',
+        );
+      return supplierApi.resetSupplierDemo(confirmed);
+    },
     async getDemoInfo() {
       return {
         source: 'mock',
@@ -190,8 +234,9 @@ export function createMockAdapter(
     async listTestTasks(channelId) {
       return copy(
         ctx && can(ctx, 'test:read')
-          ? data.testTasks
-              .filter(
+          ? channelRepo
+              .read()
+              .tasks.filter(
                 (t) =>
                   channelById(t.channelId) &&
                   (!channelId || t.channelId === channelId),
@@ -201,7 +246,7 @@ export function createMockAdapter(
       );
     },
     async listTestExecutions(taskId) {
-      const task = data.testTasks.find((t) => t.id === taskId);
+      const task = channelRepo.read().tasks.find((t) => t.id === taskId);
       return copy(
         ctx && can(ctx, 'test:read') && task && channelById(task.channelId)
           ? data.testExecutions
@@ -261,9 +306,11 @@ export function createMockAdapter(
                 case 'channel':
                   return !!channelById(a.entityId);
                 case 'test':
-                  return data.testTasks.some(
-                    (t) => t.id === a.entityId && channelById(t.channelId),
-                  );
+                  return channelRepo
+                    .read()
+                    .tasks.some(
+                      (t) => t.id === a.entityId && channelById(t.channelId),
+                    );
                 case 'remediation':
                   return data.remediations.some(
                     (r) => r.id === a.entityId && channelById(r.channelId),

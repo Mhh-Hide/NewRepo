@@ -85,3 +85,15 @@ queryModelResources 的顶部统计以当前授权目录为基准，不随名称
 所有供应商名称/缩写/启停来自原 listSuppliers → Stage 03 SupplierRepository 的当前主档，不读取初始 fixture 替代它；没有新增供应商或渠道存储。供应商更名/停用不改模型关联 ID、渠道数量及渠道状态。资源与 Dashboard 对相同身份/业务域的模型/渠道计数保持一致；主档总数可以包含无渠道供应商，不能与资源提供方数量混用。
 
 未来 Stage 04B：createResourceApi 只依赖 ResourceReaders 的既有授权批量读方法，不内嵌 fixture。模型/渠道变为可变 Repository 时应统一接入原 listModels/listChannels，再供资源页、Dashboard 和供应商摘要共同读取；本阶段不预先实现渠道写入、OP 绑定、价格或测试执行。
+
+## Stage 04B：可维护渠道与一致的数据图
+
+继续使用 Channel；ManagedChannel 仅交叉扩展 `version/createdBy/updatedBy`，不引入第二种业务实体。初始 ID 原样保留，新增 ID 由 UUID 生成，不依赖供应商名称。普通编辑严格白名单，不能修改 id/supplierId/modelId/OP ID/来源核验/测试/接入/开放状态。未知能力保留 null，TPM/RPM/并发为非负安全整数，TTFT 为有限非负毫秒数。
+
+ChannelRepository 的独立 `maas-channel-demo-v1` 存储 envelope 为 schemaVersion=1、revision、channels、tasks、history；不修改 Stage 03 供应商存储。每次读新快照，结构/版本不兼容报错且不自动覆盖；每次保存执行完整 validateStore（使用当前供应商）和 revision 检查，单次 setItem 保存渠道、关联任务及历史。写入失败不产生部分成功。仅用于单浏览器 Mock，不保证跨标签页原子事务。
+
+新建渠道默认 enabled、unverified、quality/connectivity pending、integration not_started、availability closed、opChannelId null。原子初始化 quality/connectivity 两条 pending TestTask，assignedTo=null；不生成执行、豁免、报价或通过结果。既有执行、豁免、报价仍保留 fixture 历史，查询引用当前渠道/任务 Repository。
+
+ChannelChange 保存 channelId/action/actorUserId/occurredAt/changedFields/beforeSnapshot/afterSnapshot/reason，创建 before=null，其余为同一渠道前后快照。主档写入与事件同一存储单元，普通操作只追加；无实质变更不写入、不增 version、不产生事件。历史限获准产品运营及当前业务域读取。
+
+SupplierRepository 是唯一供应商主档，ChannelRepository 只存 supplierId。模型覆盖按 supplierId 去重，主档名称/状态实时从 SupplierRepository 取得。渠道重置恢复初始渠道/任务并清除本阶段渠道历史，保留供应商与既有静态历史；供应商重置若将使新增渠道关联悬空则拒绝，要求先明确重置渠道，再单独确认供应商重置。

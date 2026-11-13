@@ -18,6 +18,11 @@ const technical: readonly PermissionAction[] = [
 ];
 const actions: Record<Role, readonly PermissionAction[]> = {
   ProductOperations: [
+    'channel:create',
+    'channel:update',
+    'channel:toggle',
+    'channel:bind-op',
+    'channel:history',
     ...technical,
     'supplier:read',
     'quote:read',

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { createMockAdapter } from '../../src/mocks/mock-adapter';
+import { ChannelRepository } from '../../src/mocks/channel-repository';
 import { SupplierRepository } from '../../src/mocks/supplier-repository';
 /** Expected values come from the actual authorized service, never a mocked page payload. */
 const service = (user = 'u-ops', domain?: 'domestic' | 'overseas') =>
@@ -8,6 +9,13 @@ const service = (user = 'u-ops', domain?: 'domestic' | 'overseas') =>
     user,
     domain,
     new SupplierRepository({
+      getItem: () => null,
+      setItem: () => {
+        throw new Error('Read-only expected-data source');
+      },
+    }),
+    undefined,
+    new ChannelRepository({
       getItem: () => null,
       setItem: () => {
         throw new Error('Read-only expected-data source');
@@ -209,7 +217,7 @@ test('empty model resources, routing refresh and 1440/1280/390 layouts remain us
     for (const [path, title] of [
       ['/models', '模型资源池'],
       ['/models/m-seed-cn', '模型详情'],
-      ['/channels/ch-2', '渠道只读详情'],
+      ['/channels/ch-2', '渠道详情'],
     ] as const) {
       await page.goto(path);
       await expect(
@@ -227,7 +235,7 @@ test('empty model resources, routing refresh and 1440/1280/390 layouts remain us
   }
   await page.reload();
   await expect(
-    page.getByRole('heading', { name: '渠道只读详情', exact: true }),
+    page.getByRole('heading', { name: '渠道详情', exact: true }),
   ).toBeVisible();
   await expect(page.getByText('未知', { exact: true }).first()).toBeVisible();
 });

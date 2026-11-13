@@ -28,3 +28,14 @@ export function ChannelDetailRoute() {
     </Suspense>
   );
 }
+
+const ChannelListPage = lazy(
+  () => import('../features/channels/ChannelListPage'),
+);
+export function ChannelListRoute() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <ChannelListPage />
+    </Suspense>
+  );
+}

@@ -117,3 +117,23 @@ Mock Repository 统一支撑旧 listSuppliers、工作台与管理 API。localSt
 截图：stage-04a-model-pool-1440.png、stage-04a-model-detail-channels-1440.png、stage-04a-channel-detail-1440.png，保存在 harness/build，均由真实 Chromium 1440px 截取并查看；运行 pageerror=0。仅虚构业务资料与公开厂商/模型示例。
 
 限制：模型和渠道仍是原只读目录，Stage 04B 应在统一授权 readers 后接入 Repository，不能在页面建立副本；供应商本地存储安全与并发限制沿用 Stage 03。覆盖为存量关联统计，不保证需求匹配或即时可用；前台不提供供应商家数筛选；完整历史尚未开发。三个业务页已独立拆包，仍有共享块约 783 kB（gzip 251 kB）的既有大包提示，未提高阈值，不声称已完成整体性能优化。文档及交接已更新，不合并 main、不强制推送，不开始 Stage 04B。
+
+## Stage 04B — 2026-11-13（Asia/Shanghai）
+
+基线：已验收 ddf02ffaed75994303c00531db50085470bc65ac，开始时工作区干净；从该提交创建 stage-04b-channel-management，未使用旧 main，远程目标分支为空。仅渠道主档与资源一致性，不启动 Stage 05。
+
+页面：/channels 正式启用目录，授权指标、名称/代号和厂商/模型/获准供应商/类型/状态/OP 绑定筛选，排序分页及重置。运营从抽屉新增，成功进入详情；详情支持基础信息编辑、独立资源启停、模拟 OP ID 输入/前后预览/确认与历史。其他角色保持只读，前台匿名且不显示供应商/OP 筛选或技术字段。复用 Shell、Header、统计卡、状态与反馈、资源查询 hook/模型渠道表，渠道路由懒加载，无新增依赖。
+
+存储与领域：保留 Channel 和初始 ID，以 ManagedChannel 交叉扩展 version/操作人；新 ID 由 UUID 生成，普通编辑白名单不含关联/技术状态/OP ID。数值空为 null，非负有限，TPM/RPM/并发为安全整数，TTFT 毫秒；表单拒绝小数整数能力，不自动四舍五入。新渠道与 quality/connectivity 两条 pending 任务及创建历史同次保存，保持 validateStore，不生成报价、执行、豁免或通过结果。
+
+统一 ChannelRepository（独立 maas-channel-demo-v1）保存 schemaVersion/revision/channels/tasks/history，SupplierRepository 原 v1 保留不迁移覆盖。所有 mock-adapter 渠道/任务查询及授权、资源池、供应商摘要、Dashboard 均引用统一数据源。模型覆盖按供应商 ID 去重；新无渠道供应商可成为候选。创建授权复用已有 canReadSupplierMaster，不把供应商管理域当模型域，不按负责人推断。供应商重置若会破坏新增渠道引用则拒绝，要求先单独确认渠道重置；渠道重置保留供应商/历史与原静态报价/执行，不静默清空其他模块。损坏/不兼容渠道数据不自动覆盖，显式确认渠道重置可恢复。
+
+权限/审计：五项独立 Channel PermissionAction 仅运营。每次写入检查有效会话、角色、可见记录/域和版本，采购维护权不继承渠道写权。已有投影仍保护供应商、前台和其他角色；技术可见性元信息避免空列表推断权限。历史只向授权运营按域投影返回，记录前后值、字段、操作人、时间、原因；无变化不写入、不增版本、不生成历史。OP 复用完整集合唯一性规则，不允许覆盖或重绑，相同 ID 重试幂等（含旧请求版本），不联动技术状态。页面始终标识模拟未接生产。
+
+验证：最终执行 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify，退出码 0。类型、Lint、格式通过；Vitest 11 文件 / 232 测试（既有 161 + 新增 71）全部通过；Playwright 21 测试（既有 16 + 新增 5）全部通过；生产构建通过。覆盖原 30 项场景及非法能力参数、全部非运营角色写入拒绝、历史投影、跨域/旧会话、OP 全局冲突/幂等、乐观并发/无变化、存储失败/刷新/重置、供应商访问策略与跨模块同步。E2E 验证真实表单、非法小数保留、详情导航、修改恢复、覆盖统计、绑定预览/冲突、角色切换、1440/1280/390px 及兼容错误显式恢复，不修改 fixture 伪造保存。
+
+回归说明：保留全部既有测试；旧资源页尺寸场景仅将运营详情标题更新为“渠道详情”，前台仍为“渠道只读详情”。其 Node 侧期望值查询新增注入只读 ChannelRepository，避免服务计算期望时误用浏览器 localStorage；不改变页面返回，不删断言，不增加超时/重试。开发期失败的下拉选项名称、异步断言和范围选择器已修正，最终完整回归通过。
+
+截图：harness/build/stage-04b-channels-1440.png、stage-04b-editor-1440.png、stage-04b-detail-1440.png、stage-04b-op-preview-1440.png。真实 Chromium 截取并逐张查看，仅虚构主档与公开模型示例，截图流程 pageerror=0。
+
+风险与交接：本地 Mock revision 不能保证跨标签页/多用户事务或真实鉴权；生产后端、附件/自由文本保密、OP 一对一契约/真实格式/解绑、关联迁移及停用合作例外继续待确认。无新依赖，但新增组件使共享块约 1,047 kB（gzip 333 kB），保留构建提示，不放宽阈值，不声称已完成性能优化。README 额外更新当前操作入口/重置影响/停止阶段，指定 docs、ROADMAP、build/stage-04b.md、context/stage-04b.md 已更新。检查忽略规则和变更范围，无真实接口/凭据、运行产物或敏感数据。只提交/普通推送本分支，不合并 main、不强制推送，完成后等待验收。

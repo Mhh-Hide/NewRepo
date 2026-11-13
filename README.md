@@ -1,6 +1,6 @@
 # MaaS 模型资源全生命周期管理平台
 
-MaaS Resource Lifecycle Management。Stage 04A 模型资源池与渠道只读管理，保留供应商主档与工作台；所有展示数据均为模拟数据，不连接生产系统。
+MaaS Resource Lifecycle Management。Stage 04B 渠道主档与资源一致性，保留供应商主档与工作台；所有展示数据均为模拟数据，不连接生产系统。
 
 ## 安装与启动
 
@@ -106,3 +106,11 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify
 供应商改名/缩写/启停沿用 Stage 03 存储，刷新资源视图可见最新主档；无渠道供应商不增加覆盖数。前台只获得匿名渠道，不返回供应商身份/覆盖家数、技术引用或商业价格。资源页不写 localStorage，也不修改模型、渠道或 OP ID。
 
 分支 stage-04a-model-resource-pool，基于已验收 b1a6bb1。完整验证仍使用既有 verify 命令；截图和交接见 harness/build/stage-04a.md、harness/context/stage-04a.md。停止于 Stage 04A，不开始 Stage 04B。
+
+## Stage 04B 渠道管理（当前）
+
+运行 `npm run dev` 后进入 `/channels`。产品运营可新增渠道，详情中编辑能力/非敏感引用、独立启停、查看历史；未绑定渠道可输入 MOCK- 开头 ID，预览后确认模拟绑定。其他角色只读，前台使用匿名渠道。所有数据均为 Mock，不连接生产 OP。
+
+渠道和待测试任务/历史保存在 `maas-channel-demo-v1`，供应商仍用原 Stage 03 存储；新建成功在模型资源池、供应商详情和工作台重新查询时同步。重置渠道会恢复初始渠道/任务并清除渠道变更历史，保留供应商。若供应商重置会破坏引用，先被阻止，需先独立确认渠道重置。存储不兼容时不自动清空，显示错误，可由双域运营明确重置渠道恢复。
+
+完整检查：`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify`（有 Playwright 自带 Chromium 时可直接 `npm run verify`）。交付见 `harness/build/stage-04b.md`、`harness/context/stage-04b.md`。旧阶段章节为历史记录，以本节为当前入口和行为。只提交/普通推送 stage-04b-channel-management，不合并 main，不开始 Stage 05。

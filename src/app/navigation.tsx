@@ -67,10 +67,9 @@ export const navigation: readonly NavigationItem[] = [
     group: '资源管理',
     icon: <ApartmentOutlined />,
     permission: 'channel:read',
-    available: false,
-    stage: '04B 待确认',
-    description:
-      '渠道管理与写入尚未开放；本期可从模型详情查看授权渠道只读详情。',
+    available: true,
+    stage: '04B',
+    description: '维护授权渠道主档与模拟 OP 绑定。',
   },
   {
     id: 'sourcing',

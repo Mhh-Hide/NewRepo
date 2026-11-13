@@ -2,6 +2,7 @@ import {
   ModelPoolRoute,
   ModelDetailRoute,
   ChannelDetailRoute,
+  ChannelListRoute,
 } from './ResourceRoutes';
 import '../features/models/resources.css';
 import { SupplierRoute } from '../features/suppliers/SupplierRoute';
@@ -30,12 +31,16 @@ export const router = createBrowserRouter([
         path: '/channels/:channelId',
         element: <ChannelDetailRoute />,
       },
+      { path: '/channels', element: <ChannelListRoute /> },
       { path: '/suppliers', element: <SupplierRoute /> },
       { path: '/suppliers/:supplierId', element: <SupplierRoute /> },
       ...navigation
         .filter(
           (n) =>
-            n.id !== 'dashboard' && n.id !== 'suppliers' && n.id !== 'models',
+            n.id !== 'dashboard' &&
+            n.id !== 'suppliers' &&
+            n.id !== 'models' &&
+            n.id !== 'channels',
         )
         .map((n) => ({ path: n.path, element: <ComingSoonPage /> })),
       { path: '*', element: <ComingSoonPage /> },

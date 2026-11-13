@@ -1,3 +1,4 @@
+import { ChannelManagement } from './ChannelManagement';
 import { useCallback } from 'react';
 import { Button, Card, Descriptions, Result, Space, Tag } from 'antd';
 import type { DescriptionsProps } from 'antd';
@@ -19,15 +20,19 @@ import { formatCapacity } from './format-capacity';
 export default function ChannelDetailPage() {
   const session = useOutletContext<DemoSession>();
   const { channelId = '' } = useParams<{ channelId: string }>();
-  const load = useCallback(
-    () => session.api.getChannelResource(channelId),
-    [session.api, channelId],
-  );
+  const load = useCallback(async () => {
+    const [channel, version, history] = await Promise.all([
+      session.api.getChannelResource(channelId),
+      session.api.channelVersion(channelId),
+      session.api.channelHistory(channelId),
+    ]);
+    return { channel, version, history };
+  }, [session.api, channelId]);
   const { result, reload } = useResourceQuery(load);
   const header = (
     <PageHeader
-      title="渠道只读详情"
-      description="查看当前身份授权的渠道能力、技术引用与独立资源状态"
+      title={session.permits('channel:update') ? '渠道详情' : '渠道只读详情'}
+      description="查看授权渠道资料；获准的产品运营可维护 Mock 主档"
       group="资源管理"
       actions={
         <Space wrap>
@@ -53,7 +58,7 @@ export default function ChannelDetailPage() {
         <ErrorState message={result.message} onRetry={reload} />
       </>
     );
-  const c = result.data;
+  const c = result.data.channel;
   if (!c)
     return (
       <>
@@ -259,10 +264,18 @@ export default function ChannelDetailPage() {
         <Card title="授权技术引用" className="resource-card">
           <Descriptions column={{ xs: 1, sm: 2 }} items={technical} />
           <p className="section-note resource-note">
-            仅为 Mock 非敏感引用；不包含真实 Endpoint 或凭据，不支持 OP ID
-            绑定或修改。
+            仅为 Mock 非敏感引用；不包含真实 Endpoint 或凭据。
           </p>
         </Card>
+      )}
+      {session.permits('channel:update') && result.data.version !== null && (
+        <ChannelManagement
+          session={session}
+          channel={c}
+          version={result.data.version}
+          history={result.data.history}
+          onSaved={reload}
+        />
       )}
       <Card title="后续能力" className="resource-card">
         <Space wrap>
@@ -271,7 +284,7 @@ export default function ChannelDetailPage() {
           <Tag>接入历史 · 即将开放</Tag>
         </Space>
         <p className="section-note resource-note">
-          当前页面只读，不存储 API Key，不提供渠道写入或生产接入操作。
+          不存储 API Key，不执行测试、报价调整或生产接入操作。
         </p>
       </Card>
     </>
