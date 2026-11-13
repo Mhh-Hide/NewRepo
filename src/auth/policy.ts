@@ -18,6 +18,14 @@ const technical: readonly PermissionAction[] = [
 ];
 const actions: Record<Role, readonly PermissionAction[]> = {
   ProductOperations: [
+    'quote:create',
+    'quote:verify',
+    'quote:confirm',
+    'quote:correct',
+    'quote:history',
+    'inquiry:read',
+    'inquiry:create',
+    'inquiry:update',
     'sourcing:read',
     'sourcing:create',
     'sourcing:update',
@@ -49,6 +57,13 @@ const actions: Record<Role, readonly PermissionAction[]> = {
     'incident:record',
   ],
   Procurement: [
+    'quote:create',
+    'quote:verify',
+    'quote:correct',
+    'quote:history',
+    'inquiry:read',
+    'inquiry:create',
+    'inquiry:update',
     'sourcing:read',
     'sourcing:match',
     'sourcing:progress',

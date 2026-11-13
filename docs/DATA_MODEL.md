@@ -111,3 +111,17 @@ SourcingRepository 独立键 maas-sourcing-demo-v1，schemaVersion=1、revision�
 SourcingEvent 记录 demandId/demandItemId/matchId、action、actorUserId、occurredAt、共享 note 以及字段 before/after 差异，不采用通用原始快照返回。查询显式投影主单、明细、候选及历史；采购历史仅允许共享/采购技术字段，不接受未知字段自动透传。
 
 供应商与渠道仍分别由原 Repository 管理，不改其持久化格式；寻源只存稳定关联 ID。查询当前渠道能力/状态与当前供应商主档，停用保留历史关系但影响辅助判断和初步覆盖。渠道重置若会移除任何被候选（含排除）引用的新增渠道则被阻止；需先明确重置寻源，再单独确认渠道重置。寻源重置只恢复原需求/明细/匹配并清空本阶段跟进，不清除供应商、渠道、测试或报价。
+
+## Stage 05B：渠道报价、询价和独立确认
+
+沿用 ChannelQuote/DiscountBps/QuoteStatus/appendQuote；ManagedQuote 交叉扩展 inquiryId、demandId、demandItemId、recordedBy、supplierSubmitterReference、supplierQuotedAt 和 priceSpec，不创建第二套 Price 真值。供应商/模型通过当前 channelId 推导。主单/明细关联可空，关联明细时必须同模型且属于指定主单；前序报价必须同渠道。采购目标与报价折扣完全独立。
+
+PriceSpec 包含可空 ISO 三字母币种、折扣价格基准、适用规格和 rates。每条 rate 明确 dimension（input_token/output_token/image/video_second/request/other）、每份数量、单位及可空 amount。不得为未知模型自动填 Token 规格。金额真值是非负十进制字符串，最多12位整数/6位小数，精确比较转为 bigint 微单位，bigint 不进入 JSON；不用浮点金额或汇率。不提供金融结算舍入规则。缺失金额是未知，不是零。
+
+InquiryRecord 记录稳定 ID、channelId、可空 demandItemId、requestedBy/At、responseDueAt、status、followUpNote、version、createdAt/updatedAt。状态 draft/sent/quoted/closed；收到关联报价可在同一次保存中标记 quoted，不表示已核验。
+
+QuoteRepository 单键 maas-quote-demo-v1，schemaVersion=1、revision、quotes/inquiries/decisions/history/requests。旧报价 ID、原折扣/确认/证据原样保留，新口径缺失用 null/空 rates，recordedBy 与原始供应商提交人引用未知时不推断。原 submittedBy 保留为系统提交人；新手工转录另存供应商原始 mock: 引用及系统录入人，sourceType 保持 supplier_submission，不改成“采购确认”。
+
+报价记录及 QuoteDecision/QuoteAudit 只追加，Repository 拒绝旧数组前缀被覆盖。核验和模拟正式确认写独立决策事件，不改旧报价；查询兼容投影将正式确认人/时间/依据/生效时间与 effective 状态合成到 ChannelQuote 视图。原录入状态仍单独展示，操作 version=1+该报价决策数。更正新建 sourceType=correction、previousQuoteId 和原因，真实后续调价仍用原来源类型，均保留全部历史。
+
+请求按操作人+请求标识幂等，内容不一致复用标识报冲突。保存前复用 appendQuote 和完整 validateStore，并校验询价/需求/明细/渠道引用、模型、版本/revision；报价+询价回复+审计单次 setItem，失败无部分记录。其他三个 Repository 格式不变。

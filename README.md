@@ -1,6 +1,6 @@
 # MaaS 模型资源全生命周期管理平台
 
-MaaS Resource Lifecycle Management。Stage 05A 采购需求与多供应商资源寻源，保留供应商主档与工作台；所有展示数据均为模拟数据，不连接生产系统。
+MaaS Resource Lifecycle Management。Stage 05B 询价、采购报价与价格版本管理，保留供应商主档与工作台；所有展示数据均为模拟数据，不连接生产系统。
 
 ## 安装与启动
 
@@ -124,3 +124,13 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify
 新增独立 `maas-sourcing-demo-v1`，不改变已有供应商/渠道存储。渠道被寻源候选（含排除历史）引用时，渠道重置会被阻止；必须先独立确认重置寻源，再确认渠道，必要时再按原依赖规则重置供应商。寻源重置保留其他模块数据，不自动清空浏览器。
 
 完整检查仍为 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify`（已安装 Playwright Chromium 时直接 `npm run verify`）。交接、测试与截图见 `harness/build/stage-05a.md`、`harness/context/stage-05a.md`。仅普通推送 stage-05a-procurement-sourcing，不合并 main，不进入 Stage 05B。旧章节为各历史阶段记录，以此节为当前行为。
+
+## Stage 05B 采购报价（当前入口）
+
+运行 `npm run dev` 后进入 `/quotes`，台账可筛选/分页；询价页签发起/跟进模拟询价并录入回复，或直接录入无需求关联的日常报价。折扣为整数基点，绝对单价是最多6位小数的文本，各币种/维度/单位/基准必须明确，未知不填0。
+
+详情 `/quotes/:quoteId` 可独立核验，运营才能模拟正式确认；Demo 不代表真实合同签署。真实调价录入后续报价，更正用新记录并链接前序，不覆盖旧价。临时优惠独立保留，到期有明确标签，不自动决定唯一结算价。对照页签仅同口径才比较。渠道详情显示授权历史，寻源候选可进入询价并查看关联报价；目标基准缺失时明确不可比，不自动改变匹配。
+
+新增 `maas-quote-demo-v1`，不改原三个存储格式。报价/询价引用的新需求或渠道会阻止对应局部重置；先独立确认报价重置，再按既有顺序重置寻源/渠道/供应商。报价重置只清本模块的新记录，保留其他模块。所有数据模拟，无真实合同、价格材料或凭据。
+
+完整检查：`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify`（有自带 Chromium 时直接 verify）。交付见 `harness/build/stage-05b.md`、`harness/context/stage-05b.md`。仅普通推送 stage-05b-quotation-management，不合并 main，不进入 Stage 06。旧阶段章节为历史，以此节为当前行为。

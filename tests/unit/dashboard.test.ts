@@ -29,6 +29,9 @@ describe('scoped dashboard aggregates', () => {
       ['quality', 4],
       ['connectivity', 6],
       ['remediations', 2],
+      ['quotes', 1],
+      ['quote-expiring', 1],
+      ['quote-new-channels', 3],
     ]);
     expect(d.quotes.length).toBe(7);
     expect(new Set(d.activities.map((a) => a.kind))).toEqual(

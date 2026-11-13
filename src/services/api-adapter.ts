@@ -1,3 +1,4 @@
+import type { QuotationApi } from './quotation-types';
 import type { SourcingApi } from './sourcing-types';
 import type { ChannelApi } from './channel-types';
 import type { ResourceApi } from './resource-types';
@@ -29,7 +30,7 @@ export interface DemandDetail {
 }
 /** Unified domain contract. Supplier writes are Demo-only; no raw store escape hatch. */
 export interface ApiAdapter
-  extends SupplierApi, ResourceApi, ChannelApi, SourcingApi {
+  extends SupplierApi, ResourceApi, ChannelApi, SourcingApi, QuotationApi {
   getDemoInfo(): Promise<DemoInfo>;
   listVendors(): Promise<readonly ModelVendor[]>;
   listModels(): Promise<readonly Model[]>;

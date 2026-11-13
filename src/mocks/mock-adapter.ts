@@ -1,3 +1,5 @@
+import { quoteRepository, type QuoteRepository } from './quote-repository';
+import { createQuotationApi, resolvedQuote } from './quotation-api';
 import {
   sourcingRepository,
   type SourcingRepository,
@@ -53,6 +55,7 @@ export function createMockAdapter(
   writeActive: () => boolean = () => true,
   channelRepo: ChannelRepository = channelRepository,
   sourcingRepo: SourcingRepository = sourcingRepository,
+  quoteRepo: QuoteRepository = quoteRepository,
 ): ApiAdapter {
   const user = data.users.find((u) => u.id === userId);
   if (userId !== undefined && !user) throw new Error('Unknown demo user');
@@ -134,18 +137,29 @@ export function createMockAdapter(
     channels,
     writeActive,
   );
+  const sourcingApi = createSourcingApi(
+    ctx,
+    businessDomain,
+    sourcingRepo,
+    channelRepo,
+    repository,
+    channels,
+    writeActive,
+  );
   const base: Omit<ApiAdapter, keyof ResourceApi> = {
     ...supplierApi,
     ...channelApi,
-    ...createSourcingApi(
+    ...createQuotationApi(
       ctx,
       businessDomain,
-      sourcingRepo,
+      quoteRepo,
       channelRepo,
       repository,
+      sourcingRepo,
       channels,
       writeActive,
     ),
+    ...sourcingApi,
     async resetChannelDemo(confirmed) {
       if (
         !ctx ||
@@ -159,6 +173,19 @@ export function createMockAdapter(
           'FORBIDDEN',
           '须由双域运营在全部域二次确认重置。',
         );
+      const pricing = quoteRepo.read();
+      if (
+        pricing.quotes.some(
+          (q) => !data.channels.some((c) => c.id === q.channelId),
+        ) ||
+        pricing.inquiries.some(
+          (i) => !data.channels.some((c) => c.id === i.channelId),
+        )
+      )
+        throw new SupplierError(
+          'VALIDATION',
+          '渠道被报价或询价历史引用，请先独立确认重置报价演示数据，再重置渠道。',
+        );
       if (
         sourcingRepo
           .read()
@@ -169,6 +196,40 @@ export function createMockAdapter(
           '渠道被寻源候选或历史引用，请先独立确认重置寻源演示数据，再重置渠道；不会静默删除寻源记录。',
         );
       return channelApi.resetChannelDemo(confirmed);
+    },
+    async resetSourcingDemo(confirmed) {
+      if (
+        !ctx ||
+        !writeActive() ||
+        !can(ctx, 'sourcing:update') ||
+        businessDomain ||
+        ctx.domains.length !== 2 ||
+        confirmed !== true
+      )
+        throw new SupplierError(
+          'FORBIDDEN',
+          '须由双域运营在全部域二次确认重置。',
+        );
+      const pricing = quoteRepo.read();
+      if (
+        pricing.quotes.some(
+          (q) =>
+            (q.demandId !== null &&
+              !data.demands.some((d) => d.id === q.demandId)) ||
+            (q.demandItemId !== null &&
+              !data.demandItems.some((i) => i.id === q.demandItemId)),
+        ) ||
+        pricing.inquiries.some(
+          (i) =>
+            i.demandItemId !== null &&
+            !data.demandItems.some((d) => d.id === i.demandItemId),
+        )
+      )
+        throw new SupplierError(
+          'VALIDATION',
+          '寻源需求被报价或询价引用，请先独立确认重置报价演示数据，再重置寻源。',
+        );
+      return sourcingApi.resetSourcingDemo(confirmed);
     },
     async resetSupplierDemo(confirmed) {
       if (
@@ -236,7 +297,10 @@ export function createMockAdapter(
     async getQuoteHistory(channelId) {
       return copy(
         ctx && can(ctx, 'quote:read') && channelById(channelId)
-          ? data.quotes.filter((q) => q.channelId === channelId)
+          ? quoteRepo
+              .read()
+              .quotes.filter((q) => q.channelId === channelId)
+              .map((q) => resolvedQuote(quoteRepo.read(), q))
           : [],
       );
     },
@@ -358,9 +422,11 @@ export function createMockAdapter(
           ? data.audits.filter((a) => {
               switch (a.entityType) {
                 case 'quote':
-                  return data.quotes.some(
-                    (q) => q.id === a.entityId && channelById(q.channelId),
-                  );
+                  return quoteRepo
+                    .read()
+                    .quotes.some(
+                      (q) => q.id === a.entityId && channelById(q.channelId),
+                    );
                 case 'channel':
                   return !!channelById(a.entityId);
                 case 'test':

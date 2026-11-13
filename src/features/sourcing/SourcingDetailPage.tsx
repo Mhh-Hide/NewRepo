@@ -1,3 +1,4 @@
+import { RelatedQuotes } from '../quotes/RelatedQuotes';
 import { useCallback, useState } from 'react';
 import {
   Alert,
@@ -333,6 +334,13 @@ export default function SourcingDetailPage() {
                       {r.channel.displayName}
                     </Link>
                     <small className="resource-subtitle">
+                      <Link
+                        to={`/quotes?tab=inquiries&channelId=${encodeURIComponent(r.channel.id)}&demandId=${encodeURIComponent(master.id)}&demandItemId=${encodeURIComponent(item.item.id)}`}
+                      >
+                        发起或查看相关渠道询价
+                      </Link>
+                    </small>
+                    <small className="resource-subtitle">
                       {r.supplier.name} ·{' '}
                       {channelTypeLabels[r.channel.channelType]}
                     </small>
@@ -423,6 +431,14 @@ export default function SourcingDetailPage() {
             ]}
             locale={{ emptyText: '尚未添加候选；不表示已调查后确认资源不足。' }}
           />
+          {session.permits('quote:read') && (
+            <RelatedQuotes
+              session={session}
+              demandId={master.id}
+              demandItemId={item.item.id}
+              target={item.item.targetPurchaseDiscount}
+            />
+          )}
         </Card>
       ))}
       <Card title="寻源跟进记录" className="sourcing-item">

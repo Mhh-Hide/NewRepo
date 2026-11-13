@@ -161,3 +161,25 @@ Dashboard：需求来自当前 SourcingRepository，缺口直接复用 querySour
 截图：harness/build/stage-05a-list-1440.png、stage-05a-multi-detail-1440.png、stage-05a-candidate-picker-1440.png、stage-05a-procurement-detail-1440.png，真实 Chromium 通过实际创建/选择角色/候选流程截取，已视觉检查；仅虚构业务资料与公开模型示例，pageerror=0。另检查 1280px 详情无文档横向溢出，390px 操作由浏览器测试覆盖。
 
 交接/风险：docs 六份本期规则、ROADMAP、build/stage-05a.md、context/stage-05a.md 已更新；README 额外更新当前启动入口、角色操作与重置顺序，避免旧只读说明造成误解。无真实 API、凭据、客户数据、数据库、报价写入、合同流程、自动采购或外发通知；忽略规则继续排除依赖/环境变量/密钥/运行产物。共享块仍约 1,047 kB（gzip 333 kB），保留阈值提示，无新增大型依赖。Mock 不提供生产鉴权/多标签页强事务/防篡改；生产共享文本审查/附件/导出、负责人/组织授权、编号分配事务、关联迁移、关闭重开与真实地区规格仍 TBD。只提交并普通推送本分支，不合并 main、不强制推送，完成后停止等待验收。
+
+## Stage 05B — 2026-11-13（Asia/Shanghai）
+
+基线：383aabee1ff5d6aad678d01061f012f24db20207，开始时工作区干净，从已验收提交创建 stage-05b-quotation-management；远程目标分支不存在。先阅读 AGENTS、README、docs、05A交接与相关领域/授权/Adapter/Repository/页面及测试，实施计划、共享影响和验证计划先于修改。仅本期询价/采购报价/版本，不进入 Stage06。
+
+流程与页面：正式启用 /quotes 台账、询价跟进、条件价格对照，/quotes/:quoteId 展示来源/证据、口径、独立核验、运营模拟确认、版本历史与审计。采购/运营创建询价，记录人工回复，关联报价保存与询价 quoted 状态原子提交；日常报价可无需求关联。收到回复不等于来源核验或正式合同。原始供应商报价提交引用与实际录入人分离；后续真实调价保持真实来源，更正用 correction/previousQuoteId/原因追加，不覆盖原值。优惠必须起止、证据，独立保留，不计算唯一结算价。
+
+结构与精度：ManagedQuote 交叉扩展 ChannelQuote，原ID、DiscountBps及历史确认值保留；历史缺少币种/规格/计量/外部提交人/录入人则保持未知。PriceSpec 显式币种、基准、适用规格，rates支持输入/输出Token、图像、视频秒、请求或其他维度，各自数量/单位/可空金额；不假定所有模型按Token。金额为最多12位整数6位小数文本，bigint微单位仅精确比较，拒绝负数/指数/NaN/Infinity。缺口径或不同模型/币种/基准/规格/维度/单位/状态/有效期列不可比原因；不计算汇率、节约率或最优渠道。采购目标缺基准时仅并列，保持原目标和人工 suitable 不变。
+
+统一存储：独立 QuoteRepository maas-quote-demo-v1，schemaVersion/revision；报价、询价、独立核验/确认决策、审计与幂等请求单键保存。报价/决策/历史前缀只追加，保存前复用完整领域校验与 appendQuote，检查渠道/需求/明细/询价引用及模型一致、版本和revision。相同操作人请求重试返回原结果，不同内容冲突；存储失败无部分提交。旧 Supplier/Channel/Sourcing Repository 格式不变。渠道详情、寻源关联面板、原 getQuoteHistory 与 Dashboard 共用当前报价数据，不继续返回静态旧报价。动态渠道/需求被报价或询价引用时拒绝局部重置，要求先单独确认报价重置，再按原寻源→渠道→供应商保护顺序操作。不兼容数据不自动覆盖。
+
+权限：quote:create/verify/correct/history、inquiry:read/create/update 仅运营/采购，quote:confirm 独立且仅运营；每次写入检查有效会话、域、渠道和供应商范围。确认必须已核验、未到期参考/待合同状态、明确生效时间/mock:依据/原因，生成独立事件投影为兼容正式价，不改原始记录。测试、运维、供应商、前台均无上游价格读取。需求选择仅共享标题/编号/模型/目标，无客户或运营原文；报价/审计白名单投影，不返回原始业务快照。页面始终标明Mock/确认不等于真实合同签署，不以按钮隐藏替代API检查。
+
+统计和布局：报价台账支持全部本期授权筛选、日期/排序/分页，状态与有效期分开；Dashboard待合同、未来7天到期有效优惠、最近7天有新报价不同渠道读取同源。复用 Ant Design 与共享 Header/指标/状态/反馈/查询Hook；QuoteTable用于台账、渠道、寻源和版本历史，报价路由懒加载，无新依赖。
+
+验证：PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify 完整退出码0。严格类型、Lint、格式、Vitest13文件/360测试（保留原295+新增65）、Playwright33测试（保留原27+新增6）、生产构建全部通过。覆盖用户32项及显式投影/未知字段、来源原始提交引用、询价状态/版本、精确金额、并发/幂等/失败原子性、过期不改历史、恢复与重置。浏览器通过真实页面录入，不修改fixture伪造成功，覆盖询价→关联回复报价→核验→运营确认、优惠、更正原值保留、渠道/寻源读、角色切换、刷新、390px与不兼容数据恢复。
+
+回归说明：既有用例保留；旧报价占位导航用例转到仍未开放的模型测试页，Dashboard既有指标断言加入本期真实统计。开发期新E2E的下拉选项定位改按各combobox的aria-controls限定，状态断言限定表格避免隐藏表单重复节点，重置后参考报价数量按原fixture校正。完整回归通过，未删除用例/关闭断言/放宽类型、超时或重试。
+
+截图：harness/build/stage-05b-quotes-1440.png、stage-05b-editor-1440.png、stage-05b-confirm-1440.png、stage-05b-history-1440.png、stage-05b-sourcing-1440.png，真实Chromium操作截图并逐张视觉检查；pageerror=0，1280px页面无整体溢出，390px表单测试通过。文本模型采用明确标记模拟的CNY/输入Token示例，不宣称官方价格，所有业务身份和依据虚构。
+
+交接：指定六份docs、ROADMAP、build/stage-05b.md、context/stage-05b.md已更新；README额外更新入口/操作/重置，完整变更清单见build报告。忽略规则排除node_modules、环境变量/密钥、构建与测试运行产物。无真实接口/合同/密钥/客户资料，无新依赖。共享块仍约1,047kB（gzip333kB）保留构建提示，不提高阈值。Mock不提供生产鉴权、防篡改或跨窗口强事务；生产审批/金融精度与舍入/目标基准/基准目录/附件导出/促销结算优先级继续TBD。只提交并普通推送本分支，不合并main、不强制推送，完成后停止等待验收，不进入Stage06。

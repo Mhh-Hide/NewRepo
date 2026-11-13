@@ -85,12 +85,12 @@ export const navigation: readonly NavigationItem[] = [
   {
     id: 'quotes',
     path: '/quotes',
-    name: '报价与调价',
+    name: '采购报价管理',
     group: '业务协同',
     icon: <AuditOutlined />,
     permission: 'quote:read',
-    available: false,
-    stage: '05—06',
+    available: true,
+    stage: '05B',
     description: '查看报价版本、合同确认与临时优惠记录。',
   },
   {

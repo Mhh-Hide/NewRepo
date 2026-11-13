@@ -1,0 +1,42 @@
+.quote-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 20px;
+}
+.quote-rate,
+.quote-section {
+  margin-top: 20px;
+  min-width: 0;
+}
+.quote-wrap {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.quote-comparison {
+  padding: 16px;
+  background: #f4f7fc;
+  border-radius: 8px;
+  margin: 16px 0;
+}
+@media (max-width: 600px) {
+  .quote-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .quote-section .ant-card-head-wrapper {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .quote-section .ant-card-head {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .quote-section .ant-card-head-title {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
+.quote-section .ant-descriptions-item-content {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}

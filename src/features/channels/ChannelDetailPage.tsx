@@ -1,3 +1,4 @@
+import { RelatedQuotes } from '../quotes/RelatedQuotes';
 import { ChannelManagement } from './ChannelManagement';
 import { useCallback } from 'react';
 import { Button, Card, Descriptions, Result, Space, Tag } from 'antd';
@@ -277,9 +278,11 @@ export default function ChannelDetailPage() {
           onSaved={reload}
         />
       )}
+      {session.permits('quote:read') && (
+        <RelatedQuotes session={session} channelId={c.id} />
+      )}
       <Card title="后续能力" className="resource-card">
         <Space wrap>
-          <Tag>报价历史 · 即将开放</Tag>
           <Tag>测试执行历史 · 即将开放</Tag>
           <Tag>接入历史 · 即将开放</Tag>
         </Space>

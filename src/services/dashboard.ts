@@ -58,6 +58,10 @@ export async function loadDashboard(
       ? await api.querySourcing({ pageSize: 1 })
       : null;
   const gapCount = sourcing?.stats.gaps ?? 0;
+  const pricing =
+    permits('quote:read') && models.length
+      ? await api.queryQuotes({ pageSize: 1 })
+      : null;
   const metrics: Metric[] = [];
   const add = (id: string, label: string, value: number, note: string) =>
     metrics.push({ id, label, value, note });
@@ -109,13 +113,27 @@ export async function loadDashboard(
       ).length,
       '已登记或调查中的人工事件',
     );
-  if (permits('quote:read') && !permits('test:read'))
+  if (permits('quote:read'))
     add(
       'quotes',
       '待合同确认报价',
-      quotes.filter((q) => q.priceStatus === 'pending_contract').length,
+      pricing?.stats.pending ?? 0,
       '不推断审批或最终结算价',
     );
+  if (permits('quote:read')) {
+    add(
+      'quote-expiring',
+      '七天内到期优惠',
+      pricing?.stats.expiring ?? 0,
+      '当前有效且未来7天内到期的临时优惠，不代表自动结算价',
+    );
+    add(
+      'quote-new-channels',
+      '近七天有报价渠道',
+      pricing?.stats.newChannels ?? 0,
+      '报价创建时间在最近7天，按渠道ID去重',
+    );
+  }
   const dimensions: Dimension[] = [];
   function dimension(
     name: string,
@@ -168,11 +186,7 @@ export async function loadDashboard(
     if (count > 0) todos.push({ label, count, path });
   };
   if (permits('quote:read'))
-    todo(
-      '待合同确认报价',
-      quotes.filter((q) => q.priceStatus === 'pending_contract').length,
-      '/quotes',
-    );
+    todo('待合同确认报价', pricing?.stats.pending ?? 0, '/quotes');
   if (permits('demand:process'))
     todo(
       '待寻源需求（草稿 / 寻源 / 缺口）',
