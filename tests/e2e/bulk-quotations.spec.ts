@@ -260,3 +260,65 @@ test('390px draft, editor and preview fit viewport with local table scrolling', 
   await page.getByRole('button', { name: '取消', exact: true }).click();
   expect(errors).toEqual([]);
 });
+for (const width of [1440, 390]) {
+  test(`${width}px: another tab submits while confirmation is open; stale confirmation refuses and restores the same receipt`, async ({
+    page,
+    context,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await create(page);
+    await row(page);
+    await save(page);
+    await preview(page);
+    const other = await context.newPage();
+    await other.setViewportSize({ width, height: 900 });
+    const errors: string[] = [];
+    other.on('pageerror', (e) => errors.push(e.message));
+    await other.goto(page.url());
+    await preview(other);
+    await other
+      .getByRole('button', { name: '提交整批报价', exact: true })
+      .click();
+    const dialog = other.getByRole('dialog', { name: '确认整批提交模拟报价' });
+    await dialog
+      .getByRole('checkbox', { name: '我确认这是模拟记录，并已核对所有报价行' })
+      .check();
+    await confirm(page);
+    await expect(
+      page.getByRole('heading', { name: '已提交报价批次' }),
+    ).toBeVisible();
+    const quotes = page.getByRole('link', { name: /查看报价 mock-quote/ });
+    await expect(quotes).toHaveCount(1);
+    const href = await quotes.getAttribute('href');
+    await expect(dialog.getByText(/其他页面数据已变化/)).toBeVisible();
+    await dialog
+      .getByRole('button', { name: '确认追加整批报价', exact: true })
+      .click();
+    await expect(
+      dialog.getByText('预览已失效，请刷新批次并重新校验。', { exact: true }),
+    ).toBeVisible();
+    expect(
+      await other.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    await dialog.getByRole('button', { name: '取消', exact: true }).click();
+    await other.getByRole('button', { name: '刷新批次', exact: true }).click();
+    await expect(
+      other.getByRole('heading', { name: '已提交报价批次' }),
+    ).toBeVisible();
+    const restored = other.getByRole('link', { name: /查看报价 mock-quote/ });
+    await expect(restored).toHaveCount(1);
+    await expect(restored).toHaveAttribute('href', href!);
+    await expect(
+      other.getByRole('button', { name: '保存草稿', exact: true }),
+    ).toHaveCount(0);
+    expect(
+      await other.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    expect(errors).toEqual([]);
+    await other.close();
+  });
+}

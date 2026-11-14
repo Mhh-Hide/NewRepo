@@ -29,7 +29,10 @@ import { validityLabels as originalValidityLabels } from '../../domain/quotation
 import { quoteStatusLabels } from '../../domain/statuses';
 import { PageHeader } from '../../components/PageHeader';
 import { LoadingState, ErrorState } from '../../components/FeedbackStates';
-import { resourceErrorMessage } from '../../services/resource-types';
+import {
+  ResourceError,
+  resourceErrorMessage,
+} from '../../services/resource-types';
 import { useResourceQuery } from '../models/use-resource-query';
 import { displayDate, priceSpecText } from '../quotes/quote-format';
 import { BulkItemEditor } from './BulkItemEditor';
@@ -756,7 +759,8 @@ function BulkDetail({
         onOk={() =>
           void act(async () => {
             if (!ack) throw new Error('请勾选确认说明');
-            if (!preview) throw new Error('预览已失效，请重新校验');
+            if (!preview)
+              throw new ResourceError('预览已失效，请刷新批次并重新校验。');
             await session.api.submitBulkBatch(
               b.id,
               b.version,
