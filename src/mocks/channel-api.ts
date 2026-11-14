@@ -1,3 +1,4 @@
+import { initialDefinition, basisFor } from './testing-state';
 import type {
   ChannelApi,
   ChannelInput,
@@ -118,6 +119,32 @@ export function createChannelApi(
           ? state.channels.map((c) => (c.id === after.id ? after : c))
           : [...state.channels, after],
         tasks,
+        taskDefinitions: before
+          ? state.taskDefinitions
+          : [
+              ...state.taskDefinitions,
+              ...tasks
+                .filter((t) => !state.tasks.some((v) => v.id === t.id))
+                .map((t) => ({
+                  ...initialDefinition(t, after, ctx!.user.id),
+                  targetReference:
+                    t.testType === 'quality'
+                      ? '渠道基础人工质量验证'
+                      : '渠道基础人工连通性验证',
+                })),
+            ],
+        legacyTestStates: before
+          ? state.legacyTestStates
+          : [
+              ...state.legacyTestStates,
+              {
+                channelId: after.id,
+                qualityStatus: after.qualityStatus,
+                connectivityStatus: after.connectivityStatus,
+                sourceVerificationStatus: after.sourceVerificationStatus,
+                basis: basisFor(after),
+              },
+            ],
         history: [
           ...state.history,
           {
@@ -135,7 +162,10 @@ export function createChannelApi(
       },
       suppliers,
     );
-    return projectChannel(ctx!, after);
+    return projectChannel(
+      ctx!,
+      repo.read().channels.find((c) => c.id === after.id)!,
+    );
   };
   const change = (
     id: string,

@@ -1,3 +1,4 @@
+import { TestingRoute } from './TestingRoute';
 import { BulkQuotationRoute } from './BulkQuotationRoute';
 import { ProcurementAnalyticsRoute } from './ProcurementAnalyticsRoute';
 import { QuotationRoute } from './QuotationRoutes';
@@ -52,12 +53,15 @@ export const router = createBrowserRouter([
       { path: '/quotes/:quoteId', element: <QuotationRoute /> },
       { path: '/sourcing', element: <SourcingRoute /> },
       { path: '/sourcing/:demandId', element: <SourcingRoute /> },
+      { path: '/tests', element: <TestingRoute /> },
+      { path: '/tests/:taskId', element: <TestingRoute /> },
       { path: '/channels', element: <ChannelListRoute /> },
       { path: '/suppliers', element: <SupplierRoute /> },
       { path: '/suppliers/:supplierId', element: <SupplierRoute /> },
       ...navigation
         .filter(
           (n) =>
+            n.id !== 'tests' &&
             n.id !== 'dashboard' &&
             n.id !== 'suppliers' &&
             n.id !== 'models' &&

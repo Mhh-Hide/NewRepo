@@ -1,3 +1,4 @@
+import { testingSnapshot } from './testing-state';
 import { bulkShape, bulkReferences } from './bulk-repository-rules';
 import { fixture } from './data';
 import { appendQuote } from '../domain/rules';
@@ -218,7 +219,7 @@ export class QuoteRepository {
       ...fixture,
       suppliers: suppliers.read().suppliers,
       channels: c.channels,
-      testTasks: c.tasks,
+      ...testingSnapshot(c),
       demands: d.demands,
       demandItems: d.items,
       matches: d.matches,

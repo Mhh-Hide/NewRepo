@@ -62,6 +62,10 @@ export async function loadDashboard(
     permits('quote:read') && models.length
       ? await api.queryQuotes({ pageSize: 1 })
       : null;
+  const testing =
+    permits('test:summary') && models.length
+      ? (await api.queryTestSummaries()).stats
+      : null;
   const metrics: Metric[] = [];
   const add = (id: string, label: string, value: number, note: string) =>
     metrics.push({ id, label, value, note });
@@ -272,6 +276,7 @@ export async function loadDashboard(
     .slice(0, 5);
   return {
     source: 'mock',
+    testing,
     metrics,
     dimensions,
     todos,

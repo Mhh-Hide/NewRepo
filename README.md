@@ -150,3 +150,9 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify
 报价存储键仍为 `maas-quote-demo-v1`，内部升级 schemaVersion=2。v1 读取不改盘，下一次完整校验成功的写入才无损升级。不要手工改 schema、清缓存或用旧版本页面重置；未知/损坏数据不会自动回退。报价显式重置会同时清除批次草稿、提交结果、映射与历史，保留其他模块；引用保护可能要求先独立重置报价，再按原顺序重置其他模块。
 
 完整检查：`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify`。交付及 Mock 一致性/旧客户端限制见 `harness/build/stage-06b.md`、`harness/context/stage-06b.md`。分支 `stage-06b-bulk-quotation-adjustment`，基线 `863f8444cab5147b67f501ba53cc425f2de009d7`。完成后停止，不进入 Stage 07；旧章节为历史记录。
+
+## Stage 07A：模型渠道测试管理
+
+`/tests` 开放人工 Mock 测试任务、执行/复测、取消、运营采纳/审阅、来源核验、质量豁免与历史。采购/运维仅可读授权技术摘要，供应商与前台不开放新管理接口。没有真实模型调用、Key 或生产接入。渠道本地聚合从 v1 无损迁移到 v2（键名仍为 maas-channel-demo-v1），未知版本不会自动重置。显式渠道重置会清除新增测试历史，必须核对确认说明。
+
+详见 [Stage 07A 交付说明](harness/build/stage-07a.md) 与 [交接](harness/context/stage-07a.md)。验证：`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify`。

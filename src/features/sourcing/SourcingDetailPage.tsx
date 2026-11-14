@@ -1,3 +1,4 @@
+import { TestSummaryPanel } from '../testing/TestSummaryPanel';
 import { RelatedQuotes } from '../quotes/RelatedQuotes';
 import { useCallback, useState } from 'react';
 import {
@@ -440,6 +441,13 @@ export default function SourcingDetailPage() {
             />
           )}
         </Card>
+      ))}
+      {d.items.map((item) => (
+        <TestSummaryPanel
+          key={item.item.id}
+          session={session}
+          modelId={item.item.modelId}
+        />
       ))}
       <Card title="寻源跟进记录" className="sourcing-item">
         <Table<SourcingEvent>

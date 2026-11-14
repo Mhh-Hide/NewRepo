@@ -110,9 +110,9 @@ export const navigation: readonly NavigationItem[] = [
     name: '模型测试',
     group: '业务协同',
     icon: <ExperimentOutlined />,
-    permission: 'test:read',
-    available: false,
-    stage: '07',
+    permission: 'test:summary',
+    available: true,
+    stage: '07A',
     description: '分开管理质量测试、连通性测试与每次执行。',
   },
   {

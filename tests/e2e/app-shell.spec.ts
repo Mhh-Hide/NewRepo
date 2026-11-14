@@ -26,11 +26,16 @@ test('default dashboard, navigation and placeholder survive browser refresh', as
   await expect(
     page.getByRole('heading', { name: '模型测试', exact: true }),
   ).toBeVisible();
-  await expect(page.getByText('即将开放', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: '新建测试任务' }),
+  ).toBeVisible();
   await page.reload();
   await expect(
     page.getByRole('heading', { name: '模型测试', exact: true }),
   ).toBeVisible();
+  await expect(page.getByText('测试任务', { exact: true })).toBeVisible();
+  await page.goto('/remediations');
+  await expect(page.getByText('即将开放', { exact: true })).toBeVisible();
   await expect(page.getByText(/规划阶段：07/)).toBeVisible();
 });
 test('domain filters change real metrics and single-domain identity cannot expand access', async ({

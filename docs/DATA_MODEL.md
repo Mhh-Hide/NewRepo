@@ -151,3 +151,29 @@ BulkQuoteBatch 包含 id/batchNo/supplierId/status/createdBy/createdAt/updatedAt
 批次事件追加记录操作、操作者、时间、原因、前后版本、字段差异、增删行 ID、关联报价和跨模块引用 ID。删除行的历史仍保留资源引用。提交回执独立保存 requestId 与完整 `itemId → quoteId` 映射，已提交批次和回执不可修改。
 
 v1 读取只在内存补空批次集合；读取不写存储。首次成功写入前对当前与候选完整校验（结构、领域、引用、唯一性、原历史前缀、批次版本和审计），然后以一次 setItem 持久化 v2。结构损坏/未知版本正常读取拒绝，不自动清空；引用损坏在完整校验时拒绝迁移。失败保留旧字节，不宣称升级成功；重复读取 v2 不再迁移。原四类历史及新增批次历史/回执都受长度与逐项前缀保护，inquiries 仍可按原版本/审计规则更新。
+
+## Stage 07A 渠道与测试聚合 v2
+
+沿用存储键 `maas-channel-demo-v1`，实际 schemaVersion 从 1 升至 2；报价、寻源和供应商存储格式不变。
+
+- 原 channels、tasks、history 保留 ID、顺序、字段及渠道版本。`taskDefinitions` 按 taskId 扩展版本、目标引用/稳定目标版本、配置依据、创建与取消元数据。
+- `runs` 是不可变开始事实；`executions` 是不可变终态，ID 与 run 一致。执行引用 task 推导渠道，round 按新记录的轮次递增，legacy 轮次不编造。取消保存 null 终态。
+- `conclusions` 是不可变采纳链，关联渠道、类型、executionId、结果、采纳人/时间/说明、目标版本和 basis；当前结论从最后一条匹配当前配置依据的事件推导。详情的 targetCurrent 只读计算当前任务依据是否匹配当前配置，与 legacy 来源标记分离，不新增缓存。
+- `reviews` 逐 executionId 记录 reviewed_without_conclusion；采纳和审阅互斥，不能重复关闭。
+- `sourceVerifications`、`exemptions`、`exemptionRevocations` 保留独立来源证据、豁免证据和撤销/失效历史。legacy 豁免保留原始核验字段，新增元数据为空。
+- `testHistory` 是独立专用审计（含必要字段差异）；`testRequests` 保存 actor + request key、操作及稳定序列化指纹和结果 ID。相同请求重放不重复追加，改内容/操作冲突。
+- `legacyTestStates` 保存迁移时已有状态与观察到的配置，不是历史测试目标证明。可选 `testConfigurationVersion` 在实际身份配置变化时生成新标识，防止改回旧配置复活过往结论。
+
+### 初始化和迁移
+
+无存储时基于 fixture 初始化；v1 首次读取仅在内存归一化，保持原任务与历史，fixture 已有四条执行和一条豁免导入一次，不生成采纳/审阅/来源核验/新执行。动态渠道与任务保留。首次成功写入前校验原图和新图，再单次 setItem 写 v2；失败保留原始 v1 字节。后续 v2 读取不重复导入。未知版本或损坏报错，不自动清空。
+
+### 统一引用与保护
+
+ChannelRepository 为所有测试事实权威。Channel/Sourcing/Quote 全图校验使用统一 testingSnapshot，包括实际 tasks、executions 和有效 exemptions。执行、采纳、审阅、来源、豁免、撤销、审计及幂等数组检查长度和旧记录前缀，不允许截断/改写/重排。任务允许受版本及审计约束的状态和资料维护；已有执行的目标不可变。
+
+单聚合写入包含任务、执行、结论、审计、请求及派生渠道状态；存储失败不出现部分记录。localStorage 不是跨窗口 CAS，不保证跨存储键/设备事务。没有新增价格状态缓存。
+
+### 显式重置
+
+仅双域运营在全部域二次确认后恢复初始聚合，说明初始渠道上的新执行/结论/核验/豁免也会被清除；保留原 fixture 的整改引用。检查外部报价/询价/批次/寻源的动态渠道引用，以及整改 channelId → executionId → task.channelId；会悬空则拒绝。不级联清空其他 Repository。现有整改为静态 fixture，未来整改写入必须把同一引用检查接到其实际 Repository，不能只按“初始渠道”豁免。

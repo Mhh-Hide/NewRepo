@@ -1,3 +1,4 @@
+import { TestingMetrics } from '../testing/TestSummaryPanel';
 import { Button, Card, Table, Tag, Typography } from 'antd';
 import { ReloadOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { Link, useOutletContext } from 'react-router-dom';
@@ -66,6 +67,7 @@ export function DashboardPage({ session }: { session: DemoSession }) {
           <StatCard key={metric.id} metric={metric} />
         ))}
       </section>
+      {d.testing && <TestingMetrics stats={d.testing} />}
       <div className="dashboard-middle">
         <Card
           title="资源状态概览"

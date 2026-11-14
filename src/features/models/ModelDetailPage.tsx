@@ -1,3 +1,4 @@
+import { TestSummaryPanel } from '../testing/TestSummaryPanel';
 import { useCallback } from 'react';
 import { Button, Card, Descriptions, Result, Space, Table, Tag } from 'antd';
 import { Link, useOutletContext, useParams } from 'react-router-dom';
@@ -255,9 +256,10 @@ export default function ModelDetailPage() {
           identityVisible={d.supplierIdentityVisible}
         />
       </Card>
+      <TestSummaryPanel session={session} modelId={modelId} />
       <Card title="历史与后续能力" className="resource-card">
         <div className="resource-future">
-          {['渠道报价历史', '测试执行历史', '接入历史'].map((name) => (
+          {['接入历史'].map((name) => (
             <div key={name}>
               <span>{name}</span>
               <Tag>即将开放</Tag>

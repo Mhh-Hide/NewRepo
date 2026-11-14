@@ -18,6 +18,17 @@ const technical: readonly PermissionAction[] = [
 ];
 const actions: Record<Role, readonly PermissionAction[]> = {
   ProductOperations: [
+    'test:detail',
+    'test:summary',
+    'test:create',
+    'test:update',
+    'test:execute',
+    'test:cancel',
+    'test:adopt',
+    'test:review',
+    'test:exemption',
+    'test:source-verify',
+    'test:history',
     'bulk:read',
     'bulk:create',
     'bulk:update',
@@ -64,6 +75,7 @@ const actions: Record<Role, readonly PermissionAction[]> = {
     'incident:record',
   ],
   Procurement: [
+    'test:summary',
     'bulk:read',
     'bulk:create',
     'bulk:update',
@@ -93,8 +105,21 @@ const actions: Record<Role, readonly PermissionAction[]> = {
     'quote:maintain',
     'incident:record',
   ],
-  Testing: [...technical, 'supplier:read', 'test:read', 'remediation:read'],
+  Testing: [
+    ...technical,
+    'supplier:read',
+    'test:read',
+    'remediation:read',
+    'test:summary',
+    'test:detail',
+    'test:create',
+    'test:update',
+    'test:execute',
+    'test:cancel',
+    'test:history',
+  ],
   OperationsSupport: [
+    'test:summary',
     ...technical,
     'supplier:read',
     'demand:read',

@@ -1,6 +1,8 @@
+import type { TestingState } from '../domain/testing';
 import type { Channel, TestTask } from '../domain/entities';
 import type { ChannelView } from '../auth/view-models';
 export type ManagedChannel = Channel & {
+  readonly testConfigurationVersion?: string;
   readonly version: number;
   readonly createdBy: string;
   readonly updatedBy: string;
@@ -27,8 +29,8 @@ export interface ChannelChange {
   readonly beforeSnapshot: ManagedChannel | null;
   readonly afterSnapshot: ManagedChannel;
 }
-export interface ChannelState {
-  readonly schemaVersion: 1;
+export interface ChannelState extends TestingState {
+  readonly schemaVersion: 2;
   readonly revision: number;
   readonly channels: readonly ManagedChannel[];
   readonly tasks: readonly TestTask[];

@@ -1,3 +1,4 @@
+import { testingSnapshot } from './testing-state';
 import { fixture } from './data';
 import type { SourcingState } from '../domain/sourcing';
 import { priorityLabels, matchStatusLabels } from '../domain/sourcing';
@@ -203,7 +204,7 @@ export class SourcingRepository {
       ...fixture,
       suppliers: suppliers.read().suppliers,
       channels: channels.read().channels,
-      testTasks: channels.read().tasks,
+      ...testingSnapshot(channels.read()),
       demands: s.demands,
       demandItems: s.items,
       matches: s.matches,

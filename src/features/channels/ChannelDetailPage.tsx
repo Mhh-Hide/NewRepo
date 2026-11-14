@@ -1,3 +1,4 @@
+import { TestSummaryPanel } from '../testing/TestSummaryPanel';
 import { RelatedQuotes } from '../quotes/RelatedQuotes';
 import { ChannelManagement } from './ChannelManagement';
 import { useCallback } from 'react';
@@ -281,13 +282,17 @@ export default function ChannelDetailPage() {
       {session.permits('quote:read') && (
         <RelatedQuotes session={session} channelId={c.id} />
       )}
+      <TestSummaryPanel
+        key={result.data.version}
+        session={session}
+        channelId={c.id}
+      />
       <Card title="后续能力" className="resource-card">
         <Space wrap>
-          <Tag>测试执行历史 · 即将开放</Tag>
           <Tag>接入历史 · 即将开放</Tag>
         </Space>
         <p className="section-note resource-note">
-          不存储 API Key，不执行测试、报价调整或生产接入操作。
+          不存储 API Key；测试仅为人工模拟，不执行真实模型调用或生产接入。
         </p>
       </Card>
     </>

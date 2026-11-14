@@ -1,3 +1,5 @@
+import { createTestingApi } from './testing-api';
+import { testingSnapshot } from './testing-state';
 import { createBulkQuotationApi } from './bulk-quotation-api';
 import { bulkReferences } from './bulk-repository-rules';
 import { createProcurementAnalyticsApi } from '../services/procurement-analytics';
@@ -160,6 +162,7 @@ export function createMockAdapter(
     writeActive,
   );
   const base: Omit<ApiAdapter, keyof ResourceApi> = {
+    ...createTestingApi(ctx, channelRepo, repository, channels, writeActive),
     ...supplierApi,
     ...channelApi,
     ...quotationApi,
@@ -407,8 +410,9 @@ export function createMockAdapter(
       const task = channelRepo.read().tasks.find((t) => t.id === taskId);
       return copy(
         ctx && can(ctx, 'test:read') && task && channelById(task.channelId)
-          ? data.testExecutions
-              .filter((e) => e.taskId === taskId)
+          ? channelRepo
+              .read()
+              .executions.filter((e) => e.taskId === taskId)
               .map((e) => projectExecution(ctx, e))
           : [],
       );
@@ -419,7 +423,17 @@ export function createMockAdapter(
           can(ctx, 'test:read') &&
           canSeeField(ctx, 'internalMetadata') &&
           channelById(channelId)
-          ? data.exemptions.filter((e) => e.channelId === channelId)
+          ? testingSnapshot(channelRepo.read())
+              .exemptions.filter((e) => e.channelId === channelId)
+              .map((e) => ({
+                id: e.id,
+                source: e.source,
+                channelId: e.channelId,
+                verifiedBy: e.verifiedBy,
+                verifiedAt: e.verifiedAt,
+                evidenceReference: e.evidenceReference,
+                reason: e.reason,
+              }))
           : [],
       );
     },

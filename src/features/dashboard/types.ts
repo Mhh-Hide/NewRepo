@@ -1,3 +1,4 @@
+import type { TestingStats } from '../../services/testing-types';
 export interface Metric {
   readonly id: string;
   readonly label: string;
@@ -20,6 +21,7 @@ export interface Activity {
 }
 export interface DashboardData {
   readonly source: 'mock';
+  readonly testing: TestingStats | null;
   readonly metrics: readonly Metric[];
   readonly dimensions: readonly Dimension[];
   readonly todos: readonly {
