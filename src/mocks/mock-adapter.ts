@@ -1,3 +1,5 @@
+import { createBulkQuotationApi } from './bulk-quotation-api';
+import { bulkReferences } from './bulk-repository-rules';
 import { createProcurementAnalyticsApi } from '../services/procurement-analytics';
 import { quoteRepository, type QuoteRepository } from './quote-repository';
 import { createQuotationApi, resolvedQuote } from './quotation-api';
@@ -161,6 +163,17 @@ export function createMockAdapter(
     ...supplierApi,
     ...channelApi,
     ...quotationApi,
+    ...createBulkQuotationApi(
+      ctx,
+      businessDomain,
+      quoteRepo,
+      channelRepo,
+      repository,
+      sourcingRepo,
+      channels,
+      writeActive,
+      quotationApi,
+    ),
     ...createProcurementAnalyticsApi(ctx, writeActive, quotationApi),
     ...sourcingApi,
     async resetChannelDemo(confirmed) {
@@ -177,7 +190,11 @@ export function createMockAdapter(
           '须由双域运营在全部域二次确认重置。',
         );
       const pricing = quoteRepo.read();
+      const batchRefs = bulkReferences(pricing);
       if (
+        batchRefs.channels.some(
+          (id) => !data.channels.some((c) => c.id === id),
+        ) ||
         pricing.quotes.some(
           (q) => !data.channels.some((c) => c.id === q.channelId),
         ) ||
@@ -187,7 +204,7 @@ export function createMockAdapter(
       )
         throw new SupplierError(
           'VALIDATION',
-          '渠道被报价或询价历史引用，请先独立确认重置报价演示数据，再重置渠道。',
+          '渠道被批次、报价或询价历史引用，请先独立确认重置报价演示数据，再重置渠道。',
         );
       if (
         sourcingRepo
@@ -214,7 +231,14 @@ export function createMockAdapter(
           '须由双域运营在全部域二次确认重置。',
         );
       const pricing = quoteRepo.read();
+      const batchRefs = bulkReferences(pricing);
       if (
+        batchRefs.demands.some(
+          (id) => !data.demands.some((d) => d.id === id),
+        ) ||
+        batchRefs.demandItems.some(
+          (id) => !data.demandItems.some((i) => i.id === id),
+        ) ||
         pricing.quotes.some(
           (q) =>
             (q.demandId !== null &&
@@ -230,7 +254,7 @@ export function createMockAdapter(
       )
         throw new SupplierError(
           'VALIDATION',
-          '寻源需求被报价或询价引用，请先独立确认重置报价演示数据，再重置寻源。',
+          '寻源需求被批次、报价或询价引用，请先独立确认重置报价演示数据，再重置寻源。',
         );
       return sourcingApi.resetSourcingDemo(confirmed);
     },
@@ -248,6 +272,15 @@ export function createMockAdapter(
         );
       if (confirmed !== true)
         throw new SupplierError('VALIDATION', '请先确认重置演示数据。');
+      if (
+        bulkReferences(quoteRepo.read()).suppliers.some(
+          (id) => !data.suppliers.some((s) => s.id === id),
+        )
+      )
+        throw new SupplierError(
+          'VALIDATION',
+          '供应商被批次引用，请先独立确认重置报价演示数据。',
+        );
       if (
         channelRepo
           .read()

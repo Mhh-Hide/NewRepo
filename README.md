@@ -142,3 +142,11 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify
 覆盖、报价分类、七天到期提醒、询价台账效率与目标数字差分别展示。无真实响应时间不算时长，目标无基准不算商业达成率，不算实际节约或唯一结算价。旧/analysis/purchase重定向到新入口。测试/运维/供应商/前台无分析权限。
 
 验证命令沿用README上述系统Chromium设置。完整口径、截图与交接见harness/build/stage-06a.md、harness/context/stage-06a.md。本期仅普通推送stage-06a-procurement-analytics，不修改main，不进入Stage06B。旧阶段章节保留历史记录，以本节为当前分析入口。
+
+## Stage 06B 批量采购报价（当前入口）
+
+启动后进入 `/procurement/bulk-quotes`。运营/采购选择一家授权供应商创建批次，添加或重复添加其渠道，编辑各行，选择行后填写共同字段。共同来源和说明仅在行未填时使用。先保存草稿，再预览逐行错误/提示，二次确认后整批追加。草稿可恢复；提交结果只读，可进入原单条核验/确认及采购分析。
+
+报价存储键仍为 `maas-quote-demo-v1`，内部升级 schemaVersion=2。v1 读取不改盘，下一次完整校验成功的写入才无损升级。不要手工改 schema、清缓存或用旧版本页面重置；未知/损坏数据不会自动回退。报价显式重置会同时清除批次草稿、提交结果、映射与历史，保留其他模块；引用保护可能要求先独立重置报价，再按原顺序重置其他模块。
+
+完整检查：`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify`。交付及 Mock 一致性/旧客户端限制见 `harness/build/stage-06b.md`、`harness/context/stage-06b.md`。分支 `stage-06b-bulk-quotation-adjustment`，基线 `863f8444cab5147b67f501ba53cc425f2de009d7`。完成后停止，不进入 Stage 07；旧章节为历史记录。

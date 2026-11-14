@@ -1,3 +1,8 @@
+import type {
+  BulkQuoteBatch,
+  BulkQuoteEvent,
+  BulkQuoteSubmission,
+} from './bulk-quotations';
 import type { ChannelQuote } from './entities';
 export const inquiryStatusLabels = {
   draft: '待询价',
@@ -128,14 +133,35 @@ export interface QuoteRequest {
   readonly fingerprint: string;
   readonly resultId: string;
 }
+export interface QuoteInput {
+  readonly channelId: string;
+  readonly demandId: string | null;
+  readonly demandItemId: string | null;
+  readonly inquiryId: string | null;
+  readonly inquiryVersion: number | null;
+  readonly previousQuoteId: string | null;
+  readonly discount: ChannelQuote['discount'];
+  readonly priceStatus: 'reference' | 'pending_contract' | 'temporary';
+  readonly sourceType: ChannelQuote['sourceType'];
+  readonly effectiveFrom: string | null;
+  readonly effectiveUntil: string | null;
+  readonly evidenceReference: string;
+  readonly supplierSubmitterReference: string | null;
+  readonly supplierQuotedAt: string | null;
+  readonly reason: string;
+  readonly priceSpec: PriceSpec;
+}
 export interface QuoteState {
-  readonly schemaVersion: 1;
+  readonly schemaVersion: 2;
   readonly revision: number;
   readonly quotes: readonly ManagedQuote[];
   readonly inquiries: readonly InquiryRecord[];
   readonly decisions: readonly QuoteDecision[];
   readonly history: readonly QuoteAudit[];
   readonly requests: readonly QuoteRequest[];
+  readonly batches: readonly BulkQuoteBatch[];
+  readonly batchEvents: readonly BulkQuoteEvent[];
+  readonly batchSubmissions: readonly BulkQuoteSubmission[];
 }
 export const validityLabels = {
   expired: '已到期（历史保留）',

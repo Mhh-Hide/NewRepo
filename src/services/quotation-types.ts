@@ -2,7 +2,6 @@ import type { ChannelQuote, Model, ModelVendor } from '../domain/entities';
 import type { ChannelView } from '../auth/view-models';
 import type {
   ManagedQuote,
-  PriceSpec,
   InquiryRecord,
   QuoteAudit,
   QuoteDecision,
@@ -10,24 +9,8 @@ import type {
   quoteValidity,
 } from '../domain/quotations';
 import type { ResourceSupplier } from './resource-types';
-export interface QuoteInput {
-  readonly channelId: string;
-  readonly demandId: string | null;
-  readonly demandItemId: string | null;
-  readonly inquiryId: string | null;
-  readonly inquiryVersion: number | null;
-  readonly previousQuoteId: string | null;
-  readonly discount: ChannelQuote['discount'];
-  readonly priceStatus: 'reference' | 'pending_contract' | 'temporary';
-  readonly sourceType: ChannelQuote['sourceType'];
-  readonly effectiveFrom: string | null;
-  readonly effectiveUntil: string | null;
-  readonly evidenceReference: string;
-  readonly supplierSubmitterReference: string | null;
-  readonly supplierQuotedAt: string | null;
-  readonly reason: string;
-  readonly priceSpec: PriceSpec;
-}
+export type { QuoteInput } from '../domain/quotations';
+import type { QuoteInput } from '../domain/quotations';
 export interface QuoteRow {
   readonly quote: ManagedQuote;
   readonly storedPriceStatus: ChannelQuote['priceStatus'];

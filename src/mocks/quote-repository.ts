@@ -1,3 +1,4 @@
+import { bulkShape, bulkReferences } from './bulk-repository-rules';
 import { fixture } from './data';
 import { appendQuote } from '../domain/rules';
 import { validateStore } from '../domain/validation';
@@ -24,7 +25,7 @@ const date = (v: unknown) =>
 function shape(v: unknown): v is QuoteState {
   if (
     !obj(v) ||
-    v.schemaVersion !== 1 ||
+    ![1, 2].includes(v.schemaVersion as number) ||
     !Number.isSafeInteger(v.revision) ||
     Number(v.revision) < 0 ||
     !Array.isArray(v.quotes) ||
@@ -129,15 +130,31 @@ function shape(v: unknown): v is QuoteState {
     )
   )
     return false;
-  return v.requests.every(
-    (r) =>
-      obj(r) &&
-      strings(r, ['id', 'actorUserId', 'operation', 'fingerprint', 'resultId']),
+  return (
+    (v.schemaVersion === 1
+      ? ['batches', 'batchEvents', 'batchSubmissions'].every(
+          (k) => v[k] === undefined,
+        )
+      : bulkShape(v)) &&
+    v.requests.every(
+      (r) =>
+        obj(r) &&
+        strings(r, [
+          'id',
+          'actorUserId',
+          'operation',
+          'fingerprint',
+          'resultId',
+        ]),
+    )
   );
 }
 function seed(): QuoteState {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
+    batches: [],
+    batchEvents: [],
+    batchSubmissions: [],
     revision: 0,
     quotes: fixture.quotes.map((q) => ({
       ...q,
@@ -168,7 +185,18 @@ export class QuoteRepository {
       if (raw === null) return seed();
       const v: unknown = JSON.parse(raw);
       if (!shape(v)) throw Error();
-      return structuredClone(v);
+      const version = Number(v.schemaVersion);
+      return structuredClone(
+        version === 1
+          ? {
+              ...v,
+              schemaVersion: 2,
+              batches: [],
+              batchEvents: [],
+              batchSubmissions: [],
+            }
+          : v,
+      );
     } catch {
       throw new SupplierError(
         'STORAGE',
@@ -182,7 +210,8 @@ export class QuoteRepository {
     suppliers: SupplierRepository,
     sourcing: SourcingRepository,
   ) {
-    if (!shape(s)) throw new SupplierError('VALIDATION', '报价数据结构无效。');
+    if (!shape(s) || s.schemaVersion !== 2)
+      throw new SupplierError('VALIDATION', '报价数据结构无效。');
     const c = channels.read(),
       d = sourcing.read();
     const errors = validateStore({
@@ -249,6 +278,98 @@ export class QuoteRepository {
       )
     )
       throw new SupplierError('VALIDATION', '询价、确认或历史关联不完整。');
+    const unique = (xs: readonly string[]) => new Set(xs).size === xs.length;
+    const refs = bulkReferences(s);
+    if (
+      ![
+        s.batches.map((b) => b.id),
+        s.batches.map((b) => b.batchNo),
+        s.batchEvents.map((e) => e.id),
+        s.batchSubmissions.map((r) => r.id),
+        s.batchSubmissions.map((r) => r.batchId),
+        s.batches.flatMap((b) => b.items.map((i) => i.itemId)),
+        s.batchSubmissions.flatMap((r) => r.mappings.map((m) => m.quoteId)),
+      ].every(unique) ||
+      refs.suppliers.some(
+        (id) => !suppliers.read().suppliers.some((v) => v.id === id),
+      ) ||
+      refs.channels.some((id) => !c.channels.some((v) => v.id === id)) ||
+      refs.demands.some((id) => !d.demands.some((v) => v.id === id)) ||
+      refs.demandItems.some((id) => !d.items.some((v) => v.id === id))
+    )
+      throw new SupplierError('VALIDATION', '批次身份或跨模块引用不完整。');
+    for (const b of s.batches) {
+      const receipt = s.batchSubmissions.find((r) => r.batchId === b.id);
+      if (
+        (b.status === 'submitted') !== !!receipt ||
+        (b.status === 'draft' &&
+          (b.submittedAt !== null || b.submittedBy !== null)) ||
+        (b.status === 'submitted' && (!b.submittedAt || !b.submittedBy))
+      )
+        throw new SupplierError('VALIDATION', '批次提交状态与结果不一致。');
+      for (const i of b.items) {
+        const channel = c.channels.find((v) => v.id === i.channelId),
+          input = i.proposedQuoteInput;
+        if (
+          i.batchId !== b.id ||
+          i.channelId !== (input.channelId ?? '') ||
+          i.previousQuoteId !== (input.previousQuoteId ?? null) ||
+          (i.channelId && (!channel || channel.supplierId !== b.supplierId)) ||
+          (i.previousQuoteId &&
+            !s.quotes.some(
+              (q) => q.id === i.previousQuoteId && q.channelId === i.channelId,
+            )) ||
+          (input.demandId && !d.demands.some((v) => v.id === input.demandId)) ||
+          (input.demandItemId &&
+            !d.items.some(
+              (v) =>
+                v.id === input.demandItemId &&
+                v.demandId === input.demandId &&
+                v.modelId === channel?.modelId,
+            )) ||
+          (input.inquiryId &&
+            !s.inquiries.some(
+              (v) =>
+                v.id === input.inquiryId &&
+                v.channelId === i.channelId &&
+                v.demandItemId === (input.demandItemId ?? null),
+            ))
+        )
+          throw new SupplierError('VALIDATION', '批次行关联不一致。');
+      }
+      if (
+        receipt &&
+        (receipt.actorUserId !== b.submittedBy ||
+          receipt.submittedAt !== b.submittedAt ||
+          receipt.mappings.length !== b.items.length ||
+          !unique(receipt.mappings.map((m) => m.itemId)) ||
+          receipt.mappings.some(
+            (m) =>
+              !b.items.some(
+                (i) =>
+                  i.itemId === m.itemId &&
+                  s.quotes.some(
+                    (q) => q.id === m.quoteId && q.channelId === i.channelId,
+                  ),
+              ),
+          ) ||
+          !s.requests.some(
+            (r) =>
+              r.id === `${receipt.actorUserId}:${receipt.requestId}` &&
+              r.operation === 'bulk:submit' &&
+              r.resultId === receipt.id,
+          ))
+      )
+        throw new SupplierError('VALIDATION', '批次提交结果映射不完整。');
+    }
+    if (
+      s.batchEvents.some(
+        (e) =>
+          !s.batches.some((b) => b.id === e.batchId) ||
+          e.quoteIds.some((id) => !s.quotes.some((q) => q.id === id)),
+      )
+    )
+      throw new SupplierError('VALIDATION', '批次历史关联不完整。');
     if (errors.length)
       throw new SupplierError(
         'VALIDATION',
@@ -262,14 +383,18 @@ export class QuoteRepository {
     suppliers: SupplierRepository,
     sourcing: SourcingRepository,
   ) {
+    const current = this.read();
+    this.validate(current, channels, suppliers, sourcing);
     this.validate(next, channels, suppliers, sourcing);
-    if (this.read().revision !== before.revision)
+    if (JSON.stringify(current) !== JSON.stringify(before))
       throw new SupplierError('CONFLICT', '报价数据已变化，请重新加载。');
     const protectedCollections = [
       'quotes',
       'decisions',
       'history',
       'requests',
+      'batchEvents',
+      'batchSubmissions',
     ] as const;
     if (
       protectedCollections.some(
@@ -283,8 +408,37 @@ export class QuoteRepository {
     )
       throw new SupplierError(
         'VALIDATION',
-        '报价、确认、审计和幂等请求历史只允许追加，不能覆盖或删除。',
+        '报价、确认、审计、幂等请求及批次历史只允许追加，不能覆盖或删除。',
       );
+    for (const b of before.batches) {
+      const after = next.batches.find((v) => v.id === b.id);
+      if (
+        !after ||
+        b.supplierId !== after.supplierId ||
+        b.batchNo !== after.batchNo ||
+        b.createdAt !== after.createdAt ||
+        b.createdBy !== after.createdBy ||
+        (b.status === 'submitted' &&
+          JSON.stringify(after) !== JSON.stringify(b)) ||
+        (after &&
+          JSON.stringify(after) !== JSON.stringify(b) &&
+          (after.version !== b.version + 1 ||
+            !next.batchEvents
+              .slice(before.batchEvents.length)
+              .some(
+                (e) =>
+                  e.batchId === b.id &&
+                  e.beforeVersion === b.version &&
+                  e.afterVersion === after.version &&
+                  e.action ===
+                    (after.status === 'submitted' ? 'submitted' : 'edited'),
+              )))
+      )
+        throw new SupplierError(
+          'VALIDATION',
+          '已提交批次与结果不可修改，草稿不可删除身份。',
+        );
+    }
     try {
       this.storage.setItem(
         quoteStorageKey,

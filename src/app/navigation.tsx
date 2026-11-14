@@ -94,6 +94,17 @@ export const navigation: readonly NavigationItem[] = [
     description: '查看报价版本、合同确认与临时优惠记录。',
   },
   {
+    id: 'bulk-quotes',
+    path: '/procurement/bulk-quotes',
+    name: '批量采购报价',
+    group: '业务协同',
+    icon: <AuditOutlined />,
+    permission: 'bulk:read',
+    available: true,
+    stage: '06B',
+    description: '同供应商多渠道报价草稿、校验与整批追加。',
+  },
+  {
     id: 'tests',
     path: '/tests',
     name: '模型测试',

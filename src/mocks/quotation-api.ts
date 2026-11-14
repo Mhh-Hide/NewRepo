@@ -1,20 +1,25 @@
+import {
+  quoteFields,
+  quoteIso as iso,
+  quoteText as text,
+  quoteEvidence as evidence,
+  quoteSpec as spec,
+  stableFingerprint as stable,
+  prepareQuote,
+} from './quote-command';
 import type { AccessContext, PermissionAction } from '../auth/types';
 import { can } from '../auth/policy';
 import { projectChannel } from '../auth/projections';
 import type { BusinessDomain, Channel } from '../domain/entities';
-import { appendQuote, discountBps } from '../domain/rules';
 import {
   compareQuotes,
   inquiryStatusLabels,
-  quoteSourceLabels,
   quoteValidity,
-  validatePriceSpec,
 } from '../domain/quotations';
 import type {
   ManagedQuote,
   QuoteState,
   QuoteAudit,
-  PriceSpec,
   InquiryRecord,
 } from '../domain/quotations';
 import type { QuotationApi, QuoteRow } from '../services/quotation-types';
@@ -24,65 +29,6 @@ import type { ChannelRepository } from './channel-repository';
 import type { SupplierRepository } from './supplier-repository';
 import type { SourcingRepository } from './sourcing-repository';
 import { fixture } from './data';
-const quoteFields = [
-  'channelId',
-  'demandId',
-  'demandItemId',
-  'inquiryId',
-  'inquiryVersion',
-  'previousQuoteId',
-  'discount',
-  'priceStatus',
-  'sourceType',
-  'effectiveFrom',
-  'effectiveUntil',
-  'evidenceReference',
-  'supplierSubmitterReference',
-  'supplierQuotedAt',
-  'reason',
-  'priceSpec',
-];
-const iso = (v: string | null) =>
-  v === null || (typeof v === 'string' && Number.isFinite(Date.parse(v)));
-const stable = (v: unknown): string =>
-  Array.isArray(v)
-    ? `[${v.map(stable).join(',')}]`
-    : v && typeof v === 'object'
-      ? `{${Object.keys(v)
-          .sort()
-          .map(
-            (k) =>
-              `${JSON.stringify(k)}:${stable((v as Record<string, unknown>)[k])}`,
-          )
-          .join(',')}}`
-      : String(JSON.stringify(v));
-const text = (v: string) => {
-  if (typeof v !== 'string' || !v.trim() || v.length > 2000)
-    throw new SupplierError(
-      'VALIDATION',
-      '请填写共享商业说明（最多2000字，不含客户身份或客户售价）。',
-    );
-  return v.trim();
-};
-const evidence = (v: string) => {
-  if (typeof v !== 'string' || !/^mock:[A-Za-z0-9_:/.-]{1,150}$/.test(v))
-    throw new SupplierError(
-      'VALIDATION',
-      '证据仅接受 mock: 开头的非敏感模拟引用。',
-    );
-  return v;
-};
-const spec = (p: PriceSpec): PriceSpec => ({
-  currency: p.currency,
-  referencePriceSource: p.referencePriceSource,
-  specification: p.specification,
-  rates: p.rates.map((r) => ({
-    dimension: r.dimension,
-    quantity: r.quantity,
-    unit: r.unit,
-    amount: r.amount,
-  })),
-});
 export function projectQuote(q: ManagedQuote): ManagedQuote {
   return {
     source: q.source,
@@ -490,116 +436,30 @@ export function createQuotationApi(
       const actor = guard(
         input.sourceType === 'correction' ? 'quote:correct' : 'quote:create',
       );
-      if (!input || Object.keys(input).some((k) => !quoteFields.includes(k)))
+      if (
+        !input ||
+        Object.keys(input).some(
+          (k) => !quoteFields.some((field) => field === k),
+        )
+      )
         throw new SupplierError('VALIDATION', '报价仅允许录入指定商业字段。');
       const c = channel(input.channelId);
       const s = repo.read();
       const prior = replay(s, requestId, 'quote:create', input);
       if (prior.previous)
         return structuredClone(row(s, accessible(s, prior.previous.resultId)));
-      linked(c, input.demandId, input.demandItemId);
-      try {
-        discountBps(input.discount);
-        validatePriceSpec(input.priceSpec);
-      } catch (e) {
-        throw new SupplierError(
-          'VALIDATION',
-          e instanceof Error ? e.message : '折扣或价格口径无效',
-        );
-      }
-      if (
-        !['reference', 'pending_contract', 'temporary'].includes(
-          input.priceStatus,
-        ) ||
-        !Object.hasOwn(quoteSourceLabels, input.sourceType)
-      )
-        throw new SupplierError(
-          'VALIDATION',
-          '新报价只能录入参考、待合同确认或临时优惠；正式价须单独确认。',
-        );
-      if (
-        !iso(input.effectiveFrom) ||
-        !iso(input.effectiveUntil) ||
-        !iso(input.supplierQuotedAt) ||
-        (input.effectiveUntil !== null &&
-          (!input.effectiveFrom ||
-            Date.parse(input.effectiveUntil) <=
-              Date.parse(input.effectiveFrom)))
-      )
-        throw new SupplierError(
-          'VALIDATION',
-          '报价日期或有效期无效，截止时间须晚于生效时间。',
-        );
-      if (
-        (input.priceStatus === 'temporary') !==
-          (input.sourceType === 'promotion') &&
-        input.sourceType !== 'correction'
-      )
-        throw new SupplierError(
-          'VALIDATION',
-          '临时优惠状态须对应临时优惠来源。',
-        );
-      if (
-        input.sourceType === 'supplier_submission' &&
-        (!input.supplierSubmitterReference ||
-          !/^mock:/.test(input.supplierSubmitterReference))
-      )
-        throw new SupplierError(
-          'VALIDATION',
-          '手工转录供应商报价须保留 mock: 原始提交人引用。',
-        );
-      if (input.previousQuoteId !== null) {
-        const old = accessible(s, input.previousQuoteId);
-        if (old.channelId !== c.id)
-          throw new SupplierError('VALIDATION', '前序报价必须属于同一渠道。');
-      }
-      const inquiry =
-        input.inquiryId === null
-          ? null
-          : s.inquiries.find((i) => i.id === input.inquiryId);
-      if (
-        input.inquiryId !== null &&
-        (!inquiry ||
-          inquiry.channelId !== c.id ||
-          inquiry.demandItemId !== input.demandItemId ||
-          inquiry.status === 'closed')
-      )
-        throw new SupplierError('VALIDATION', '询价关联不一致或已关闭。');
-      if (inquiry && inquiry.version !== input.inquiryVersion)
-        throw new SupplierError('CONFLICT', '询价版本已变化，请重新加载。');
       const now = new Date().toISOString();
-      const q: ManagedQuote = {
-        source: 'mock',
-        id: `mock-quote-${crypto.randomUUID()}`,
-        channelId: c.id,
-        inquiryId: input.inquiryId,
-        demandId: input.demandId,
-        demandItemId: input.demandItemId,
-        previousQuoteId: input.previousQuoteId,
-        discount: input.discount,
-        priceStatus: input.priceStatus,
-        sourceType: input.sourceType,
-        effectiveFrom: input.effectiveFrom,
-        effectiveUntil: input.effectiveUntil,
-        evidenceReference: evidence(input.evidenceReference),
-        supplierSubmitterReference: input.supplierSubmitterReference,
-        supplierQuotedAt: input.supplierQuotedAt,
-        submittedBy: actor.user.id,
-        recordedBy: actor.user.id,
-        reason: text(input.reason),
-        confirmedBy: null,
-        confirmedAt: null,
-        createdAt: now,
-        priceSpec: spec(input.priceSpec),
-      };
-      try {
-        appendQuote(s.quotes, q);
-      } catch (e) {
-        throw new SupplierError(
-          'VALIDATION',
-          e instanceof Error ? e.message : '报价历史无效',
-        );
-      }
+      const q = prepareQuote(
+        input,
+        c,
+        s,
+        sourcing.read(),
+        (id) => accessible(s, id),
+        actor.user.id,
+        `mock-quote-${crypto.randomUUID()}`,
+        now,
+      );
+      const inquiry = s.inquiries.find((i) => i.id === input.inquiryId) ?? null;
       const changedInquiry =
         inquiry && inquiry.status !== 'quoted'
           ? {
@@ -906,7 +766,7 @@ export function createQuotationApi(
       if (confirmed !== true || domain || actor.domains.length !== 2)
         throw new SupplierError(
           'FORBIDDEN',
-          '仅双域运营在全部业务域二次确认后可重置报价、询价、确认与审计；保留其他模块。',
+          '仅双域运营在全部业务域二次确认后可重置报价、批次草稿/提交结果/历史、询价、确认与审计；保留其他模块。',
         );
       repo.reset(channelRepo, suppliers, sourcing);
     },

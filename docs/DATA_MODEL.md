@@ -141,3 +141,13 @@ AnalysisRecord显式选择报价ID/渠道/需求明细关联、整数折扣、�
 不增加任何Repository字段。compareAnalysis增加必传now和只读结果specComparable、currentValidity.first/second/bothInPeriod、固定procurementNotice；保留comparable/reasons/discountDifferenceBps/rates原含义，compareQuotes实现不变。analysisValidity只接受明确有限时间戳；invalidValidityPeriod只作结构检查供历史趋势使用，不依赖当前时刻。
 
 channelPriceViews(records,now)保留latest及历史latestFormal，新增activeFormals全部当前有效正式记录，将原activePromotions在同一函数中按同一时刻计算。createAnalysis用同一次now生成asOf、统计和渠道分组。isConfirmedFormal/isCurrentFormal用于历史确认、当前正式计数及明细投影判断；不是新的Price实体或缓存。界面显式区分历史/当前，保护历史与审计的原Repository逻辑完全不改。
+
+## Stage 06B QuoteRepository v2（当前）
+
+保留原存储键 `maas-quote-demo-v1`，内部 schemaVersion 升为 2。原 quotes/inquiries/decisions/history/requests 的记录、顺序、ID 与语义原样保留，新增 batches、batchEvents、batchSubmissions。Supplier、Channel、Sourcing 的 envelope 均不改变。
+
+BulkQuoteBatch 包含 id/batchNo/supplierId/status/createdBy/createdAt/updatedAt/version/sourceReference/sharedReason/submittedBy/submittedAt/items；未提交字段为 null。BulkQuoteItem 包含稳定 itemId、batchId、channelId、previousQuoteId、proposedQuoteInput（Partial<QuoteInput>）、createdAt/updatedAt。供应商/模型从渠道推导，草稿不是第二份价格真值。
+
+批次事件追加记录操作、操作者、时间、原因、前后版本、字段差异、增删行 ID、关联报价和跨模块引用 ID。删除行的历史仍保留资源引用。提交回执独立保存 requestId 与完整 `itemId → quoteId` 映射，已提交批次和回执不可修改。
+
+v1 读取只在内存补空批次集合；读取不写存储。首次成功写入前对当前与候选完整校验（结构、领域、引用、唯一性、原历史前缀、批次版本和审计），然后以一次 setItem 持久化 v2。结构损坏/未知版本正常读取拒绝，不自动清空；引用损坏在完整校验时拒绝迁移。失败保留旧字节，不宣称升级成功；重复读取 v2 不再迁移。原四类历史及新增批次历史/回执都受长度与逐项前缀保护，inquiries 仍可按原版本/审计规则更新。

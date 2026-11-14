@@ -1,0 +1,23 @@
+.bulk-toolbar {
+  margin: 12px 0;
+  width: 100%;
+}
+.bulk-preview-row {
+  border-top: 1px solid var(--color-border, #e5e7eb);
+  padding: 16px 0;
+  overflow-wrap: anywhere;
+}
+.bulk-rate {
+  border-top: 1px solid #e5e7eb;
+  padding: 12px 0;
+}
+.bulk-comparison {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: inherit;
+}
+@media (max-width: 600px) {
+  .bulk-toolbar > .ant-space-item {
+    max-width: 100%;
+  }
+}

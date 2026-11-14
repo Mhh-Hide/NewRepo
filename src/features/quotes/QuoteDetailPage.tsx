@@ -1,3 +1,4 @@
+import { QuoteBatchOrigin } from '../bulk-quotations/QuoteBatchOrigin';
 import { useCallback, useState } from 'react';
 import {
   Alert,
@@ -143,6 +144,9 @@ export default function QuoteDetailPage() {
   return (
     <>
       {header}
+      {session.permits('bulk:read') && (
+        <QuoteBatchOrigin session={session} quoteId={quoteId} />
+      )}
       <Alert
         type="info"
         showIcon
