@@ -1,3 +1,4 @@
+import { RemediationSummaryPanel } from '../remediations/RemediationSummaryPanel';
 import { TestingMetrics } from '../testing/TestSummaryPanel';
 import { Button, Card, Table, Tag, Typography } from 'antd';
 import { ReloadOutlined, ArrowRightOutlined } from '@ant-design/icons';
@@ -67,6 +68,7 @@ export function DashboardPage({ session }: { session: DemoSession }) {
           <StatCard key={metric.id} metric={metric} />
         ))}
       </section>
+      <RemediationSummaryPanel session={session} />
       {d.testing && <TestingMetrics stats={d.testing} />}
       <div className="dashboard-middle">
         <Card

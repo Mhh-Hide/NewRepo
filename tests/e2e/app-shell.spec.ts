@@ -35,8 +35,13 @@ test('default dashboard, navigation and placeholder survive browser refresh', as
   ).toBeVisible();
   await expect(page.getByText('测试任务', { exact: true })).toBeVisible();
   await page.goto('/remediations');
+  await expect(
+    page.getByRole('heading', { name: '整改管理', exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('button', { name: '新建整改' })).toBeVisible();
+  await page.goto('/governance');
   await expect(page.getByText('即将开放', { exact: true })).toBeVisible();
-  await expect(page.getByText(/规划阶段：07/)).toBeVisible();
 });
 test('domain filters change real metrics and single-domain identity cannot expand access', async ({
   page,

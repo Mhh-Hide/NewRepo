@@ -11,3 +11,7 @@
 统一 ApiAdapter 扩展 TestingApi：queryTestSummaries、queryTestTasks、getTestTask、testingOptions；create/update/start/cancelTestTask、finishTestExecution、adopt/reviewTestExecution、verifyTestSource、record/revokeQualityExemption。写操作传 requestId 和对应版本；采纳额外传 executionVersion 与 conclusionVersion。证据只接受 mock: 引用。页面不依赖 fixture/localStorage。
 
 未来真实测试平台须将外部执行映射到稳定内部 taskId/executionId/targetVersion，不能把回调自动当作运营采纳；后端负责授权、幂等、不可变历史和真实事务。此期未建立任何外部连接，未调用 Endpoint、OP、Monitor 或通知服务。
+
+## Stage 07B 渠道级技术整改
+
+ApiAdapter 新增 RemediationApi：queryRemediationSummaries/getRemediation/remediationOptions/createRemediation/changeRemediation/previewRemediationClosure/resetRemediations。列表及详情通过统一 Adapter，不直接导入 Mock 存储。渠道、供应商、测试、寻源和 Dashboard 使用授权摘要。全图校验读取同一 ChannelRepository 存储绑定的 RemediationRepository，报价/寻源 schema 与商业规则不变。Stage 08 可复用稳定整改 ID、状态、closureType、时间及历史查询；本期不开发治理。

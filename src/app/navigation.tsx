@@ -121,9 +121,9 @@ export const navigation: readonly NavigationItem[] = [
     name: '整改管理',
     group: '业务协同',
     icon: <ToolOutlined />,
-    permission: 'remediation:read',
-    available: false,
-    stage: '07',
+    permission: 'remediation:summary',
+    available: true,
+    stage: '07B',
     description: '跟进授权渠道的供应商整改事项。',
   },
   {

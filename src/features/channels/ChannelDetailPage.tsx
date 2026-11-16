@@ -1,3 +1,4 @@
+import { RemediationSummaryPanel } from '../remediations/RemediationSummaryPanel';
 import { TestSummaryPanel } from '../testing/TestSummaryPanel';
 import { RelatedQuotes } from '../quotes/RelatedQuotes';
 import { ChannelManagement } from './ChannelManagement';
@@ -282,6 +283,7 @@ export default function ChannelDetailPage() {
       {session.permits('quote:read') && (
         <RelatedQuotes session={session} channelId={c.id} />
       )}
+      <RemediationSummaryPanel session={session} channelId={c.id} />
       <TestSummaryPanel
         key={result.data.version}
         session={session}

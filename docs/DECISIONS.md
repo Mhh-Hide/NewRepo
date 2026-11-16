@@ -131,3 +131,9 @@
 7. 旧 fixture 状态与新采纳来源分开；legacy 连通性不伪装成有证据的本期采纳，计入“无明确当前采纳依据待验证”，旧状态仍保留展示。
 8. 保留旧 Dashboard 任务处理口径及测试有效覆盖；独立测试协作概览显示本阶段精确指标。供应商保留旧自身基本读取，不扩大新摘要或完整测试权限。
 9. 显式重置包括初始渠道上的新历史，保护当前静态整改的执行引用；未来07B必须接入其真实引用源。localStorage 单键写入不能声称跨标签页、跨Repository原子事务，不使用局部 Web Locks。
+
+## Stage 07B 渠道级技术整改
+
+从验收 SHA d67ad443be25563a38c2240d8b31cb46915f37dc 创建 stage-07b-remediation-management。整改独立 v1，ChannelRepository 保持 v2；复测经原 TestingApi 保存，再人工关联整改，无跨 Repository 补偿删除。
+
+结构化验证范围采用 testType + targetReference 与当前 basis/targetVersion 校验，并要求人工适用性说明；不做自由文本语义推断。关闭预览绑定整改聚合及测试聚合快照，确认重新校验，不能宣称两键原子 CAS。幂等按 actor/requestId/operation/规范化 payload 指纹；重放先授权。

@@ -1,3 +1,4 @@
+import { RemediationSummaryPanel } from '../remediations/RemediationSummaryPanel';
 import { conclusionText } from './testing-labels';
 import { useCallback, useState } from 'react';
 import {
@@ -62,7 +63,10 @@ function AuthorizedTesting({ session }: { session: DemoSession }) {
   const { taskId } = useParams<{ taskId: string }>();
   return taskId ? (
     session.permits('test:detail') ? (
-      <TaskDetail key={taskId} session={session} id={taskId} />
+      <>
+        {' '}
+        <TaskDetail key={taskId} session={session} id={taskId} />{' '}
+      </>
     ) : (
       <Result status="403" title="当前身份仅能读取技术摘要，无测试详情权限" />
     )
@@ -480,6 +484,7 @@ function TaskDetail({ session, id }: { session: DemoSession; id: string }) {
   return (
     <>
       {header}
+      <RemediationSummaryPanel session={session} channelId={d.task.channelId} />
       <Alert
         type="info"
         title="执行完成后仅进入待复核。采纳、审阅、豁免均为独立人工操作，不自动决定上线或采购。"

@@ -1,3 +1,4 @@
+import { projectLegacyRemediation } from './remediation-repository';
 import { testingSnapshot } from './testing-state';
 import { bulkShape, bulkReferences } from './bulk-repository-rules';
 import { fixture } from './data';
@@ -217,6 +218,9 @@ export class QuoteRepository {
       d = sourcing.read();
     const errors = validateStore({
       ...fixture,
+      remediations: channels.remediations
+        .read()
+        .records.map(projectLegacyRemediation),
       suppliers: suppliers.read().suppliers,
       channels: c.channels,
       ...testingSnapshot(c),

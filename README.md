@@ -156,3 +156,7 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify
 `/tests` 开放人工 Mock 测试任务、执行/复测、取消、运营采纳/审阅、来源核验、质量豁免与历史。采购/运维仅可读授权技术摘要，供应商与前台不开放新管理接口。没有真实模型调用、Key 或生产接入。渠道本地聚合从 v1 无损迁移到 v2（键名仍为 maas-channel-demo-v1），未知版本不会自动重置。显式渠道重置会清除新增测试历史，必须核对确认说明。
 
 详见 [Stage 07A 交付说明](harness/build/stage-07a.md) 与 [交接](harness/context/stage-07a.md)。验证：`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify`。
+
+## Stage 07B 渠道级技术整改
+
+启动后打开 `/remediations`。人工登记、分配、跟进、多轮提交、关联 Stage 07A 复测与运营关闭；仅 Mock。正常关闭要求本轮提交之后开始的适用复测、现行运营采纳及明确核验；例外结束不代表技术验证成功。详情见 `harness/build/stage-07b.md` 与 `harness/context/stage-07b.md`。验证仍使用原 verify 命令。完成后停止，不进入 Stage 08。

@@ -1,3 +1,8 @@
+import { createRemediationApi } from './remediation-api';
+import {
+  type RemediationRepository,
+  projectLegacyRemediation,
+} from './remediation-repository';
 import { createTestingApi } from './testing-api';
 import { testingSnapshot } from './testing-state';
 import { createBulkQuotationApi } from './bulk-quotation-api';
@@ -61,6 +66,7 @@ export function createMockAdapter(
   channelRepo: ChannelRepository = channelRepository,
   sourcingRepo: SourcingRepository = sourcingRepository,
   quoteRepo: QuoteRepository = quoteRepository,
+  remediationRepo: RemediationRepository = channelRepo.remediations,
 ): ApiAdapter {
   const user = data.users.find((u) => u.id === userId);
   if (userId !== undefined && !user) throw new Error('Unknown demo user');
@@ -162,6 +168,13 @@ export function createMockAdapter(
     writeActive,
   );
   const base: Omit<ApiAdapter, keyof ResourceApi> = {
+    ...createRemediationApi(
+      ctx,
+      remediationRepo,
+      channelRepo,
+      channels,
+      writeActive,
+    ),
     ...createTestingApi(ctx, channelRepo, repository, channels, writeActive),
     ...supplierApi,
     ...channelApi,
@@ -440,13 +453,16 @@ export function createMockAdapter(
     async listRemediations(channelId) {
       return copy(
         ctx && can(ctx, 'remediation:read')
-          ? data.remediations
-              .filter(
+          ? remediationRepo
+              .read()
+              .records.filter(
                 (r) =>
+                  (ctx.user.role !== 'SupplierUser' ||
+                    r.sourceType === 'legacy') &&
                   channelById(r.channelId) &&
                   (!channelId || r.channelId === channelId),
               )
-              .map((r) => projectRemediation(ctx, r))
+              .map((r) => projectRemediation(ctx, projectLegacyRemediation(r)))
           : [],
       );
     },
@@ -486,9 +502,11 @@ export function createMockAdapter(
                       (t) => t.id === a.entityId && channelById(t.channelId),
                     );
                 case 'remediation':
-                  return data.remediations.some(
-                    (r) => r.id === a.entityId && channelById(r.channelId),
-                  );
+                  return remediationRepo
+                    .read()
+                    .records.some(
+                      (r) => r.id === a.entityId && channelById(r.channelId),
+                    );
                 case 'incident':
                   return data.incidents.some(
                     (i) =>

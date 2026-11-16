@@ -18,6 +18,19 @@ const technical: readonly PermissionAction[] = [
 ];
 const actions: Record<Role, readonly PermissionAction[]> = {
   ProductOperations: [
+    'remediation:summary',
+    'remediation:detail',
+    'remediation:create',
+    'remediation:update',
+    'remediation:assign',
+    'remediation:followup',
+    'remediation:submit',
+    'remediation:link-test',
+    'remediation:return',
+    'remediation:close',
+    'remediation:history',
+    'remediation:reset',
+
     'test:detail',
     'test:summary',
     'test:create',
@@ -75,6 +88,7 @@ const actions: Record<Role, readonly PermissionAction[]> = {
     'incident:record',
   ],
   Procurement: [
+    'remediation:summary',
     'test:summary',
     'bulk:read',
     'bulk:create',
@@ -106,6 +120,14 @@ const actions: Record<Role, readonly PermissionAction[]> = {
     'incident:record',
   ],
   Testing: [
+    'remediation:summary',
+    'remediation:detail',
+    'remediation:create',
+    'remediation:followup',
+    'remediation:submit',
+    'remediation:link-test',
+    'remediation:history',
+
     ...technical,
     'supplier:read',
     'test:read',
@@ -119,6 +141,7 @@ const actions: Record<Role, readonly PermissionAction[]> = {
     'test:history',
   ],
   OperationsSupport: [
+    'remediation:summary',
     'test:summary',
     ...technical,
     'supplier:read',

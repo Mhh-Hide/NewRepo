@@ -1,10 +1,14 @@
 import {
+  RemediationRepository,
+  assertRemediationReferences,
+  projectLegacyRemediation,
+} from './remediation-repository';
+import {
   initialTesting,
   testingShape,
   validateTesting,
   testingSnapshot,
   reconcileTestConfiguration,
-  assertTestResetReferences,
 } from './testing-state';
 import { fixture } from './data';
 import { validateStore } from '../domain/validation';
@@ -156,7 +160,10 @@ function seed(): ChannelState {
   };
 }
 export class ChannelRepository {
-  constructor(private storage: StoragePort) {}
+  readonly remediations: RemediationRepository;
+  constructor(private storage: StoragePort) {
+    this.remediations = new RemediationRepository(storage);
+  }
   read(): ChannelState {
     try {
       const raw = this.storage.getItem(channelStorageKey);
@@ -184,6 +191,9 @@ export class ChannelRepository {
       throw new SupplierError('VALIDATION', '渠道数据结构无效。');
     const errors = validateStore({
       ...fixture,
+      remediations: this.remediations
+        .read()
+        .records.map(projectLegacyRemediation),
       suppliers: suppliers.read().suppliers,
       channels: state.channels,
       ...testingSnapshot(state),
@@ -194,6 +204,7 @@ export class ChannelRepository {
         '渠道关联校验失败：' + errors.join('; '),
       );
     validateTesting(state);
+    assertRemediationReferences(this.remediations.read(), state);
   }
   write(
     before: ChannelState,
@@ -299,8 +310,8 @@ export class ChannelRepository {
   }
   reset(suppliers: SupplierRepository) {
     const next = seed();
+    assertRemediationReferences(this.remediations.read(), next);
     this.validate(next, suppliers);
-    assertTestResetReferences(next, fixture.remediations);
     // Explicit confirmed reset is also the recovery path for incompatible/corrupt channel data.
     let revision = 0;
     try {

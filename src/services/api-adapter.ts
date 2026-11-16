@@ -1,3 +1,4 @@
+import type { RemediationApi } from './remediation-types';
 import type { TestingApi } from './testing-types';
 import type { BulkQuotationApi } from './bulk-quotation-types';
 import type { ProcurementAnalyticsApi } from './procurement-analytics-types';
@@ -41,7 +42,8 @@ export interface ApiAdapter
     QuotationApi,
     ProcurementAnalyticsApi,
     BulkQuotationApi,
-    TestingApi {
+    TestingApi,
+    RemediationApi {
   getDemoInfo(): Promise<DemoInfo>;
   listVendors(): Promise<readonly ModelVendor[]>;
   listModels(): Promise<readonly Model[]>;

@@ -1,3 +1,4 @@
+import { RemediationSummaryPanel } from '../remediations/RemediationSummaryPanel';
 import { useCallback } from 'react';
 import { Alert, Card, Descriptions, Empty, Space, Tag, Button } from 'antd';
 import { Link } from 'react-router-dom';
@@ -112,6 +113,10 @@ function AuthorizedSummary({
               {row.model.name} · {row.channel.name}
             </strong>
             <TestSummaryView row={row} />
+            <RemediationSummaryPanel
+              session={session}
+              channelId={row.channel.id}
+            />
             {session.permits('test:detail') && (
               <Link
                 to={`/tests?channelId=${encodeURIComponent(row.channel.id)}`}

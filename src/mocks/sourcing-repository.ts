@@ -1,3 +1,4 @@
+import { projectLegacyRemediation } from './remediation-repository';
 import { testingSnapshot } from './testing-state';
 import { fixture } from './data';
 import type { SourcingState } from '../domain/sourcing';
@@ -202,6 +203,9 @@ export class SourcingRepository {
     if (!shape(s)) throw new SupplierError('VALIDATION', '寻源数据结构无效。');
     const errors = validateStore({
       ...fixture,
+      remediations: channels.remediations
+        .read()
+        .records.map(projectLegacyRemediation),
       suppliers: suppliers.read().suppliers,
       channels: channels.read().channels,
       ...testingSnapshot(channels.read()),

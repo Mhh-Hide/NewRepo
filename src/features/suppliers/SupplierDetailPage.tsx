@@ -1,3 +1,4 @@
+import { RemediationSummaryPanel } from '../remediations/RemediationSummaryPanel';
 import { useCallback, useState } from 'react';
 import {
   Alert,
@@ -155,6 +156,7 @@ export function SupplierDetailPage({
       : '';
   return (
     <>
+      <RemediationSummaryPanel session={session} supplierId={s.id} />
       {header}
       {(notice || stateNotice) && (
         <Alert type="success" showIcon title={notice || stateNotice} />

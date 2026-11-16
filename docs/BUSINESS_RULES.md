@@ -111,3 +111,11 @@ latestFormal仅指最近已确认正式历史记录，允许已到期或未来�
 ### Dashboard 新测试统计
 
 只在授权供应商与厂商业务域内计算：pending 任务数、running 任务数；当前明确采纳质量或连通性 failed 的 distinct channelId；当前仍沿用 legacy 失败状态的渠道另列（不是历史上曾失败过的全部渠道）；存在至少一个未处理完成执行的 distinct channelId；存在未处理 failed 的 distinct channelId；有效质量豁免 distinct channelId；没有当前明确采纳连通性依据的 distinct channelId（包括仅有 legacy 状态者）。采纳 failed 也是有明确依据的结论，失败另列，不再算“无依据待验证”。不把失败与新失败待复核相加。旧工作台任务指标保留原 pending/running 合计口径并显示说明，新精确指标独立展示。
+
+## Stage 07B 渠道级技术整改
+
+来源为已结束 failed 执行（无需先采纳）或人工技术问题；旧记录独立标记 legacy。同来源未关闭事项允许拆分，但须说明原因。测试执行、现行采纳、整改状态彼此独立。状态 open → in_progress → submitted；运营可退回 submitted → in_progress 并增加轮次，正常关闭只从 submitted；任意未关闭状态可运营例外关闭，closed 为终态。
+
+正常关闭必须明确选择本轮关联执行及现行采纳结论：执行 passed/finished，同渠道、同测试类型、当前配置、目标引用及版本有效，startedAt 不早于本轮 submittedAt，并填写人工适用性说明。存在同渠道、类型、配置及目标引用范围内更晚待处理 failed/inconclusive 时拒绝。无关目标不阻断。例外分类 duplicate/no_longer_applicable/unable_to_verify/other，不要求通过证据，明确不代表技术修复验证成功。
+
+整改负责人独立于采购负责人；仅运营分配具备渠道厂商业务域授权的运营或测试用户。测试只能处理本人负责事项；创建未分配事项不自动认领。截止时间可空且必须有时区，按北京时间显示；仅未关闭且 dueAt < asOf 为超期，等于不超期，期限未知单列。

@@ -177,3 +177,11 @@ ChannelRepository 为所有测试事实权威。Channel/Sourcing/Quote 全图校
 ### 显式重置
 
 仅双域运营在全部域二次确认后恢复初始聚合，说明初始渠道上的新执行/结论/核验/豁免也会被清除；保留原 fixture 的整改引用。检查外部报价/询价/批次/寻源的动态渠道引用，以及整改 channelId → executionId → task.channelId；会悬空则拒绝。不级联清空其他 Repository。现有整改为静态 fixture，未来整改写入必须把同一引用检查接到其实际 Repository，不能只按“初始渠道”豁免。
+
+## Stage 07B 渠道级技术整改
+
+独立 `maas-remediation-demo-v1` / schemaVersion=1。records 保存原 Remediation 字段与 supplierId、version、sourceType/sourceTaskId/sourceBasis/sourceTargetVersion、category、verificationScope、targetReference、独立 sharedSummary/internalNotes、assigneeUserId、dueAt、createdBy、activeRound、splitReason。submissions、links、closures、events、requests 为追加集合；单次 setItem 保存完整候选及 revision。
+
+旧 Fixture 原字段和 ID 无损保留，包含 rem-other-supplier 的原 passed 引用。新增元数据为空或 legacy，绝不从 supplierResponse 构造提交或从 submittedBy 推断负责人。读取不落盘、不重复生成种子，未知版本或损坏报错。旧事项由运营补充范围后进入新流程，保留原状态；旧 submitted 缺少新轮次提交不能正常关闭。
+
+复测与关闭仅保存稳定测试引用及必要版本快照，不维护第二份测试结果。所有关闭事项、已退回轮次及历史链接都参与测试引用保护。
