@@ -7,12 +7,17 @@ import type {
   Phase,
   PhaseVerification,
   WorkType,
+  ActiveDeliveryStep,
+  LifecycleTask,
 } from '../domain/lifecycle';
 import {
   contractLabels,
   dispatchLabels,
   deliveryProgress,
   workLabels,
+  isLifecycleNotice,
+  phaseFailureWork,
+  progressStepId,
 } from '../domain/lifecycle';
 import type { LifecycleApi, LifecycleRow } from '../services/lifecycle-types';
 import type { ChannelState } from '../services/channel-types';
@@ -336,6 +341,175 @@ export function createLifecycleApi(
       changes: fingerprint({ before, after }),
     });
   };
+  const notifyFailure = (
+    s: LifecycleState,
+    r: DeliveryRecord,
+    ch: Channel,
+    phase: Phase,
+    sourceId: string,
+    actorId: string,
+  ) => {
+    for (const type of phaseFailureWork(phase)) {
+      const assignee =
+        type === 'supplier_feedback'
+          ? r.testerId
+          : type === 'supervise'
+            ? r.operatorId
+            : r.procurementOwnerId;
+      const source =
+        type === 'replacement' && r.demandId
+          ? `replacement:${r.demandId}`
+          : sourceId;
+      addTask(
+        s,
+        type,
+        ch,
+        r.demandId,
+        assignee,
+        source,
+        actorId,
+        isLifecycleNotice(type) ? null : r.dueAt,
+      );
+    }
+  };
+  /** Only recognize deterministic automatic sources; handled/ambiguous records are preserved. */
+  const mistakenTask = (
+    s: LifecycleState,
+    c: ChannelState,
+    t: LifecycleTask,
+  ): 'quality_passed_notice' | 'integration_failed_notice' | null => {
+    if (
+      !t.channelId ||
+      t.id !== `lifecycle:${t.sourceId}:${t.type}:${t.assigneeId}` ||
+      t.title !== workLabels[t.type]
+    )
+      return null;
+    const v = s.verifications.find(
+      (v) => v.id === t.sourceId && v.channelId === t.channelId,
+    );
+    if (
+      t.type === 'supervise' &&
+      v?.phase === 'quality' &&
+      v.conclusion === 'passed'
+    )
+      return 'quality_passed_notice';
+    if (t.type !== 'replacement') return null;
+    const execution = c.executions.find(
+      (e) =>
+        `execution:${e.id}` === t.sourceId &&
+        e.origin === 'recorded' &&
+        e.termination === 'finished' &&
+        e.result !== 'passed',
+    );
+    if (
+      execution &&
+      c.tasks.some(
+        (task) =>
+          task.id === execution.taskId &&
+          task.channelId === t.channelId &&
+          task.testType === 'connectivity',
+      )
+    )
+      return 'integration_failed_notice';
+    if (v?.phase === 'connectivity' && v.conclusion === 'failed')
+      return 'integration_failed_notice';
+    if (
+      !t.demandId ||
+      t.sourceId !== `replacement:${t.demandId}` ||
+      !t.relatedChannelIds.length
+    )
+      return null;
+    // An old grouped task can also contain a legitimate quality failure. Preserve it if uncertain.
+    const onlyIntegration = t.relatedChannelIds.every((id) => {
+      const r = s.records.find(
+        (r) => r.channelId === id && r.demandId === t.demandId,
+      );
+      if (!r) return false;
+      const qualityFailure =
+        c.executions.some(
+          (e) =>
+            e.origin === 'recorded' &&
+            e.termination === 'finished' &&
+            e.result !== 'passed' &&
+            e.startedAt >= r.acquiredAt &&
+            c.tasks.some(
+              (task) =>
+                task.id === e.taskId &&
+                task.channelId === id &&
+                task.testType === 'quality',
+            ),
+        ) ||
+        s.verifications.some(
+          (v) =>
+            v.channelId === id &&
+            v.phase === 'quality' &&
+            v.conclusion === 'failed',
+        );
+      return (
+        !qualityFailure &&
+        s.verifications.some(
+          (v) =>
+            v.channelId === id &&
+            v.phase === 'connectivity' &&
+            v.conclusion === 'failed' &&
+            v.occurredAt <= t.createdAt,
+        )
+      );
+    });
+    return onlyIntegration ? 'integration_failed_notice' : null;
+  };
+  const reconcileTasks = (
+    s: LifecycleState,
+    c: ChannelState,
+    audit = false,
+  ) => {
+    for (const task of [...s.tasks]) {
+      const notice = mistakenTask(s, c, task);
+      if (
+        !notice ||
+        task.status !== 'open' ||
+        task.archived ||
+        task.readAt ||
+        task.completedAt ||
+        task.completionActorId ||
+        task.completionReason ||
+        s.requests.some((r) => r.resultId === task.id)
+      )
+        continue;
+      const allowed = new Set(visible().map((ch) => ch.id));
+      if (
+        !task.relatedChannelIds.length ||
+        !task.relatedChannelIds.every((id) => allowed.has(id))
+      )
+        continue;
+      const ch = c.channels.find((c) => c.id === task.channelId);
+      if (!ch) continue;
+      task.status = 'cancelled';
+      task.version++;
+      task.completionReason =
+        'Stage 07D 验收兼容：自动任务与所属阶段不符，取消未处理待办并保留原来源。';
+      task.completionActorId = audit ? ctx!.user.id : null;
+      addTask(
+        s,
+        notice,
+        ch,
+        task.demandId,
+        task.assigneeId,
+        task.sourceId,
+        task.initiatorId,
+      );
+      if (audit)
+        event(
+          s,
+          task.channelId,
+          task.demandId,
+          'legacy-task-corrected',
+          `compat-07d:${task.id}`,
+          ctx!.user.id,
+          task.completionReason,
+        );
+    }
+  };
   const syncSignals = (id: string) => {
     const ch = channel(id),
       before = repo.read(),
@@ -343,6 +517,7 @@ export function createLifecycleApi(
       r = s.records.find((r) => r.channelId === id);
     if (!r) return;
     const c = channels.read();
+    reconcileTasks(s, c, true);
     for (const e of c.executions.filter(
       (e) => e.origin === 'recorded' && e.termination === 'finished',
     )) {
@@ -383,53 +558,15 @@ export function createLifecycleApi(
             t.title = '登记阶段核验与实测/计量计费指标';
           });
       }
-      if (e.result !== 'passed') {
-        addTask(
+      if (e.result !== 'passed')
+        notifyFailure(
           s,
-          'supplier_feedback',
+          r,
           ch,
-          r.demandId,
-          r.testerId,
+          t.testType,
           sourceId,
           e.performedBy ?? r.testerId,
-          r.dueAt,
         );
-        addTask(
-          s,
-          'supervise',
-          ch,
-          r.demandId,
-          r.operatorId,
-          sourceId,
-          e.performedBy ?? r.testerId,
-          r.dueAt,
-        );
-        if (t.testType === 'quality') {
-          const demandSource = r.demandId
-            ? `replacement:${r.demandId}`
-            : sourceId;
-          addTask(
-            s,
-            'replacement',
-            ch,
-            r.demandId,
-            r.procurementOwnerId,
-            demandSource,
-            e.performedBy ?? r.testerId,
-            r.dueAt,
-          );
-        } else
-          addTask(
-            s,
-            'replacement',
-            ch,
-            r.demandId,
-            r.procurementOwnerId,
-            sourceId,
-            e.performedBy ?? r.testerId,
-            r.dueAt,
-          );
-      }
     }
     if (fingerprint(s) !== fingerprint(before)) {
       if (enforceSafety(s, r, ctx!.user.id)) {
@@ -486,26 +623,6 @@ export function createLifecycleApi(
               c.tasks.find((t) => t.id === e.taskId)?.testType,
         ),
     );
-    const extra = activeFailures.flatMap((e) => {
-      const feedback = s.events.some(
-        (v) =>
-          v.channelId === ch.id &&
-          v.action === 'feedback' &&
-          v.executionId === e.id,
-      );
-      const remedies = activeRem.filter(
-        (v) => v.relatedTestExecutionId === e.id,
-      );
-      return [
-        { label: '测试失败（历史事实，不计完成）', done: false },
-        { label: '反馈供应商', done: feedback },
-        ...remedies.map((v) => ({
-          label: `整改第 ${v.activeRound ?? '旧'} 轮 · ${v.status === 'submitted' ? '等待复测' : v.status === 'in_progress' ? '供应商整改中' : '等待供应商整改'}`,
-          done: v.status === 'submitted',
-        })),
-        { label: '复测中或等待重新测试', done: false },
-      ];
-    });
     const phaseFailure = s.verifications.filter(
       (v) =>
         v.channelId === ch.id &&
@@ -518,13 +635,102 @@ export function createLifecycleApi(
             p.occurredAt > v.occurredAt,
         ),
     );
-    if (phaseFailure.length && !extra.length)
+    const extra: ActiveDeliveryStep[] = [];
+    const represented = new Set<string>();
+    for (const phase of ['quality', 'connectivity'] as const) {
+      const raw = activeFailures.find((e) =>
+        c.tasks.some((t) => t.id === e.taskId && t.testType === phase),
+      );
+      const human = phaseFailure.filter((v) => v.phase === phase).at(-1);
+      const executionId =
+        human && (!raw || human.occurredAt >= raw.finishedAt!)
+          ? human.executionId
+          : raw?.id;
+      if (!executionId) continue;
+      const feedback = s.events
+        .filter(
+          (v) =>
+            v.channelId === ch.id &&
+            v.action === 'feedback' &&
+            v.executionId === executionId,
+        )
+        .at(-1);
+      const remedy = activeRem
+        .filter(
+          (v) =>
+            v.relatedTestExecutionId === executionId ||
+            (v.relatedTestExecutionId === null &&
+              v.verificationScope === phase),
+        )
+        .at(-1);
+      const base = { phase, executionId, ownerId: r?.testerId ?? null };
       extra.push({
-        label: '计量/计费或阶段核验失败，等待整改及新执行复测',
+        ...base,
+        id: progressStepId(`${executionId}:failure`),
+        kind: 'failure',
+        label: '测试失败（历史事实，不计完成）',
         done: false,
+        state: 'failed',
       });
-    if (activeRem.length && !extra.length)
-      extra.push({ label: '存在未关闭整改，需人工核验', done: false });
+      extra.push({
+        ...base,
+        id: progressStepId(`${executionId}:feedback`),
+        kind: 'feedback',
+        label: '反馈供应商',
+        done: !!feedback,
+        state: feedback ? 'completed' : 'waiting_feedback',
+        completedAt: feedback?.occurredAt ?? null,
+      });
+      if (remedy) {
+        represented.add(remedy.id);
+        const submission = rem.submissions.find(
+          (v) =>
+            v.remediationId === remedy.id && v.round === remedy.activeRound,
+        );
+        extra.push({
+          ...base,
+          id: progressStepId(`${remedy.id}:${remedy.activeRound}`),
+          kind: 'remediation',
+          remediationId: remedy.id,
+          round: remedy.activeRound,
+          label: `整改第 ${remedy.activeRound ?? '旧'} 轮 · ${remedy.status === 'submitted' ? '等待复测' : remedy.status === 'in_progress' ? '供应商整改中' : '等待供应商整改'}`,
+          done: remedy.status === 'submitted',
+          state:
+            remedy.status === 'submitted' ? 'waiting_retest' : 'remediating',
+          completedAt: submission?.submittedAt ?? null,
+          ownerId: remedy.assigneeUserId,
+        });
+      }
+      extra.push({
+        ...base,
+        id: progressStepId(`${executionId}:retest`),
+        kind: 'retest',
+        label: '复测中或等待重新测试',
+        done: false,
+        state: 'waiting_retest',
+        remediationId: remedy?.id ?? null,
+        round: remedy?.activeRound ?? null,
+      });
+    }
+    // Explicit/manual legacy remediation still needs attention even without a linked execution.
+    for (const phase of ['quality', 'connectivity', null] as const) {
+      const remedy = activeRem
+        .filter((v) => v.verificationScope === phase && !represented.has(v.id))
+        .at(-1);
+      if (remedy)
+        extra.push({
+          id: progressStepId(`${remedy.id}:${remedy.activeRound}`),
+          phase: phase ?? 'resource',
+          kind: 'remediation',
+          label: '存在未关闭整改，需人工核验',
+          done: false,
+          state:
+            remedy.status === 'submitted' ? 'waiting_retest' : 'remediating',
+          remediationId: remedy.id,
+          round: remedy.activeRound,
+          ownerId: remedy.assigneeUserId,
+        });
+    }
     const completed = [
       !!r,
       !!q,
@@ -540,6 +746,39 @@ export function createLifecycleApi(
       !!r?.terminated,
       r?.dispatch ?? 'not_open',
     );
+    const milestoneOwners = [
+      r?.procurementOwnerId,
+      r?.testerId,
+      r?.procurementOwnerId,
+      r?.operatorId,
+      r?.testerId,
+      r?.operatorId,
+    ];
+    const milestoneTimes = [
+      r?.acquiredAt,
+      q?.occurredAt,
+      r?.electronicEffectiveAt,
+      r?.configuredAt,
+      i?.occurredAt,
+      r?.openedAt,
+    ];
+    p.steps.forEach((step, index) => {
+      step.ownerId = milestoneOwners[index] ?? null;
+      step.completedAt = step.done ? (milestoneTimes[index] ?? null) : null;
+      step.executionId =
+        index === 1
+          ? (q?.executionId ?? null)
+          : index === 4
+            ? (i?.executionId ?? null)
+            : null;
+    });
+    if (
+      !can(ctx!, 'lifecycle:verify') &&
+      !can(ctx!, 'production-config:update')
+    )
+      p.orderedSteps.forEach((step) => {
+        step.executionId = null;
+      });
     const stageIndex = completed.findIndex((v) => !v),
       stage = stageIndex < 0 ? '交付已完成' : p.steps[stageIndex]!.label;
     const ownerId = !r
@@ -638,6 +877,7 @@ export function createLifecycleApi(
       abnormal,
       steps: p.steps,
       extra: p.extra,
+      orderedSteps: p.orderedSteps,
       promised: {
         ttftMs: ch.ttftMs,
         rpm: ch.rpm,
@@ -957,6 +1197,7 @@ export function createLifecycleApi(
         s = structuredClone(before),
         payload = { id, version, input, reason };
       if (request(s, key, payload)) return;
+      reconcileTasks(s, channels.read(), true);
       const old = s.records.find((r) => r.channelId === id) ?? null;
       if ((old?.version ?? 0) !== version)
         throw new SupplierError('CONFLICT', '交付版本变化，请刷新。');
@@ -1250,13 +1491,12 @@ export function createLifecycleApi(
               );
               addTask(
                 s,
-                'supervise',
+                'quality_passed_notice',
                 ch,
                 r.demandId,
                 r.operatorId,
                 v.id,
                 actor.user.id,
-                r.dueAt,
               );
             } else
               addTask(
@@ -1272,36 +1512,7 @@ export function createLifecycleApi(
           } else {
             const failureSource =
               e!.result === 'passed' ? v.id : `execution:${e!.id}`;
-            addTask(
-              s,
-              'supplier_feedback',
-              ch,
-              r.demandId,
-              r.testerId,
-              failureSource,
-              actor.user.id,
-              r.dueAt,
-            );
-            addTask(
-              s,
-              'supervise',
-              ch,
-              r.demandId,
-              r.operatorId,
-              failureSource,
-              actor.user.id,
-              r.dueAt,
-            );
-            addTask(
-              s,
-              'replacement',
-              ch,
-              r.demandId,
-              r.procurementOwnerId,
-              r.demandId ? `replacement:${r.demandId}` : failureSource,
-              actor.user.id,
-              r.dueAt,
-            );
+            notifyFailure(s, r, ch, input.phase, failureSource, actor.user.id);
           }
         } else if (input.action === 'contract') {
           if (actor.user.id !== r.procurementOwnerId)
@@ -1604,9 +1815,10 @@ export function createLifecycleApi(
     },
     async queryLifecycleTasks(view = 'mine') {
       guard('task:read');
-      const s = repo.read(),
+      const s = structuredClone(repo.read()),
         allowed = new Set(visible().map((c) => c.id)),
         now = new Date().toISOString();
+      reconcileTasks(s, channels.read());
       return s.tasks
         .filter((t) =>
           t.archived
@@ -1628,21 +1840,27 @@ export function createLifecycleApi(
           view === 'mine'
             ? t.assigneeId === ctx!.user.id &&
               t.status === 'open' &&
-              t.type !== 'mention'
-            : view === 'mentions'
-              ? t.assigneeId === ctx!.user.id && t.type === 'mention'
-              : view === 'sent'
-                ? t.initiatorId === ctx!.user.id
-                : view === 'waiting'
-                  ? t.initiatorId === ctx!.user.id &&
-                    t.assigneeId !== ctx!.user.id &&
-                    t.status === 'open'
-                  : view === 'completed'
-                    ? t.assigneeId === ctx!.user.id && t.status === 'completed'
-                    : t.assigneeId === ctx!.user.id &&
-                      t.status === 'open' &&
-                      !!t.dueAt &&
-                      t.dueAt < now,
+              t.type !== 'mention' &&
+              !isLifecycleNotice(t.type)
+            : view === 'notifications'
+              ? t.assigneeId === ctx!.user.id && isLifecycleNotice(t.type)
+              : view === 'mentions'
+                ? t.assigneeId === ctx!.user.id && t.type === 'mention'
+                : view === 'sent'
+                  ? t.initiatorId === ctx!.user.id
+                  : view === 'waiting'
+                    ? t.initiatorId === ctx!.user.id &&
+                      t.assigneeId !== ctx!.user.id &&
+                      !isLifecycleNotice(t.type) &&
+                      t.status === 'open'
+                    : view === 'completed'
+                      ? t.assigneeId === ctx!.user.id &&
+                        t.status === 'completed'
+                      : t.assigneeId === ctx!.user.id &&
+                        t.status === 'open' &&
+                        !isLifecycleNotice(t.type) &&
+                        !!t.dueAt &&
+                        t.dueAt < now,
         )
         .map((t) => {
           const ids = t.relatedChannelIds.filter((id) => allowed.has(id));
@@ -1659,13 +1877,20 @@ export function createLifecycleApi(
           action === 'read' ? 'notification:read' : 'task:complete',
         ),
         before = repo.read(),
-        s = structuredClone(before),
-        t = s.tasks.find((t) => t.id === id);
+        s = structuredClone(before);
+      reconcileTasks(s, channels.read(), true);
+      const t = s.tasks.find((t) => t.id === id);
       if (!t || t.assigneeId !== actor.user.id)
         throw new SupplierError(
           'FORBIDDEN',
           '任务不存在或不是当前负责人的任务。',
         );
+      if (
+        action !== 'read' &&
+        (isLifecycleNotice(t.type) ||
+          s.events.some((e) => e.sourceId === `compat-07d:${t.id}`))
+      )
+        bad('仅需知悉的通知或已兼容取消的误发任务不能作为待办推进。');
       if (t.archived) {
         if (
           !t.scopeDomains.every(

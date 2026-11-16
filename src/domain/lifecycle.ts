@@ -69,7 +69,9 @@ export type WorkType =
   | 'integration'
   | 'opening'
   | 'mention'
-  | 'backup';
+  | 'backup'
+  | 'quality_passed_notice'
+  | 'integration_failed_notice';
 export interface LifecycleTask {
   archived: boolean;
   scopeDomains: ('domestic' | 'overseas')[];
@@ -162,6 +164,8 @@ export const workLabels: Record<WorkType, string> = {
   opening: '确认对客开放',
   mention: '渠道内部提及',
   backup: '补充至少三个可用渠道',
+  quality_passed_notice: '第一阶段质量测试通过，可推进合同',
+  integration_failed_notice: '第二阶段接入异常（采购抄送，仅需知悉）',
 };
 export const contractLabels: Record<ContractStage, string> = {
   drafting: '合同拟定中',
@@ -177,9 +181,71 @@ export const dispatchLabels: Record<DispatchState, string> = {
   paused: '暂停调度',
   disabled: '已停用',
 };
+export const isLifecycleNotice = (type: WorkType) =>
+  type === 'quality_passed_notice' || type === 'integration_failed_notice';
+
+/** Both original execution saves and human phase conclusions use this matrix. */
+export function phaseFailureWork(phase: Phase): readonly WorkType[] {
+  return [
+    'supplier_feedback',
+    'supervise',
+    phase === 'quality' ? 'replacement' : 'integration_failed_notice',
+  ];
+}
+export type Milestone =
+  'resource' | Phase | 'contract' | 'configuration' | 'opening';
+export type StepState =
+  | 'completed'
+  | 'in_progress'
+  | 'failed'
+  | 'waiting_feedback'
+  | 'remediating'
+  | 'waiting_retest'
+  | 'held'
+  | 'not_started';
+export interface LifecycleStep {
+  id: string;
+  label: string;
+  phase: Milestone;
+  kind: 'milestone' | 'failure' | 'feedback' | 'remediation' | 'retest';
+  state: StepState;
+  done: boolean;
+  executionId: string | null;
+  remediationId: string | null;
+  round: number | null;
+  completedAt: string | null;
+  ownerId: string | null;
+}
+export type ActiveDeliveryStep = Pick<LifecycleStep, 'label' | 'done'> &
+  Partial<Omit<LifecycleStep, 'label' | 'done'>>;
+export const stepStateLabels: Record<StepState, string> = {
+  completed: '已完成',
+  in_progress: '进行中',
+  failed: '测试失败',
+  waiting_feedback: '等待供应商反馈',
+  remediating: '整改中',
+  waiting_retest: '等待复测',
+  held: '已挂起',
+  not_started: '未开始',
+};
+const milestonePhases: Milestone[] = [
+  'resource',
+  'quality',
+  'contract',
+  'configuration',
+  'connectivity',
+  'opening',
+];
+/** Opaque display key, not an authorization token or business identity. */
+export function progressStepId(source: string) {
+  let hash = 2166136261;
+  for (const char of source)
+    hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
+  return `progress-${(hash >>> 0).toString(36)}`;
+}
 export function deliveryProgress(
   completed: boolean[],
-  activeWork: { label: string; done: boolean }[],
+  activeWork: ActiveDeliveryStep[],
   held: boolean,
   terminated: boolean,
   dispatch: DispatchState,
@@ -191,12 +257,56 @@ export function deliveryProgress(
   let percent = Math.floor((done / total) * 100);
   const delivered = completed.every(Boolean);
   if (!delivered) percent = Math.min(99, percent);
+  const current = completed.findIndex((v) => !v);
+  const extra: LifecycleStep[] = activeWork.map((v, index) => ({
+    id: v.id ?? `extra:${v.phase ?? 'quality'}:${index}`,
+    label: v.label,
+    phase: v.phase ?? 'quality',
+    kind: v.kind ?? 'remediation',
+    state:
+      (held || terminated) && !v.done && v.kind !== 'failure'
+        ? 'held'
+        : (v.state ?? (v.done ? 'completed' : 'waiting_retest')),
+    done: v.done,
+    executionId: v.executionId ?? null,
+    remediationId: v.remediationId ?? null,
+    round: v.round ?? null,
+    completedAt: v.completedAt ?? null,
+    ownerId: v.ownerId ?? null,
+  }));
+  const steps: LifecycleStep[] = milestoneLabels.map((label, index) => ({
+    id: `milestone:${milestonePhases[index]}`,
+    label,
+    phase: milestonePhases[index]!,
+    kind: 'milestone',
+    state: completed[index]
+      ? 'completed'
+      : (held || terminated) && current === index
+        ? 'held'
+        : extra.some(
+              (v) => v.phase === milestonePhases[index] && v.state === 'failed',
+            )
+          ? 'failed'
+          : current === index
+            ? 'in_progress'
+            : 'not_started',
+    done: !!completed[index],
+    executionId: null,
+    remediationId: null,
+    round: null,
+    completedAt: null,
+    ownerId: null,
+  }));
   return {
     percent,
     delivered,
     schedulable: delivered && !held && !terminated && dispatch === 'open',
-    steps: milestoneLabels.map((label, i) => ({ label, done: !!completed[i] })),
-    extra: activeWork,
+    steps,
+    extra,
+    orderedSteps: steps.flatMap((step) => [
+      step,
+      ...extra.filter((v) => v.phase === step.phase),
+    ]),
     color:
       terminated || held || dispatch === 'disabled'
         ? 'gray'

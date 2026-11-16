@@ -1,3 +1,4 @@
+import { progressStepItem } from './ProgressStep';
 import { useCallback, useState } from 'react';
 import {
   Alert,
@@ -235,11 +236,14 @@ export function LifecycleBoard({ session }: { session: DemoSession }) {
                 width: 260,
                 render: (_, r) => (
                   <Tooltip
-                    title={[...r.steps, ...r.extra].map((s, i) => (
-                      <div key={i}>
-                        {s.done ? '✓' : '○'} {s.label}
-                      </div>
-                    ))}
+                    title={r.orderedSteps.map((step) => {
+                      const item = progressStepItem(step);
+                      return (
+                        <div key={step.id}>
+                          {item.icon} {item.title} · {item.content}
+                        </div>
+                      );
+                    })}
                   >
                     <div>
                       <Progress

@@ -41,6 +41,8 @@ async function save(page: Page) {
 async function seed(
   page: Page,
   mode:
+    | 'quality-executed'
+    | 'integration-executed'
     | 'quality'
     | 'contract'
     | 'configured'
@@ -205,11 +207,15 @@ async function seed(
         }
         return { id, e, remediationId: '' };
       }
+      if (state === 'quality-executed')
+        return { id, e: await run(id), remediationId: '' };
       await verify(id);
       if (state === 'quality' || state === 'contract')
         return { id, e: '', remediationId: '' };
       await contract(id);
       await config(id);
+      if (state === 'integration-executed')
+        return { id, e: await run(id, 'connectivity'), remediationId: '' };
       if (state === 'configured') return { id, e: '', remediationId: '' };
       const e = await verify(id, 'connectivity');
       if (state === 'open')
@@ -231,14 +237,22 @@ async function seed(
     return prepare('ch-1', mode);
   }, mode) as Promise<{ id: string; e: string; remediationId: string }>;
 }
-async function originalRun(page: Page, result: string) {
+async function originalRun(
+  page: Page,
+  result: string,
+  phase: 'quality' | 'connectivity' = 'quality',
+) {
   await page.goto('/tests');
   await page.getByRole('button', { name: '新建测试任务' }).click();
   await select(page, '测试渠道', '模拟渠道1');
-  await select(page, '测试类型', '质量测试');
+  await select(
+    page,
+    '测试类型',
+    phase === 'quality' ? '质量测试' : '连通性测试',
+  );
   await page
     .getByRole('textbox', { name: '测试目标', exact: true })
-    .fill('mock:quality-delivery');
+    .fill(`mock:${phase}-delivery`);
   await page.getByRole('button', { name: '创建任务', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: '测试任务详情' }),
@@ -292,6 +306,7 @@ test('采购真实确认资源获取，质量失败自动形成测试/运营/采
 test('原07B整改提交后等待新执行复测，异常筛选与真实整改截图', async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 1440, height: 1100 });
   const state = await seed(page, 'remediation');
   await page.goto(`/remediations/${state.remediationId}`);
   await persona(page, '模拟Testing');
@@ -324,14 +339,34 @@ test('原07B整改提交后等待新执行复测，异常筛选与真实整改�
     page.getByRole('dialog', { name: '模拟渠道1 · 资源交付', exact: true }),
   ).toBeVisible();
   await expect(page.getByText(/整改第 .*轮 · 等待复测/)).toBeVisible();
+  const qualitySteps = await page
+    .getByRole('dialog')
+    .locator('[data-progress-step]')
+    .evaluateAll((nodes) =>
+      nodes.map((n) => ({
+        phase: n.getAttribute('data-progress-phase'),
+        kind: n.getAttribute('data-progress-step'),
+      })),
+    );
+  expect(qualitySteps.slice(0, 7).map((n) => n.kind)).toEqual([
+    'milestone',
+    'milestone',
+    'failure',
+    'feedback',
+    'remediation',
+    'retest',
+    'milestone',
+  ]);
+  expect(qualitySteps[2]!.phase).toBe('quality');
+
   await expect(
     page
       .getByRole('dialog', { name: '模拟渠道1 · 资源交付', exact: true })
       .getByRole('link', { name: state.remediationId!, exact: true }),
   ).toBeVisible();
   await page.screenshot({
+    animations: 'disabled',
     path: 'harness/build/screenshots/stage-07d-failed-remediation.png',
-    fullPage: true,
   });
 });
 test('复测通过后采购登记有效电子合同，运营生产配置不等待纸质寄回', async ({
@@ -464,6 +499,7 @@ for (const width of [1440, 390])
       .toBe(true);
     await page.evaluate(() => scrollTo(0, 0));
     await page.screenshot({
+      animations: 'disabled',
       path: `harness/build/screenshots/stage-07d-lifecycle-${width}.png`,
       fullPage: true,
     });
@@ -491,3 +527,161 @@ test('前台仍为匿名旧视图，运维只读、单域隔离和无写入能�
     page.getByRole('link', { name: '模拟渠道5', exact: true }),
   ).toHaveCount(0);
 });
+
+test('验收补丁：测试人工确认质量通过，采购合同待办、运营仅需知悉并已读刷新', async ({
+  page,
+}) => {
+  const state = await seed(page, 'quality-executed');
+  await page.goto('/dashboard');
+  await persona(page, '模拟Testing');
+  await page.goto('/channels?delivery=ch-1');
+  await page.getByRole('button', { name: '登记阶段核验', exact: true }).click();
+  await select(page, '实际测试执行', state.e);
+  await select(page, '阶段最终人工结论', '通过');
+  await save(page);
+  await page.goto('/dashboard');
+  await persona(page, '模拟Procurement');
+  await expect(
+    page.getByTestId('lifecycle-inbox').getByRole('table'),
+  ).toBeVisible();
+  await expect(page.getByText('推进采购合同', { exact: true })).toBeVisible();
+  await expect(page.getByText('补充替代资源', { exact: true })).toHaveCount(0);
+  await persona(page, '模拟ProductOperations');
+  await expect(
+    page.getByTestId('lifecycle-inbox').getByRole('table'),
+  ).toBeVisible();
+  await expect(page.getByText('监督整改进度', { exact: true })).toHaveCount(0);
+  await select(page, '协作任务视角', '站内通知（仅需知悉）');
+  const row = page
+    .getByRole('row')
+    .filter({ hasText: '第一阶段质量测试通过，可推进合同' });
+  await expect(row).toBeVisible();
+  await expect(row).toContainText('仅需知悉');
+  await expect(
+    row.getByRole('button', { name: '完成任务', exact: true }),
+  ).toHaveCount(0);
+  await row.getByRole('button', { name: '标记已读', exact: true }).click();
+  await page
+    .getByRole('textbox', { name: '任务操作说明' })
+    .fill('已知悉，可推进采购合同');
+  await page.getByRole('button', { name: '确认任务操作', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.reload();
+  await select(page, '协作任务视角', '站内通知（仅需知悉）');
+  await expect(row).toContainText('已读');
+  await page.getByTestId('lifecycle-inbox').screenshot({
+    animations: 'disabled',
+    path: 'harness/build/screenshots/stage-07d-patch-quality-notice.png',
+  });
+});
+for (const width of [1440, 390])
+  test(`验收补丁 ${width}px：接入失败采购抄送、运营监督、异常顺序及刷新`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 1100 });
+    const state = await seed(
+      page,
+      width === 1440 ? 'configured' : 'integration-executed',
+    );
+    await page.goto('/dashboard');
+    await persona(page, '模拟Testing');
+    if (width === 1440) await originalRun(page, '失败', 'connectivity');
+    else {
+      await page.goto('/channels?delivery=ch-1');
+      await page
+        .getByRole('button', { name: '登记阶段核验', exact: true })
+        .click();
+      await select(page, '核验阶段', '第二阶段平台接入测试');
+      await select(page, '实际测试执行', state.e);
+      await select(page, '计量记录核验', '通过');
+      await select(page, '计费核验', '失败');
+      await select(page, '阶段最终人工结论', '失败');
+      await save(page);
+    }
+    await page.goto('/dashboard');
+    await expect(
+      page.getByText('向供应商反馈并跟进整改', { exact: true }),
+    ).toBeVisible();
+    await persona(page, '模拟Procurement');
+    await expect(
+      page.getByTestId('lifecycle-inbox').getByRole('table'),
+    ).toBeVisible();
+    await expect(page.getByText('补充替代资源', { exact: true })).toHaveCount(
+      0,
+    );
+    await select(page, '协作任务视角', '站内通知（仅需知悉）');
+    const notice = page
+      .getByRole('row')
+      .filter({ hasText: '第二阶段接入异常（采购抄送，仅需知悉）' });
+    await expect(notice).toBeVisible();
+    await expect(notice).toContainText('仅需知悉');
+    await expect(
+      notice.getByRole('button', { name: '完成任务', exact: true }),
+    ).toHaveCount(0);
+    await persona(page, '模拟ProductOperations');
+    await expect(
+      page.getByTestId('lifecycle-inbox').getByRole('table'),
+    ).toBeVisible();
+    await expect(page.getByText('监督整改进度', { exact: true })).toBeVisible();
+    await page.goto('/channels');
+    await select(page, '进度异常筛选', '异常渠道');
+    await expect(
+      page.getByRole('link', { name: '模拟渠道1', exact: true }),
+    ).toBeVisible();
+    let overview: string[] = [];
+    if (width === 1440) {
+      const row = page.getByRole('row').filter({
+        has: page.getByRole('link', { name: '模拟渠道1', exact: true }),
+      });
+      await row.getByRole('progressbar').hover();
+      await expect(page.getByRole('tooltip')).toBeVisible();
+      overview = await page
+        .getByRole('tooltip')
+        .locator('[data-progress-step]')
+        .allTextContents();
+    }
+    await page.goto('/channels?delivery=ch-1');
+    const drawer = page.getByRole('dialog', {
+      name: '模拟渠道1 · 资源交付',
+      exact: true,
+    });
+    await expect(
+      drawer.getByText('测试失败', { exact: true }).first(),
+    ).toBeVisible();
+    const nodes = drawer.locator('[data-progress-step]');
+    const before = await nodes.allTextContents();
+    expect(
+      await nodes.evaluateAll((nodes) =>
+        nodes.map((n) => n.getAttribute('data-progress-phase')),
+      ),
+    ).toEqual([
+      'resource',
+      'quality',
+      'contract',
+      'configuration',
+      'connectivity',
+      'connectivity',
+      'connectivity',
+      'connectivity',
+      'opening',
+    ]);
+    if (width === 1440) expect(before).toEqual(overview);
+    await page.reload();
+    await expect(drawer).toBeVisible();
+    await expect(nodes).toHaveText(before);
+    await expect
+      .poll(async () => {
+        const box = await drawer.boundingBox();
+        return !!box && box.x >= -1 && box.x + box.width <= width + 1;
+      })
+      .toBe(true);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      animations: 'disabled',
+      path: `harness/build/screenshots/stage-07d-patch-integration-failure-${width}.png`,
+    });
+  });

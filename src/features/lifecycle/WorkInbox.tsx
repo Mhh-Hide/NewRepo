@@ -1,3 +1,4 @@
+import { isLifecycleNotice } from '../../domain/lifecycle';
 import { useCallback, useState } from 'react';
 import { Button, Card, Select, Space, Table, Alert, Modal, Input } from 'antd';
 import { Link } from 'react-router-dom';
@@ -16,7 +17,13 @@ export function WorkInbox({ session }: { session: DemoSession }) {
 }
 function Inbox({ session }: { session: DemoSession }) {
   const [view, setView] = useState<
-      'mine' | 'mentions' | 'sent' | 'waiting' | 'completed' | 'overdue'
+      | 'mine'
+      | 'mentions'
+      | 'notifications'
+      | 'sent'
+      | 'waiting'
+      | 'completed'
+      | 'overdue'
     >('mine'),
     [error, setError] = useState(''),
     [action, setAction] = useState<{
@@ -33,6 +40,7 @@ function Inbox({ session }: { session: DemoSession }) {
   return (
     <Card
       title="资源交付协作任务与通知（模拟）"
+      data-testid="lifecycle-inbox"
       className="resource-card"
       extra={<Button onClick={reload}>刷新协作任务</Button>}
     >
@@ -44,6 +52,7 @@ function Inbox({ session }: { session: DemoSession }) {
           options={[
             { value: 'mine', label: '待我处理' },
             { value: 'mentions', label: '@ 我的' },
+            { value: 'notifications', label: '站内通知（仅需知悉）' },
             { value: 'sent', label: '我发出的任务' },
             { value: 'waiting', label: '等待其他人处理' },
             { value: 'completed', label: '已完成' },
@@ -67,14 +76,24 @@ function Inbox({ session }: { session: DemoSession }) {
           scroll={{ x: 900 }}
           pagination={{ pageSize: 5 }}
           columns={[
-            { title: '任务', dataIndex: 'title', width: 230 },
+            { title: '事项', dataIndex: 'title', width: 230 },
+            {
+              title: '类别',
+              render: (_, t) =>
+                isLifecycleNotice(t.type) ? '仅需知悉' : '工作待办',
+            },
+            { title: '处理说明', dataIndex: 'completionReason' },
             {
               title: '状态',
               dataIndex: 'status',
-              render: (s) =>
-                ({ open: '待处理', completed: '已完成', cancelled: '已取消' })[
-                  s as 'open'
-                ],
+              render: (s, t) =>
+                isLifecycleNotice(t.type)
+                  ? '仅需知悉'
+                  : {
+                      open: '待处理',
+                      completed: '已完成',
+                      cancelled: '已取消',
+                    }[s as 'open'],
             },
             {
               title: '已读',
@@ -121,7 +140,9 @@ function Inbox({ session }: { session: DemoSession }) {
                     ]
                       .filter(
                         ([type]) =>
-                          type === 'read' || session.permits('task:complete'),
+                          type === 'read' ||
+                          (!isLifecycleNotice(t.type) &&
+                            session.permits('task:complete')),
                       )
                       .filter(([type]) =>
                         type === 'read' || type === 'reopen'

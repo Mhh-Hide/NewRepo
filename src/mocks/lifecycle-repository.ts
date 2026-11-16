@@ -1,4 +1,4 @@
-import type { LifecycleState } from '../domain/lifecycle';
+import { workLabels, type LifecycleState } from '../domain/lifecycle';
 import type { ChannelState } from '../services/channel-types';
 import type { StoragePort } from './supplier-repository';
 import { SupplierError } from '../services/supplier-types';
@@ -77,6 +77,7 @@ function validate(s: LifecycleState) {
       fail('阶段核验无效。');
   for (const t of s.tasks)
     if (
+      !Object.hasOwn(workLabels, t.type) ||
       !Number.isSafeInteger(t.version) ||
       t.version < 1 ||
       !Array.isArray(t.relatedChannelIds) ||

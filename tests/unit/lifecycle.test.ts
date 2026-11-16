@@ -8,7 +8,11 @@ import {
 import { SourcingRepository } from '../../src/mocks/sourcing-repository';
 import { QuoteRepository } from '../../src/mocks/quote-repository';
 import { lifecycleStorageKey } from '../../src/mocks/lifecycle-repository';
-import { deliveryProgress } from '../../src/domain/lifecycle';
+import {
+  deliveryProgress,
+  workLabels,
+  type LifecycleTask,
+} from '../../src/domain/lifecycle';
 import type { DeliveryCommand } from '../../src/services/lifecycle-types';
 class Memory implements StoragePort {
   values = new Map<string, string>();
@@ -394,6 +398,11 @@ describe('六步真实交付与兼容', () => {
     expect(
       (await api('u-proc').queryLifecycleTasks()).some(
         (t) => t.type === 'replacement',
+      ),
+    ).toBe(false);
+    expect(
+      (await api('u-proc').queryLifecycleTasks('notifications')).some(
+        (t) => t.type === 'integration_failed_notice',
       ),
     ).toBe(true);
     expect((await record()).schedulable).toBe(false);
@@ -877,5 +886,493 @@ describe('补强边界', () => {
     await expect(
       change({ action: 'dispatch', state: 'open' }),
     ).rejects.toThrow();
+  });
+});
+
+describe('Stage 07D 验收补丁：阶段通知与有序进度', () => {
+  async function configured() {
+    await acquire();
+    await quality();
+    await contract();
+    await config();
+  }
+  function legacyTask(
+    type: 'supervise' | 'replacement',
+    sourceId: string,
+    assigneeId: string,
+    overrides: Partial<LifecycleTask> = {},
+  ) {
+    const state = c.lifecycle.read();
+    const task: LifecycleTask = {
+      ...state.tasks[0]!,
+      id: `lifecycle:${sourceId}:${type}:${assigneeId}`,
+      type,
+      title: workLabels[type],
+      sourceId,
+      assigneeId,
+      relatedChannelIds: ['ch-1'],
+      channelId: 'ch-1',
+      objectId: 'ch-1',
+      objectType: 'channel',
+      demandId: null,
+      version: 1,
+      status: 'open',
+      readAt: null,
+      completedAt: null,
+      completionActorId: null,
+      completionReason: null,
+      archived: false,
+      createdAt: new Date().toISOString(),
+      ...overrides,
+    };
+    // Reproduce a previously persisted v1 snapshot, including its original deterministic source.
+    state.tasks = state.tasks.filter(
+      (t) =>
+        t.type !== 'quality_passed_notice' &&
+        t.type !== 'integration_failed_notice',
+    );
+    state.tasks.push(task);
+    memory.setItem(lifecycleStorageKey, JSON.stringify(state));
+    return task;
+  }
+  it('第一阶段人工通过：采购合同待办、运营只读通知，无无依据整改监督', async () => {
+    await acquire();
+    const e = await run();
+    expect(
+      await api('u-ops').queryLifecycleTasks('notifications'),
+    ).toHaveLength(0);
+    await change(verify(e.execution), 'u-test');
+    expect(
+      (await api('u-proc').queryLifecycleTasks()).map((t) => t.type),
+    ).toEqual(['contract']);
+    expect(await api().queryLifecycleTasks()).toHaveLength(0);
+    const notices = await api().queryLifecycleTasks('notifications');
+    expect(notices.map((t) => t.type)).toEqual(['quality_passed_notice']);
+    expect(notices[0]!.channelId).toBe('ch-1');
+    expect(await api('u-test').queryLifecycleTasks()).toHaveLength(0);
+    expect(c.lifecycle.read().tasks.some((t) => t.type === 'supervise')).toBe(
+      false,
+    );
+  });
+  it('正常通过通知仅可已读，不能完成、取消或重开，也不进入等待/逾期', async () => {
+    await acquire();
+    await quality();
+    const a = api(),
+      n = (await a.queryLifecycleTasks('notifications'))[0]!;
+    await a.changeLifecycleTask(n.id, 'read', '知悉', key(), n.version);
+    const read = (await a.queryLifecycleTasks('notifications'))[0]!;
+    expect(read.readAt).toBeTruthy();
+    for (const action of ['complete', 'cancel', 'reopen'] as const)
+      await expect(
+        a.changeLifecycleTask(n.id, action, '尝试', key(), read.version),
+      ).rejects.toThrow(/仅需知悉/);
+    expect(await a.queryLifecycleTasks('overdue')).toHaveLength(0);
+    expect(
+      (await api('u-test').queryLifecycleTasks('waiting')).some(
+        (t) => t.id === n.id,
+      ),
+    ).toBe(false);
+  });
+  it('第一阶段通过幂等重放和原执行重复同步只生成一条通知', async () => {
+    await acquire();
+    const e = await run(),
+      version = (await record()).version,
+      a = api('u-test'),
+      request = key(),
+      input = verify(e.execution);
+    await a.changeLifecycle('ch-1', version, input, '通过', request);
+    await a.changeLifecycle('ch-1', version, input, '通过', request);
+    await a.retryLifecycleSignals('ch-1');
+    expect(await api().queryLifecycleTasks('notifications')).toHaveLength(1);
+  });
+  it.each(['quality', 'connectivity'] as const)(
+    '%s 原失败执行再登记人工失败、重复同步：统一矩阵且不重复',
+    async (phase) => {
+      if (phase === 'quality') await acquire();
+      else await configured();
+      const e = await run(phase, 'failed');
+      const before = c.lifecycle.read().tasks.length;
+      await change(verify(e.execution, phase, 'failed'), 'u-test');
+      await api().retryLifecycleSignals('ch-1');
+      expect(c.lifecycle.read().tasks.length).toBe(before);
+      expect(
+        (await api('u-test').queryLifecycleTasks()).some(
+          (t) => t.type === 'supplier_feedback',
+        ),
+      ).toBe(true);
+      expect(
+        (await api().queryLifecycleTasks()).some((t) => t.type === 'supervise'),
+      ).toBe(true);
+      expect(
+        (await api('u-proc').queryLifecycleTasks()).some(
+          (t) => t.type === 'replacement',
+        ),
+      ).toBe(phase === 'quality');
+      expect(
+        (await api('u-proc').queryLifecycleTasks('notifications')).some(
+          (t) => t.type === 'integration_failed_notice',
+        ),
+      ).toBe(phase === 'connectivity');
+    },
+  );
+  it('第二阶段实际连通通过但计费人工核验失败：通知采购而不补资源', async () => {
+    await configured();
+    const e = await run('connectivity');
+    await change(
+      verify(e.execution, 'connectivity', 'failed', 'failed'),
+      'u-test',
+    );
+    expect(await api('u-proc').queryLifecycleTasks()).toHaveLength(0);
+    expect(
+      (await api('u-proc').queryLifecycleTasks('notifications')).map(
+        (t) => t.type,
+      ),
+    ).toEqual(['integration_failed_notice']);
+    expect(
+      (await api().queryLifecycleTasks()).some((t) => t.type === 'supervise'),
+    ).toBe(true);
+    expect((await record()).schedulable).toBe(false);
+  });
+  it('旧正常通过误发 supervise：读取只投影，授权同步后追溯取消且历史不删除', async () => {
+    await acquire();
+    await quality();
+    const v = c.lifecycle.read().verifications[0]!;
+    const task = legacyTask('supervise', v.id, 'u-ops');
+    const raw = memory.getItem(lifecycleStorageKey),
+      history = c.lifecycle.read().events;
+    expect(await api().queryLifecycleTasks()).toHaveLength(0);
+    expect(
+      (await api().queryLifecycleTasks('notifications')).map((t) => t.type),
+    ).toEqual(['quality_passed_notice']);
+    expect(memory.getItem(lifecycleStorageKey)).toBe(raw);
+    await api().retryLifecycleSignals('ch-1');
+    const saved = c.lifecycle.read();
+    expect(saved.tasks.find((t) => t.id === task.id)).toMatchObject({
+      type: 'supervise',
+      sourceId: v.id,
+      status: 'cancelled',
+      version: 2,
+    });
+    expect(saved.events.slice(0, history.length)).toEqual(history);
+    expect(
+      saved.events.filter((e) => e.sourceId === `compat-07d:${task.id}`),
+    ).toHaveLength(1);
+    await api().retryLifecycleSignals('ch-1');
+    expect(
+      c.lifecycle
+        .read()
+        .events.filter((e) => e.sourceId === `compat-07d:${task.id}`),
+    ).toHaveLength(1);
+    await expect(
+      api().changeLifecycleTask(task.id, 'reopen', '重开', key(), 2),
+    ).rejects.toThrow();
+  });
+  it('旧误发通过任务可直接从投影通知标记已读，兼容取消与已读一并保存', async () => {
+    await acquire();
+    await quality();
+    const v = c.lifecycle.read().verifications[0]!;
+    const old = legacyTask('supervise', v.id, 'u-ops');
+    const notice = (await api().queryLifecycleTasks('notifications'))[0]!;
+    await api().changeLifecycleTask(
+      notice.id,
+      'read',
+      '知悉旧通过',
+      key(),
+      notice.version,
+    );
+    expect(c.lifecycle.read().tasks.find((t) => t.id === old.id)!.status).toBe(
+      'cancelled',
+    );
+    expect(
+      (await api().queryLifecycleTasks('notifications'))[0]!.readAt,
+    ).toBeTruthy();
+  });
+  it.each(['execution', 'verification', 'group'] as const)(
+    '旧第二阶段 %s 来源误发采购任务可以安全取消并补抄送',
+    async (source) => {
+      await configured();
+      const e = await run(
+        'connectivity',
+        source === 'execution' ? 'failed' : 'passed',
+      );
+      if (source !== 'execution')
+        await change(
+          verify(e.execution, 'connectivity', 'failed', 'failed'),
+          'u-test',
+        );
+      const v = c.lifecycle.read().verifications.at(-1)!;
+      const sourceId =
+        source === 'execution'
+          ? `execution:${e.execution}`
+          : source === 'verification'
+            ? v.id
+            : 'replacement:d-1';
+      if (source === 'group') {
+        const before = c.lifecycle.read(),
+          next = structuredClone(before);
+        next.records[0]!.demandId = 'd-1';
+        next.records[0]!.version++;
+        c.lifecycle.write(before, next);
+      }
+      const task = legacyTask('replacement', sourceId, 'u-proc', {
+        demandId: source === 'group' ? 'd-1' : null,
+      });
+      await api().retryLifecycleSignals('ch-1');
+      expect(
+        c.lifecycle.read().tasks.find((t) => t.id === task.id)!.status,
+      ).toBe('cancelled');
+      expect(
+        await api('u-proc').queryLifecycleTasks('notifications'),
+      ).toHaveLength(1);
+    },
+  );
+  it('合法失败监督、质量替代和人工任务均保留', async () => {
+    await acquire();
+    const e = await run('quality', 'failed');
+    await quality();
+    const state = c.lifecycle.read();
+    const manual = legacyTask(
+      'replacement',
+      'manual:explicit-procurement',
+      'u-proc',
+    );
+    await api().retryLifecycleSignals('ch-1');
+    for (const t of state.tasks.filter((t) =>
+      ['supervise', 'replacement'].includes(t.type),
+    ))
+      expect(c.lifecycle.read().tasks.find((n) => n.id === t.id)).toEqual(t);
+    expect(
+      c.lifecycle.read().tasks.find((t) => t.id === manual.id)!.status,
+    ).toBe('open');
+    expect(c.read().executions.some((x) => x.id === e.execution)).toBe(true);
+  });
+  it.each(['read', 'completed'] as const)(
+    '旧错误但已%s任务不取消、不删除或重写处理记录',
+    async (status) => {
+      await acquire();
+      await quality();
+      const v = c.lifecycle.read().verifications[0]!;
+      const task = legacyTask(
+        'supervise',
+        v.id,
+        'u-ops',
+        status === 'read'
+          ? { readAt: new Date().toISOString() }
+          : {
+              status: 'completed',
+              completedAt: new Date().toISOString(),
+              completionActorId: 'u-ops',
+              completionReason: '历史已处理',
+            },
+      );
+      await api().retryLifecycleSignals('ch-1');
+      expect(c.lifecycle.read().tasks.find((t) => t.id === task.id)).toEqual(
+        task,
+      );
+    },
+  );
+  it.each(['quality', 'connectivity'] as const)(
+    '%s 失败节点紧跟对应主阶段；百分比与唯一有序节点集合一致',
+    async (phase) => {
+      if (phase === 'quality') await acquire();
+      else await configured();
+      await run(phase, 'failed');
+      const row = await record(),
+        ordered = row.orderedSteps,
+        at = ordered.findIndex(
+          (s) => s.kind === 'milestone' && s.phase === phase,
+        );
+      expect(ordered.slice(at + 1, at + 4).map((s) => s.kind)).toEqual([
+        'failure',
+        'feedback',
+        'retest',
+      ]);
+      expect(ordered[at + 1]!.state).toBe('failed');
+      expect(ordered[at + 2]!.state).toBe('waiting_feedback');
+      expect(ordered[at + 4]!.phase).toBe(
+        phase === 'quality' ? 'contract' : 'opening',
+      );
+      expect(ordered.filter((s) => s.kind === 'milestone')).toHaveLength(6);
+      expect(new Set(ordered.map((s) => s.id)).size).toBe(ordered.length);
+      expect(row.percent).toBe(
+        Math.floor(
+          (ordered.filter((s) => s.done).length / ordered.length) * 100,
+        ),
+      );
+      expect(row.percent).toBeLessThan(100);
+      expect(
+        (await api().queryLifecycle()).rows.find((r) => r.id === 'ch-1')!
+          .orderedSteps,
+      ).toEqual(ordered);
+      expect(
+        (await api('u-proc').getLifecycle('ch-1'))!.row.orderedSteps.every(
+          (s) => s.executionId === null,
+        ),
+      ).toBe(true);
+    },
+  );
+  it('第二阶段计费核验失败也插在接入节点之后，异常不是尾部无归属项', async () => {
+    await configured();
+    const e = await run('connectivity');
+    await change(
+      verify(e.execution, 'connectivity', 'failed', 'failed'),
+      'u-test',
+    );
+    const row = await record(),
+      at = row.orderedSteps.findIndex(
+        (s) => s.phase === 'connectivity' && s.kind === 'milestone',
+      );
+    expect(row.orderedSteps[at + 1]!.phase).toBe('connectivity');
+    expect(row.orderedSteps.at(-1)!.phase).toBe('opening');
+  });
+  it('复测再次失败只显示当前轮次；历史执行和步骤身份保持完整稳定', async () => {
+    await acquire();
+    const first = await run('quality', 'failed');
+    const before = await record();
+    const second = await run('quality', 'failed');
+    const after = await record();
+    expect(after.orderedSteps.length).toBe(before.orderedSteps.length);
+    expect(after.extra.every((s) => s.executionId === second.execution)).toBe(
+      true,
+    );
+    expect(c.read().executions.some((e) => e.id === first.execution)).toBe(
+      true,
+    );
+    expect((await record()).orderedSteps).toEqual(after.orderedSteps);
+  });
+  it('兼容修复不能借其他授权渠道触发跨域任务写入', async () => {
+    await acquire();
+    await acquire('ch-5');
+    const e = await run('quality', 'passed', 'ch-5');
+    await change(verify(e.execution), 'u-test', 'ch-5');
+    const v = c.lifecycle.read().verifications.at(-1)!;
+    const task = legacyTask('supervise', v.id, 'u-ops', {
+      channelId: 'ch-5',
+      objectId: 'ch-5',
+      relatedChannelIds: ['ch-5'],
+    });
+    await api('u-domestic', 'domestic').retryLifecycleSignals('ch-1');
+    expect(c.lifecycle.read().tasks.find((t) => t.id === task.id)).toEqual(
+      task,
+    );
+    await api().retryLifecycleSignals('ch-5');
+    expect(c.lifecycle.read().tasks.find((t) => t.id === task.id)!.status).toBe(
+      'cancelled',
+    );
+  });
+  it('历史按需求聚合任务只要包含合法质量失败就不误取消', async () => {
+    await configured();
+    const e = await run('connectivity');
+    await change(
+      verify(e.execution, 'connectivity', 'failed', 'failed'),
+      'u-test',
+    );
+    await run('quality', 'failed');
+    const before = c.lifecycle.read(),
+      next = structuredClone(before);
+    next.records[0]!.demandId = 'd-1';
+    next.records[0]!.version++;
+    c.lifecycle.write(before, next);
+    const task = legacyTask('replacement', 'replacement:d-1', 'u-proc', {
+      demandId: 'd-1',
+    });
+    await api().retryLifecycleSignals('ch-1');
+    expect(c.lifecycle.read().tasks.find((t) => t.id === task.id)).toEqual(
+      task,
+    );
+  });
+  it('原整改第二轮只显示现行轮次，第一轮提交与退回历史完整', async () => {
+    await acquire();
+    const e = await run('quality', 'failed');
+    const a = api();
+    const id = await a.createRemediation(
+      {
+        channelId: 'ch-1',
+        sourceType: 'failed_execution',
+        sourceExecutionId: e.execution,
+        category: 'quality',
+        verificationScope: 'quality',
+        targetReference: 'mock:quality-delivery',
+        sharedSummary: '模拟问题',
+        internalNotes: '模拟内部',
+        assigneeUserId: 'u-test',
+        dueAt: null,
+        splitReason: '',
+      },
+      key(),
+    );
+    await a.changeRemediation(id, 1, { action: 'start' }, '开始', key());
+    await api('u-test').changeRemediation(
+      id,
+      2,
+      {
+        action: 'submit',
+        sharedSummary: '第一轮反馈',
+        internalNotes: '待复测',
+        evidenceReference: 'mock:round-one',
+      },
+      '本轮提交',
+      key(),
+    );
+    const one = await record();
+    expect(
+      one.extra.find((s) => s.remediationId === id && s.kind === 'remediation'),
+    ).toMatchObject({ round: 1, state: 'waiting_retest', done: true });
+    await a.changeRemediation(id, 3, { action: 'return' }, '复核退回', key());
+    const two = await record();
+    expect(
+      two.extra.find((s) => s.remediationId === id && s.kind === 'remediation'),
+    ).toMatchObject({ round: 2, state: 'remediating', done: false });
+    expect(two.extra.length).toBe(one.extra.length);
+    expect(two.percent).toBeLessThan(one.percent);
+    expect(
+      c.remediations.read().submissions.filter((v) => v.remediationId === id),
+    ).toHaveLength(1);
+    expect(
+      c.remediations
+        .read()
+        .events.some((v) => v.remediationId === id && v.action === 'return'),
+    ).toBe(true);
+    expect(
+      two.orderedSteps.findIndex((s) => s.kind === 'remediation'),
+    ).toBeLessThan(two.orderedSteps.findIndex((s) => s.phase === 'contract'));
+  });
+  it('挂起仅改变当前工作呈现，不把历史失败或已完成反馈改成灰色未开始', () => {
+    const p = deliveryProgress(
+      [true, false, false, false, false, false],
+      [
+        {
+          label: '失败',
+          phase: 'quality',
+          kind: 'failure',
+          state: 'failed',
+          done: false,
+        },
+        {
+          label: '反馈完成',
+          phase: 'quality',
+          kind: 'feedback',
+          state: 'completed',
+          done: true,
+        },
+        {
+          label: '等待复测',
+          phase: 'quality',
+          kind: 'retest',
+          state: 'waiting_retest',
+          done: false,
+        },
+      ],
+      true,
+      false,
+      'paused',
+    );
+    expect(p.extra.map((s) => s.state)).toEqual([
+      'failed',
+      'completed',
+      'held',
+    ]);
+    expect(p.percent).toBe(Math.floor((2 / 9) * 100));
+    expect(p.schedulable).toBe(false);
   });
 });

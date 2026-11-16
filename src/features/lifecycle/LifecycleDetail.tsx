@@ -1,3 +1,4 @@
+import { progressStepItem } from './ProgressStep';
 import { remediationStatusLabels } from '../../domain/remediations';
 import { testResultLabels } from '../../domain/testing';
 import { useCallback, useState } from 'react';
@@ -368,10 +369,7 @@ export function LifecycleDetail({
       <Steps
         orientation="vertical"
         size="small"
-        items={[...row.steps, ...row.extra].map((v) => ({
-          title: v.label,
-          status: v.done ? 'finish' : 'wait',
-        }))}
+        items={row.orderedSteps.map(progressStepItem)}
       />
       <Descriptions
         column={{ xs: 1, sm: 2 }}

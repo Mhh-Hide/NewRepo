@@ -83,3 +83,47 @@
 - `tests/e2e/quotations.spec.ts`
 - `tests/e2e/sourcing.spec.ts`
 - `tests/unit/lifecycle.test.ts`
+
+## Stage 07D 验收补丁 — 2026-11-17（Asia/Shanghai）
+
+基线及范围：本地/远程分支 stage-07d-resource-lifecycle 均为 0949e127216ed0be50e8019b407a18d726c23528，工作区干净。保留 main 与 Stage07C；在原 checkout 修复三项 P1，不创建 worktree、不引入新阶段或生产连接。
+
+1. 正常质量通过：旧逻辑创建 contract + supervise；现改为 contract + quality_passed_notice。原执行 passed 尚需人工核验，只有核验通过才发运营通知。通知可已读/跳转，不是整改待办。
+2. 阶段失败：syncSignals / verify 统一调用 phaseFailureWork / notifyFailure。质量失败仍测试反馈、运营监督、采购替代并行；接入失败改为测试排障、运营监督和采购 integration_failed_notice。原失败执行再核验共用 execution 来源，不重复发；连通通过但计量/计费失败用人工核验来源。
+3. 有序进度：补齐阶段、稳定显示 ID、节点类型/状态、引用、轮次、完成时间与负责人，单次聚合输出 orderedSteps。异常插在所属测试节点之后；board Tooltip 与 detail Steps 共用 ProgressStep，显式颜色/图标/中文状态。旧字段保留兼容，百分比依同一集合；六步、99%上限、当前有效异常、历史交付和调度区分不变。
+
+历史：不删除任务、执行、整改、请求或审计。只识别标准自动来源且未处理误发；合法质量失败、人工来源、已处理/已完成、已重新指派及不明确的记录保留。需求聚合任务只要存在相关质量失败就不取消；跨域/不完整关联授权不得迁移。读取副本兼容投影不改盘；授权写入/通知已读/重试同步时单键保存取消及补通知，递增版本并追加 legacy-task-corrected，保留旧 ID/type/source/time，重试不重复追加，误发不得重开。schema仍v1，不清空旧数据。
+
+原有权限、业务动作授权、依赖、锁文件、测试超时/重试/worker设置均保持。唯一旧业务断言修正：原单测错误期待“第二阶段失败采购 replacement=true”，改为 replacement=false 且抄送通知存在，保留风险、复测恢复与开放断言。原737单元/76浏览器有效覆盖保留。
+
+补丁最终验证：2026-11-17（Asia/Shanghai）完整执行 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify`，退出码0。TypeScript、ESLint零警告、Prettier、Vitest 22文件/759测试（原737+新增22）、Playwright79测试（原76+新增3）、生产构建全部通过。生命周期专项61单元及10浏览器覆盖通过，其中补丁3浏览器另行复测通过。原测试超时、重试、worker设置和依赖锁文件未改；仅替换一条已确认错误业务断言，保留原执行风险/恢复/开放覆盖。构建大包提示保留，阈值未放宽。
+
+真实截图：更新 stage-07d-failed-remediation.png（质量异常插入），原总览两图随专项重新生成；新增 stage-07d-patch-quality-notice.png、stage-07d-patch-integration-failure-1440.png、stage-07d-patch-integration-failure-390.png。已实际查看，供本次验收。
+
+补丁文件清单：
+
+- `docs/BUSINESS_RULES.md`
+- `docs/UI_GUIDELINES.md`
+- `harness/build-log.md`
+- `harness/build/screenshots/stage-07d-failed-remediation.png`
+- `harness/build/screenshots/stage-07d-lifecycle-1440.png`
+- `harness/build/screenshots/stage-07d-lifecycle-390.png`
+- `harness/build/screenshots/stage-07d-patch-integration-failure-1440.png`
+- `harness/build/screenshots/stage-07d-patch-integration-failure-390.png`
+- `harness/build/screenshots/stage-07d-patch-quality-notice.png`
+- `harness/build/stage-07d.md`
+- `harness/context/stage-07d.md`
+- `src/domain/lifecycle.ts`
+- `src/features/lifecycle/LifecycleBoard.tsx`
+- `src/features/lifecycle/LifecycleDetail.tsx`
+- `src/features/lifecycle/ProgressStep.tsx`
+- `src/features/lifecycle/WorkInbox.tsx`
+- `src/mocks/lifecycle-api.ts`
+- `src/mocks/lifecycle-repository.ts`
+- `src/services/lifecycle-types.ts`
+- `tests/e2e/lifecycle.spec.ts`
+- `tests/unit/lifecycle.test.ts`
+
+限制：仍为 Mock；无真实 Key、账号、API、计费或企业微信/邮件；LocalStorage 无跨键事务或跨窗口 CAS。已处理或来源不明确的历史记录只保留，不自动推断其应取消；旧客户端不保证遵守新规则。不部署、不开始 Stage08。
+
+补充截图用例2项通过：质量整改改用1440×1100视口展示完整节点，通知图直接捕获通知卡片；其余业务断言保留。截图专项发现入场过渡帧，补充抽屉边界断言并在截图时结束有限动画；采用真实浏览器捕获，没有用绘图替代。清理 Steps 新增状态描述的弃用属性，使用 content。质量失败异常步骤位于质量节点后；第二阶段失败位于接入节点后；桌面总览 Tooltip 与详情实际DOM顺序比较通过。质量整改、通过通知、1440/390接入异常图已视觉查看；原总览两图经原截图用例重新生成；旧06B/07A/07B/07C测试重生成图片恢复基线，避免无关二进制变更。

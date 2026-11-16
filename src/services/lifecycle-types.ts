@@ -1,5 +1,6 @@
 import type {
   DeliveryRecord,
+  LifecycleStep,
   Phase,
   ContractStage,
   DispatchState,
@@ -113,8 +114,9 @@ export interface LifecycleRow {
   dueAt: string | null;
   overdue: boolean;
   abnormal: boolean;
-  steps: { label: string; done: boolean }[];
-  extra: { label: string; done: boolean }[];
+  steps: LifecycleStep[];
+  extra: LifecycleStep[];
+  orderedSteps: LifecycleStep[];
   promised: {
     ttftMs: number | null;
     rpm: number | null;
@@ -184,7 +186,14 @@ export interface LifecycleApi {
     demands: { id: string; label: string }[];
   }>;
   queryLifecycleTasks(
-    view?: 'mine' | 'mentions' | 'sent' | 'waiting' | 'completed' | 'overdue',
+    view?:
+      | 'mine'
+      | 'mentions'
+      | 'notifications'
+      | 'sent'
+      | 'waiting'
+      | 'completed'
+      | 'overdue',
   ): Promise<LifecycleTask[]>;
   changeLifecycleTask(
     id: string,
