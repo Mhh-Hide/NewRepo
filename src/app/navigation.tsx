@@ -166,9 +166,9 @@ export const navigation: readonly NavigationItem[] = [
     group: '系统',
     icon: <UserSwitchOutlined />,
     permission: null,
-    available: false,
-    stage: '02 演示入口',
-    description: '请通过顶部演示身份切换查看不同授权视角；不是真实登录。',
+    available: true,
+    stage: '07C',
+    description: '查看角色职责、权限与范围，切换统一演示身份并体验已开放模块。',
   },
   {
     id: 'about',

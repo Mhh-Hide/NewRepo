@@ -1,0 +1,73 @@
+.role-workspace {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.role-overview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+.role-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  border: 1px solid #dbe4ed;
+  border-radius: 10px;
+  padding: 14px;
+  background: white;
+  color: #243a54;
+  cursor: pointer;
+  font: inherit;
+  min-width: 0;
+}
+.role-card.selected {
+  border-color: #2763a1;
+  background: #edf5ff;
+}
+.role-card:focus-visible {
+  outline: 3px solid #2763a1;
+  outline-offset: 2px;
+}
+.role-card span,
+.role-card small,
+.role-field-grid small {
+  color: #617186;
+  font-size: 12px;
+}
+.role-field-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.role-field-grid > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid #edf0f3;
+  border-radius: 8px;
+}
+.role-note {
+  margin-top: 14px;
+}
+.role-workspace .ant-select {
+  min-width: 180px;
+  max-width: 100%;
+}
+@media (max-width: 1000px) {
+  .role-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .role-overview,
+  .role-field-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .role-workspace .ant-card-body {
+    padding: 14px;
+  }
+}

@@ -160,3 +160,7 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify
 ## Stage 07B 渠道级技术整改
 
 启动后打开 `/remediations`。人工登记、分配、跟进、多轮提交、关联 Stage 07A 复测与运营关闭；仅 Mock。正常关闭要求本轮提交之后开始的适用复测、现行运营采纳及明确核验；例外结束不代表技术验证成功。详情见 `harness/build/stage-07b.md` 与 `harness/context/stage-07b.md`。验证仍使用原 verify 命令。完成后停止，不进入 Stage 08。
+
+## Stage 07C 角色视角与权限展示
+
+正式开放 `/system/roles`：八类角色总览、角色对应多个演示身份、中文权限矩阵、字段限制、统一身份/业务域切换与已开放模块体验。页面不读取其他身份业务记录，切换复用顶部同一机制，不是真实登录。交付见 `harness/build/stage-07c.md`；不开展 Stage 08 或自动部署。

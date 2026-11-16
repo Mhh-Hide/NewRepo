@@ -1,3 +1,4 @@
+import { RolePerspectivesRoute } from './RolePerspectivesRoute';
 import { RemediationRoute } from './RemediationRoute';
 import { TestingRoute } from './TestingRoute';
 import { BulkQuotationRoute } from './BulkQuotationRoute';
@@ -25,6 +26,7 @@ export const router = createBrowserRouter([
     children: [
       { path: '/', element: <Navigate to="/dashboard" replace /> },
       { path: '/dashboard', element: <DashboardRoute /> },
+      { path: '/system/roles', element: <RolePerspectivesRoute /> },
       {
         path: '/models',
         element: <ModelPoolRoute />,
@@ -64,6 +66,7 @@ export const router = createBrowserRouter([
       ...navigation
         .filter(
           (n) =>
+            n.id !== 'roles' &&
             n.id !== 'remediations' &&
             n.id !== 'tests' &&
             n.id !== 'dashboard' &&

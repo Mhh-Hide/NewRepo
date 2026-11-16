@@ -275,3 +275,17 @@ Dashboard：需求来自当前 SourcingRepository，缺口直接复用 querySour
 实际完整 verify 退出码 0：严格类型、ESLint、Prettier、Vitest 19 文件 / 671 测试、Playwright 63 测试、生产构建通过。新增 40 单元和 7 浏览器，原 631/56 覆盖保留；仅迁移 app-shell 中已过时整改占位断言，保留导航/刷新/拒绝及治理占位检查。1440/390 实际 Chromium 截图已查看，无整页横向溢出或 pageerror。保留原约 1047 kB 共享块提示；旧 06B/07A 测试重生成截图在交付前恢复，避免无关二进制改动。
 
 完整修改清单和约束见 build/stage-07b.md；交接见 context/stage-07b.md。localStorage 不是跨窗口 CAS 或两键事务，Mock 非后端安全，不合作旧客户端限制仍在。只普通提交推送 Stage 07B，最终 SHA 见本提交和交付消息，停止等待验收，不开始 Stage 08。
+
+## Stage 07C — 2026-11-16（Asia/Shanghai）
+
+基线核验：初始工作区干净，本地与实际远程 Stage 07B 均为 713bea2ae5cb6d427096127f0583a1cee9827654，目标 Stage 07C 不存在；从指定 SHA 在原 checkout 创建 stage-07c-role-perspectives，不创建 worktree，不修改或合并 main。先说明页面、权限数据来源、统一状态切换和测试方案。
+
+开放 /system/roles：八角色及实际多身份数量、当前身份与域、角色/身份预览、中文模块权限矩阵、字段/审计/内部详情限制、单域/双域控制及真实体验入口。预览只读取公开 DemoProfile 元数据，不创建他人 Session 或查询业务 API；can()/canSeeField()/navigation 决定展示，展示映射不参与授权。未开放与无权限、旧基础读取与新管理路由分别说明，不宣称销售三档价格或 Stage 08 已上线。
+
+AppShell 保持原 Outlet DemoSession 契约，DemoControlsContext 只暴露与 Topbar 共用的切换函数；新 Session 验证成功后撤销旧写能力，一次更新 selection/session，保留原 sessionStorage 键、恢复及按身份/域卸载旧页的机制。页面预览与实际身份明确区分，体验先切换再导航。页脚更新为 07C，无业务状态机、存储 schema、权限策略、Adapter、依赖或锁文件变更。
+
+新增 27 个单元与 6 个浏览器专项，覆盖实际策略/导航一致、摘要与只读、八角色多身份、字段限制、旧写 Session 撤销、单域拒绝扩权、无效切换保留有效会话、实际切换/体验/返回、顶部同步、空工作台与刷新、键盘、1440/390 无整页溢出及无 pageerror。专项均通过。首轮新增浏览器用例因测试模拟用户名称不准确、菜单图标参与可访问名称及两个身份选择器定位歧义而失败，校正实际名称和控件可访问名称后通过，未提高超时或重试。
+
+实际完整执行原 verify 命令退出 0：严格 TypeScript、ESLint 零警告、Prettier、Vitest 21 文件 / 698 测试、Playwright 69 测试、生产构建全部通过；原大包警告保留。真实截图见 build/screenshots/stage-07c-roles-1440.png 和 stage-07c-roles-390.png，已查看；旧阶段测试重生成截图交付前恢复，避免无关二进制变更。未发现必须迁移的旧角色页占位断言，保留原导航、刷新、无授权及治理占位覆盖。
+
+完整修改清单、Mock 限制和交接见 build/stage-07c.md、context/stage-07c.md。只提交并普通推送 Stage 07C，最终 SHA 见本提交与交付消息。完成后停止等待验收，不开始 Stage 08，不自动部署。

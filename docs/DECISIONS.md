@@ -137,3 +137,9 @@
 从验收 SHA d67ad443be25563a38c2240d8b31cb46915f37dc 创建 stage-07b-remediation-management。整改独立 v1，ChannelRepository 保持 v2；复测经原 TestingApi 保存，再人工关联整改，无跨 Repository 补偿删除。
 
 结构化验证范围采用 testType + targetReference 与当前 basis/targetVersion 校验，并要求人工适用性说明；不做自由文本语义推断。关闭预览绑定整改聚合及测试聚合快照，确认重新校验，不能宣称两键原子 CAS。幂等按 actor/requestId/operation/规范化 payload 指纹；重放先授权。
+
+## Stage 07C 角色视角与权限展示
+
+新增轻量 DemoControlsContext，只暴露 AppShell 已有 changeUser/changeDomain 回调，保持 Outlet 的 DemoSession 契约不变。统一 selectDemoIdentity 由真实 Profile 推导单域/全部域；replaceDemoSession 先验证新会话，再撤销旧写能力，AppShell 一次更新 selection/session 并继续使用原 maas-demo-selection sessionStorage 键。未新增身份 Storage、Session 单例或另一套 RBAC。
+
+角色预览模型只把现行 can()/canSeeField() 与 navigation 元数据转换为中文展示，不能作为服务授权依据。业务页继续使用原 Adapter 和服务层规则。

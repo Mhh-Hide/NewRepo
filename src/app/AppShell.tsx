@@ -1,3 +1,8 @@
+import { DemoControlsContext } from '../services/demo-controls';
+import {
+  selectDemoIdentity,
+  replaceDemoSession,
+} from '../services/demo-selection';
 import { useState } from 'react';
 import { Alert, Drawer, Layout, Tag } from 'antd';
 import { Outlet } from 'react-router-dom';
@@ -44,11 +49,8 @@ export function AppShell() {
     };
   });
   const choose = (next: Selection) => {
-    session.revokeWrites();
-    setSelection({
-      selection: next,
-      session: createDemoSession(next.id, next.domain),
-    });
+    const replacement = replaceDemoSession(session, next);
+    setSelection({ selection: next, session: replacement });
     try {
       sessionStorage.setItem(selectionKey, JSON.stringify(next));
     } catch {
@@ -58,13 +60,9 @@ export function AppShell() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobile, setMobile] = useState(false);
   const [drawer, setDrawer] = useState(false);
-  const changeUser = (id: string) => {
-    const p = profiles.find((p) => p.user.id === id);
-    choose({
-      id,
-      domain: p?.domains.length === 1 ? p.domains[0]! : 'all',
-    });
-  };
+  const changeUser = (id: string) => choose(selectDemoIdentity(id));
+  const changeDomain = (domain: DomainSelection) =>
+    choose({ ...selection, domain });
   const sidebar = (
     <>
       <div className="brand">
@@ -121,7 +119,7 @@ export function AppShell() {
             mobile ? setDrawer((v) => !v) : setCollapsed((v) => !v)
           }
           onUser={changeUser}
-          onDomain={(domain) => choose({ ...selection, domain })}
+          onDomain={changeDomain}
         />
         <div className="environment-banner">
           <Alert
@@ -132,13 +130,15 @@ export function AppShell() {
           />
         </div>
         <Layout.Content className="page-content">
-          <SessionContent
-            key={`${selection.id}:${selection.domain}`}
-            session={session}
-          />
+          <DemoControlsContext.Provider value={{ changeUser, changeDomain }}>
+            <SessionContent
+              key={`${selection.id}:${selection.domain}`}
+              session={session}
+            />
+          </DemoControlsContext.Provider>
         </Layout.Content>
         <footer className="app-footer">
-          MaaS Resource Lifecycle Management · Stage 07A · Mock Demo
+          MaaS Resource Lifecycle Management · Stage 07C · Mock Demo
         </footer>
       </Layout>
     </Layout>
