@@ -1,3 +1,4 @@
+import { createLifecycleApi } from './lifecycle-api';
 import { createRemediationApi } from './remediation-api';
 import {
   type RemediationRepository,
@@ -167,15 +168,35 @@ export function createMockAdapter(
     channels,
     writeActive,
   );
+  const testingApi = createTestingApi(
+    ctx,
+    channelRepo,
+    repository,
+    channels,
+    writeActive,
+  );
+  const lifecycle = createLifecycleApi(
+    ctx,
+    channelRepo,
+    repository,
+    sourcingRepo,
+    quoteRepo,
+    channels,
+    writeActive,
+    businessDomain,
+  );
+  const remediationApi = createRemediationApi(
+    ctx,
+    remediationRepo,
+    channelRepo,
+    channels,
+    writeActive,
+  );
+
   const base: Omit<ApiAdapter, keyof ResourceApi> = {
-    ...createRemediationApi(
-      ctx,
-      remediationRepo,
-      channelRepo,
-      channels,
-      writeActive,
-    ),
-    ...createTestingApi(ctx, channelRepo, repository, channels, writeActive),
+    ...lifecycle.api,
+    ...remediationApi,
+    ...testingApi,
     ...supplierApi,
     ...channelApi,
     ...quotationApi,
@@ -192,6 +213,33 @@ export function createMockAdapter(
     ),
     ...createProcurementAnalyticsApi(ctx, writeActive, quotationApi),
     ...sourcingApi,
+    async createRemediation(input, key) {
+      const id = await remediationApi.createRemediation(input, key);
+      lifecycle.syncSafety(input.channelId);
+      return id;
+    },
+    async changeRemediation(id, version, input, reason, key) {
+      await remediationApi.changeRemediation(id, version, input, reason, key);
+      if (input.action === 'submit') lifecycle.notifyRemediation(id);
+      const item = remediationRepo.read().records.find((r) => r.id === id);
+      if (item) lifecycle.syncSafety(item.channelId);
+    },
+    async finishTestExecution(id, version, executionId, input, key) {
+      await testingApi.finishTestExecution(
+        id,
+        version,
+        executionId,
+        input,
+        key,
+      );
+      const task = channelRepo.read().tasks.find((t) => t.id === id)!;
+      lifecycle.syncSignals(task.channelId);
+    },
+    async createSourcingDemand(input, key) {
+      const d = await sourcingApi.createSourcingDemand(input, key);
+      lifecycle.notifyDemand(d.id, ctx!.user.id);
+      return d;
+    },
     async resetChannelDemo(confirmed) {
       if (
         !ctx ||
@@ -272,7 +320,22 @@ export function createMockAdapter(
           'VALIDATION',
           '寻源需求被批次、报价或询价引用，请先独立确认重置报价演示数据，再重置寻源。',
         );
-      return sourcingApi.resetSourcingDemo(confirmed);
+      const life = channelRepo.lifecycle.read();
+      if (
+        life.records.some(
+          (r) => r.demandId && !data.demands.some((d) => d.id === r.demandId),
+        ) ||
+        life.goals.some((g) => !data.demands.some((d) => d.id === g.demandId))
+      )
+        throw new SupplierError(
+          'VALIDATION',
+          '生命周期合同/资源保障目标引用了新需求，拒绝重置寻源。',
+        );
+      await sourcingApi.resetSourcingDemo(confirmed);
+      lifecycle.archiveDemands(
+        sourcingRepo.read().demands.map((d) => d.id),
+        ctx!.user.id,
+      );
     },
     async resetSupplierDemo(confirmed) {
       if (

@@ -1,4 +1,5 @@
-import { useCallback, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { lazy, Suspense, useCallback, useState } from 'react';
 import { Alert, Button, Card, Input, Modal, Select, Space, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { Link, useNavigate, useOutletContext } from 'react-router-dom';
@@ -23,6 +24,9 @@ import {
 import { StatusBadge } from '../../components/StatusBadge';
 import { formatCapacity } from './format-capacity';
 import { ChannelEditor } from './ChannelEditor';
+const LifecycleBoard = lazy(async () => ({
+  default: (await import('../lifecycle/LifecycleBoard')).LifecycleBoard,
+}));
 const statusLabels = {
   channelType: channelTypeLabels,
   resourceStatus: { enabled: '启用', disabled: '停用' },
@@ -31,7 +35,47 @@ const statusLabels = {
   integrationStatus: integrationStatusLabels,
   availabilityStatus: availabilityStatusLabels,
 };
-export default function ChannelListPage() {
+export default function ChannelWorkspace() {
+  const session = useOutletContext<DemoSession>();
+  const [params, setParams] = useSearchParams();
+  const management =
+    params.get('view') === 'management' || !session.permits('lifecycle:read');
+  return (
+    <>
+      {session.permits('lifecycle:read') && (
+        <Space wrap style={{ marginBottom: 16 }}>
+          <Button
+            type={management ? 'default' : 'primary'}
+            onClick={() => setParams({})}
+          >
+            资源进度视图
+          </Button>
+          <Button
+            type={management ? 'primary' : 'default'}
+            onClick={() => setParams({ view: 'management' })}
+          >
+            渠道管理视图
+          </Button>
+        </Space>
+      )}
+      {management ? (
+        <ChannelListPage />
+      ) : (
+        <>
+          <PageHeader
+            title="渠道管理"
+            description="以资源交付进度为中心，查看真实 Mock 节点、责任与卡点。"
+            group="资源管理"
+          />
+          <Suspense fallback={<LoadingState />}>
+            <LifecycleBoard session={session} />
+          </Suspense>
+        </>
+      )}
+    </>
+  );
+}
+function ChannelListPage() {
   const session = useOutletContext<DemoSession>();
   const navigate = useNavigate();
   const [filters, setFilters] = useState<Record<string, string>>({});

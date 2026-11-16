@@ -1,3 +1,4 @@
+import { LifecycleRepository } from './lifecycle-repository';
 import type {
   ManagedRemediation,
   RemediationState,
@@ -436,6 +437,15 @@ export class RemediationRepository {
     }
   }
   reset() {
+    if (
+      new LifecycleRepository(this.storage)
+        .read()
+        .events.some((e) => e.remediationId)
+    )
+      throw new SupplierError(
+        'VALIDATION',
+        '生命周期已引用整改轮次，拒绝重置；交付和测试历史保留。',
+      );
     try {
       this.storage.setItem(
         remediationStorageKey,

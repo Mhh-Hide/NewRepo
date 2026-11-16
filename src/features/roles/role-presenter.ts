@@ -55,6 +55,11 @@ const modules: readonly ModuleDisplay[] = [
     manages: 'channel:create',
     operations: [
       { action: 'channel:create', label: '新增渠道' },
+      { action: 'resource:acquire', label: '维护采购资源交接' },
+      { action: 'lifecycle:verify', label: '核验两阶段技术交付' },
+      { action: 'contract:update', label: '登记采购合同进度' },
+      { action: 'production-config:update', label: '记录生产配置' },
+      { action: 'lifecycle:open', label: '确认对客开放' },
       { action: 'channel:update', label: '维护能力' },
       { action: 'channel:toggle', label: '独立启停' },
       { action: 'channel:bind-op', label: '模拟 OP 绑定' },

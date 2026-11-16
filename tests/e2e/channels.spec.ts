@@ -43,7 +43,7 @@ async function bind(page: Page, op: string) {
 test('operations creates, edits, persists, navigates and synchronizes all resource views', async ({
   page,
 }) => {
-  await page.goto('/channels');
+  await page.goto('/channels?view=management');
   await expect(
     page.getByRole('heading', { name: '渠道管理', exact: true }),
   ).toBeVisible();
@@ -90,7 +90,7 @@ test('operations creates, edits, persists, navigates and synchronizes all resour
   await expect(
     page.getByRole('row').filter({ hasText: '虚构渠道浏览器验收' }),
   ).toContainText('987,654');
-  await page.goto('/channels');
+  await page.goto('/channels?view=management');
   await expect(page.getByTestId('metric-channel-total')).toContainText('8');
   await page
     .getByRole('textbox', { name: '渠道名称或匿名代号' })
@@ -106,7 +106,7 @@ test('operations creates, edits, persists, navigates and synchronizes all resour
 test('OP binding previews, persists independently and reports global duplicate conflict', async ({
   page,
 }) => {
-  await page.goto('/channels');
+  await page.goto('/channels?view=management');
   await create(page, '虚构绑定渠道一');
   const first = page.url();
   await bind(page, 'MOCK-browser-unique');
@@ -123,7 +123,7 @@ test('OP binding previews, persists independently and reports global duplicate c
   await expect(
     page.locator('.resource-detail-grid').getByText('未开放', { exact: true }),
   ).toBeVisible();
-  await page.goto('/channels');
+  await page.goto('/channels?view=management');
   await create(page, '虚构绑定渠道二');
   await bind(page, 'MOCK-browser-unique');
   await expect(page.getByRole('dialog')).toContainText('OP 渠道 ID 冲突');
@@ -161,7 +161,7 @@ test('switching roles removes writes, supplier identity and OP details', async (
     0,
   );
   await expect(page.getByText('OP 渠道 ID', { exact: true })).toHaveCount(0);
-  await page.goto('/channels');
+  await page.goto('/channels?view=management');
   await expect(page.getByRole('button', { name: '新增渠道' })).toHaveCount(0);
   await expect(
     page.getByRole('combobox', { name: '供应商', exact: true }),
@@ -178,7 +178,7 @@ test('1440, 1280 and 390px channel forms and detail remain usable', async ({
 }) => {
   for (const width of [1440, 1280, 390]) {
     await page.setViewportSize({ width, height: 1000 });
-    await page.goto('/channels');
+    await page.goto('/channels?view=management');
     await expect(
       page.getByRole('heading', { name: '渠道管理', exact: true }),
     ).toBeVisible();
@@ -200,9 +200,9 @@ test('1440, 1280 and 390px channel forms and detail remain usable', async ({
 test('confirmed channel reset preserves suppliers; incompatible storage has explicit recovery', async ({
   page,
 }) => {
-  await page.goto('/channels');
+  await page.goto('/channels?view=management');
   await create(page);
-  await page.goto('/channels');
+  await page.goto('/channels?view=management');
   await page
     .getByRole('button', { name: '重置渠道演示数据', exact: true })
     .click();

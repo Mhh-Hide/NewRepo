@@ -1,3 +1,4 @@
+import { SupplierCommunication } from '../lifecycle/SupplierCommunication';
 import { RemediationSummaryPanel } from '../remediations/RemediationSummaryPanel';
 import { useCallback, useState } from 'react';
 import {
@@ -156,6 +157,7 @@ export function SupplierDetailPage({
       : '';
   return (
     <>
+      <SupplierCommunication session={session} supplierId={s.id} />
       <RemediationSummaryPanel session={session} supplierId={s.id} />
       {header}
       {(notice || stateNotice) && (

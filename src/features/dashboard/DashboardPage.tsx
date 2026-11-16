@@ -1,3 +1,4 @@
+import { WorkInbox } from '../lifecycle/WorkInbox';
 import { RemediationSummaryPanel } from '../remediations/RemediationSummaryPanel';
 import { TestingMetrics } from '../testing/TestSummaryPanel';
 import { Button, Card, Table, Tag, Typography } from 'antd';
@@ -68,6 +69,7 @@ export function DashboardPage({ session }: { session: DemoSession }) {
           <StatCard key={metric.id} metric={metric} />
         ))}
       </section>
+      <WorkInbox session={session} />
       <RemediationSummaryPanel session={session} />
       {d.testing && <TestingMetrics stats={d.testing} />}
       <div className="dashboard-middle">

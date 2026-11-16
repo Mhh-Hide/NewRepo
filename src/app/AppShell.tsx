@@ -138,7 +138,7 @@ export function AppShell() {
           </DemoControlsContext.Provider>
         </Layout.Content>
         <footer className="app-footer">
-          MaaS Resource Lifecycle Management · Stage 07C · Mock Demo
+          MaaS Resource Lifecycle Management · Stage 07D · Mock Demo
         </footer>
       </Layout>
     </Layout>

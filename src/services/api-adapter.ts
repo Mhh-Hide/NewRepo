@@ -1,3 +1,4 @@
+import type { LifecycleApi } from './lifecycle-types';
 import type { RemediationApi } from './remediation-types';
 import type { TestingApi } from './testing-types';
 import type { BulkQuotationApi } from './bulk-quotation-types';
@@ -43,7 +44,8 @@ export interface ApiAdapter
     ProcurementAnalyticsApi,
     BulkQuotationApi,
     TestingApi,
-    RemediationApi {
+    RemediationApi,
+    LifecycleApi {
   getDemoInfo(): Promise<DemoInfo>;
   listVendors(): Promise<readonly ModelVendor[]>;
   listModels(): Promise<readonly Model[]>;

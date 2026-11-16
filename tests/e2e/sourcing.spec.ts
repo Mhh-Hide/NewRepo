@@ -281,7 +281,7 @@ test('confirmed sourcing reset recovers incompatible data and preserves current 
   );
   await page.getByRole('button', { name: '确认重置寻源', exact: true }).click();
   await expect(page.getByTestId('metric-sourcing-total')).toContainText('2');
-  await page.goto('/channels');
+  await page.goto('/channels?view=management');
   await expect(page.getByTestId('metric-channel-total')).toContainText('7');
   await page.evaluate(() =>
     localStorage.setItem('maas-sourcing-demo-v1', '{"schemaVersion":99}'),

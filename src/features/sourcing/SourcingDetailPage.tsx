@@ -1,3 +1,4 @@
+import { ResourceGoal } from '../lifecycle/ResourceGoal';
 import { TestSummaryPanel } from '../testing/TestSummaryPanel';
 import { RelatedQuotes } from '../quotes/RelatedQuotes';
 import { useCallback, useState } from 'react';
@@ -442,6 +443,7 @@ export default function SourcingDetailPage() {
           )}
         </Card>
       ))}
+      <ResourceGoal session={session} demandId={d.demand.id} />
       {d.items.map((item) => (
         <TestSummaryPanel
           key={item.item.id}

@@ -1,4 +1,8 @@
 import {
+  LifecycleRepository,
+  assertLifecycleReferences,
+} from './lifecycle-repository';
+import {
   RemediationRepository,
   assertRemediationReferences,
   projectLegacyRemediation,
@@ -161,8 +165,10 @@ function seed(): ChannelState {
 }
 export class ChannelRepository {
   readonly remediations: RemediationRepository;
+  readonly lifecycle: LifecycleRepository;
   constructor(private storage: StoragePort) {
     this.remediations = new RemediationRepository(storage);
+    this.lifecycle = new LifecycleRepository(storage);
   }
   read(): ChannelState {
     try {
@@ -310,6 +316,7 @@ export class ChannelRepository {
   }
   reset(suppliers: SupplierRepository) {
     const next = seed();
+    assertLifecycleReferences(this.lifecycle.read(), next);
     assertRemediationReferences(this.remediations.read(), next);
     this.validate(next, suppliers);
     // Explicit confirmed reset is also the recovery path for incompatible/corrupt channel data.

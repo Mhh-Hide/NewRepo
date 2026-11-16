@@ -18,6 +18,18 @@ const technical: readonly PermissionAction[] = [
 ];
 const actions: Record<Role, readonly PermissionAction[]> = {
   ProductOperations: [
+    'lifecycle:read',
+    'lifecycle:manage',
+    'lifecycle:open',
+    'lifecycle:customer-contract',
+    'contract:read',
+    'production-config:read',
+    'production-config:update',
+    'task:read',
+    'task:complete',
+    'notification:read',
+    'notification:mention',
+
     'remediation:summary',
     'remediation:detail',
     'remediation:create',
@@ -88,6 +100,15 @@ const actions: Record<Role, readonly PermissionAction[]> = {
     'incident:record',
   ],
   Procurement: [
+    'lifecycle:read',
+    'resource:acquire',
+    'contract:read',
+    'contract:update',
+    'task:read',
+    'task:complete',
+    'notification:read',
+    'notification:mention',
+
     'remediation:summary',
     'test:summary',
     'bulk:read',
@@ -120,6 +141,14 @@ const actions: Record<Role, readonly PermissionAction[]> = {
     'incident:record',
   ],
   Testing: [
+    'lifecycle:read',
+    'lifecycle:verify',
+    'lifecycle:feedback',
+    'task:read',
+    'task:complete',
+    'notification:read',
+    'notification:mention',
+
     'remediation:summary',
     'remediation:detail',
     'remediation:create',
@@ -141,6 +170,10 @@ const actions: Record<Role, readonly PermissionAction[]> = {
     'test:history',
   ],
   OperationsSupport: [
+    'lifecycle:read',
+    'task:read',
+    'notification:read',
+
     'remediation:summary',
     'test:summary',
     ...technical,

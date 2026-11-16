@@ -36,6 +36,21 @@ export interface AccessContext {
   readonly customerIds: readonly string[];
 }
 export type PermissionAction =
+  | 'lifecycle:read'
+  | 'lifecycle:manage'
+  | 'lifecycle:verify'
+  | 'lifecycle:feedback'
+  | 'lifecycle:open'
+  | 'lifecycle:customer-contract'
+  | 'resource:acquire'
+  | 'contract:read'
+  | 'contract:update'
+  | 'production-config:read'
+  | 'production-config:update'
+  | 'task:read'
+  | 'task:complete'
+  | 'notification:read'
+  | 'notification:mention'
   | 'bulk:read'
   | 'bulk:create'
   | 'bulk:update'

@@ -164,3 +164,11 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify
 ## Stage 07C 角色视角与权限展示
 
 正式开放 `/system/roles`：八类角色总览、角色对应多个演示身份、中文权限矩阵、字段限制、统一身份/业务域切换与已开放模块体验。页面不读取其他身份业务记录，切换复用顶部同一机制，不是真实登录。交付见 `harness/build/stage-07c.md`；不开展 Stage 08 或自动部署。
+
+## Stage 07D 渠道资源交付
+
+`/channels` 默认资源进度视图：六个交付里程碑、动态整改/复测、负责人和卡点、按授权域的筛选与统计。原管理表单保留在同页“渠道管理视图”（`?view=management`）；旧渠道显示待补充核验，不自动补合同或生产配置。移动端使用逐渠道卡片，桌面保留可横向滚动的完整字段表格。
+
+采购确认获取并交接测试凭据安全引用 → 测试执行及第一阶段人工核验 → 采购合同 → 运营生产配置 → 测试连通性、计量与计费人工核验 → 运营确认开放。阶段核验引用原 `/tests` 执行；整改跟进/提交/复测仍在 `/remediations`。工作台和渠道页有本人任务、通知、已发送及等待反馈入口。生产配置只接受 `mock:` 引用；无真实 Key、邮件、企业微信、API、计费或生产调度。
+
+第一阶段资源保障目标为至少一条质量合格渠道；运营显式登记客户合同后，目标变为至少三条当前可调度渠道，独立展示供应商数，原寻源三供应商规则保留。交付与限制见 [交付记录](harness/build/stage-07d.md)、[交接](harness/context/stage-07d.md)。验证继续用 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run verify`。完成本阶段后停止，不自动部署或开发 Stage 08。

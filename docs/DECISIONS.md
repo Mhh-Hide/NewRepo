@@ -143,3 +143,11 @@
 新增轻量 DemoControlsContext，只暴露 AppShell 已有 changeUser/changeDomain 回调，保持 Outlet 的 DemoSession 契约不变。统一 selectDemoIdentity 由真实 Profile 推导单域/全部域；replaceDemoSession 先验证新会话，再撤销旧写能力，AppShell 一次更新 selection/session 并继续使用原 maas-demo-selection sessionStorage 键。未新增身份 Storage、Session 单例或另一套 RBAC。
 
 角色预览模型只把现行 can()/canSeeField() 与 navigation 元数据转换为中文展示，不能作为服务授权依据。业务页继续使用原 Adapter 和服务层规则。
+
+## Stage 07D：交付聚合与原模块引用
+
+新增 `maas-lifecycle-demo-v1`，由同一 storage 的 LifecycleRepository 管理 DeliveryRecord、PhaseVerification（仅执行引用及新增实测/人工结论）、任务、事件、评论、客户目标与沟通说明。Channel/Testing/Remediation/Sourcing/Quote 继续为原业务真值，不复制执行结果、整改状态或价格。查询按原快照投影交付行；生产配置门槛不借用旧 integrationState 伪造完成。
+
+交付聚合单键候选校验、revision/指纹冲突、版本与追加历史保护后保存；稳定来源任务与幂等请求一起提交。原执行完成、整改提交及需求创建的 Adapter 包装在原业务成功后同步信号。原操作保存成功而通知存储失败时保留原事实并明确报错，可重试同步；不宣称跨 Repository 原子事务。显式资源/调度写入涉及 Channel 与交付两键，也不具有跨键事务。引用保护阻止重置仍被交付引用的渠道/执行/整改/动态需求，孤立需求通知归档不删除历史。
+
+动态进度来自六步与当前有效异常工作，不保存另一份固定百分比；反复失败历史保留，当前同阶段循环不无限累积。供应商合同、下游客户合同以及原寻源三供应商匹配分开建模。只对显式接入新流程的渠道执行保守调度暂停，不修改旧数据的已验收状态。真实多用户并发、安全和事务需要后端，localStorage 不能提供跨窗口 CAS 或跨设备一致性。

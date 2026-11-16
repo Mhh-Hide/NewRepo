@@ -306,7 +306,7 @@ test('explicit quote reset restores legacy data without deleting channel or sour
   );
   await page.getByRole('button', { name: '确认重置报价', exact: true }).click();
   await expect(page.getByTestId('metric-quote-reference')).toContainText('2');
-  await page.goto('/channels');
+  await page.goto('/channels?view=management');
   await expect(page.getByTestId('metric-channel-total')).toContainText('7');
   await page.evaluate(() =>
     localStorage.setItem('maas-quote-demo-v1', '{"schemaVersion":99}'),
