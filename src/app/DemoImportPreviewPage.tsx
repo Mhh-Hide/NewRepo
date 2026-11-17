@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from 'react';
+import { useState } from 'react';
 import { Alert, Button, Card, Space, Table, Typography, Upload } from 'antd';
 import type { UploadProps } from 'antd';
 import { previewDemoStaging, type DemoStagingPreview } from '../demo-import/staging';
@@ -72,7 +72,7 @@ export function DemoImportPreviewPage() {
             ]}
           />
           <Paragraph style={{ marginTop: 16 }}>
-            {preview.warnings.map((warning) => <Text key={warning} display="block">{warning}</Text>)}
+            {preview.warnings.map((warning) => <div key={warning}><Text>{warning}</Text></div>)}
           </Paragraph>
         </Card>
       )}
