@@ -47,6 +47,9 @@ export function DemoImportPreviewPage() {
       setBusy(false);
     }
   };
+  if (!permitted) {
+    return <Alert type="error" showIcon title="当前演示身份无权使用供应商内部数据导入" description="请切换到全部业务域的产品运营演示身份。此处仅提供界面级演示权限，正式隔离仍须服务端认证。" />;
+  }
   const rows = preview ? [
     { key: 'suppliers', label: '供应商候选', count: preview.summary.suppliers },
     { key: 'resourceIntake', label: '资源线索', count: preview.summary.resourceIntake },
