@@ -23,7 +23,7 @@ beforeEach(() => {
 describe('atomic anonymous supplier candidate import', () => {
   it('creates disabled records and audit events without channels', async () => {
     expect(await api().importDemoSupplierCandidates(candidates)).toEqual({ created: 2, skipped: 0 });
-    const rows = repository.read().suppliers.filter((s) => s.shortCode.startsWith('SUP-'));
+    const rows = repository.read().suppliers.filter((s) => s.id.startsWith('demo-import-'));
     expect(rows).toHaveLength(2);
     expect(rows.map((s) => s.status)).toEqual(['disabled', 'disabled']);
     expect(rows.every((s) => s.cooperationStatus === 'potential')).toBe(true);
