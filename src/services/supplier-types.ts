@@ -74,6 +74,10 @@ export interface SupplierOwner {
   readonly name: string;
 }
 export interface SupplierApi {
+  /** Atomic demo-only import of anonymous candidate masters; no operational status or channels. */
+  importDemoSupplierCandidates(
+    candidates: readonly { readonly id: string; readonly name: string }[],
+  ): Promise<{ created: number; skipped: number }>;
   querySuppliers(query?: SupplierQuery): Promise<SupplierPage>;
   getSupplier(id: string): Promise<SupplierDetail | null>;
   listSupplierOwners(): Promise<readonly SupplierOwner[]>;
