@@ -1,13 +1,13 @@
 /**
- * Offline-only parser for anonymized demo staging exports.
- * Deliberately does not touch repositories, storage or API adapters.
- * Raw supplier/customer identities, costs, credentials and contact data
- * must never be transported by this schema.
+ * Browser-only staging validator. Input bytes remain in the user's browser.
+ * Supplier identities stay out of the PUBLIC source repository.
+ * Client-side demo roles are display controls, NOT a security boundary.
  */
 export interface DemoStagingSupplier {
   readonly id: string;
   readonly name: string;
-  readonly source: 'spreadsheet_redacted';
+  readonly shortCode: string;
+  readonly source: 'spreadsheet_internal';
   readonly verification: 'unverified';
 }
 export interface DemoStagingSummary {
@@ -19,89 +19,98 @@ export interface DemoStagingSummary {
   readonly customerModelEconomics: number;
 }
 export interface DemoStagingPreview {
-  readonly schemaVersion: 'demo-staging-v1';
+  readonly schemaVersion: 'demo-staging-v2';
   readonly summary: DemoStagingSummary;
   readonly supplierCandidates: readonly DemoStagingSupplier[];
   readonly warnings: readonly string[];
 }
 type Dict = Record<string, unknown>;
-const object = (x: unknown): x is Dict =>
-  x !== null && typeof x === 'object' && !Array.isArray(x);
-const requiredArray = (x: Dict, key: string): readonly unknown[] => {
-  if (!Array.isArray(x[key])) throw new Error(`缺少合法数据集合：${key}`);
-  return x[key];
-};
-const SAFE_NAME = /^演示供应商\d{3,}$/u;
-const SAFE_ID = /^SUP-\d{3,}$/u;
-const keys = [
+const isRecord = (value: unknown): value is Dict =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+const counts = [
   'suppliers', 'resourceIntake', 'purchaseDemands',
   'supplierTests', 'customers', 'customerModelEconomics',
 ] as const;
-const forbiddenKeys = new Set([
-  'contactEmail', 'contactPhone', 'contactName', 'password', 'apiKey',
-  'token', 'secret', 'actualPurchasePrice', 'realSupplierName',
-  'realCustomerName', 'originalName', 'supplierOriginalName',
+const forbidden = new Set([
+  'contactEmail', 'contactPhone', 'contactName', 'password',
+  'apiKey', 'secret', 'token', 'actualPurchasePrice',
 ]);
-function rejectSensitiveFields(value: unknown, depth = 0): void {
-  if (depth > 20) throw new Error('数据嵌套过深');
+function ensureNoCredentials(value: unknown, level = 0): void {
+  if (level > 20) throw new Error('文件嵌套过深');
   if (Array.isArray(value)) {
-    for (const item of value) rejectSensitiveFields(item, depth + 1);
-  } else if (object(value)) {
+    for (const element of value) ensureNoCredentials(element, level + 1);
+  } else if (isRecord(value)) {
     for (const [key, entry] of Object.entries(value)) {
-      if (forbiddenKeys.has(key)) throw new Error(`禁止包含敏感字段：${key}`);
-      rejectSensitiveFields(entry, depth + 1);
+      if (forbidden.has(key)) throw new Error(`文件包含不允许导入的字段：${key}`);
+      ensureNoCredentials(entry, level + 1);
     }
   }
 }
-/** No mutations; import candidates are NOT verified operational records. */
-export function previewDemoStaging(raw: unknown): DemoStagingPreview {
-  if (!object(raw) || raw.schemaVersion !== 'demo-staging-v1')
-    throw new Error('导入包版本不受支持');
-  if (!object(raw.provenance) ||
-      raw.provenance.realCustomerNamesIncluded !== false ||
-      raw.provenance.realSupplierNamesIncluded !== false ||
-      raw.provenance.actualPurchasePricesIncluded !== false)
-    throw new Error('导入包未通过脱敏来源声明');
-  rejectSensitiveFields(raw);
-  const arrays = Object.fromEntries(
-    keys.map((key) => [key, requiredArray(raw, key)]),
-  ) as Record<(typeof keys)[number], readonly unknown[]>;
-  const suppliers = arrays.suppliers.map((item) => {
-    if (!object(item) ||
-        typeof item.id !== 'string' || !SAFE_ID.test(item.id) ||
-        typeof item.name !== 'string' || !SAFE_NAME.test(item.name) ||
-        item.source !== 'spreadsheet_redacted' ||
-        item.verification !== 'unverified')
-      throw new Error('供应商候选主档不符合匿名化规则');
-    return {
-      id: item.id, name: item.name,
-      source: 'spreadsheet_redacted' as const,
+export function previewDemoStaging(input: unknown): DemoStagingPreview {
+  if (!isRecord(input) || input.schemaVersion !== 'demo-staging-v2')
+    throw new Error('请使用新版供应商内部数据包（demo-staging-v2），旧版匿名包已停用');
+  if (!isRecord(input.provenance) ||
+      input.provenance.realSupplierNamesIncluded !== true ||
+      input.provenance.realCustomerNamesIncluded !== false ||
+      input.provenance.actualPurchasePricesIncluded !== false)
+    throw new Error('导入包来源声明不符合内部演示数据规则');
+  ensureNoCredentials(input);
+  const datasets = {} as Record<(typeof counts)[number], readonly unknown[]>;
+  for (const key of counts) {
+    if (!Array.isArray(input[key])) throw new Error(`缺少合法数据集合：${key}`);
+    datasets[key] = input[key] as readonly unknown[];
+  }
+  const ids = new Set<string>();
+  const codes = new Set<string>();
+  const names = new Set<string>();
+  const suppliers = datasets.suppliers.map((record) => {
+    if (!isRecord(record) ||
+        typeof record.id !== 'string' || !/^SUP-[0-9]{3,}$/.test(record.id) ||
+        typeof record.name !== 'string' || !record.name.trim() ||
+        record.name.length > 160 ||
+        typeof record.shortCode !== 'string' || !record.shortCode.trim() ||
+        record.shortCode.length > 40 ||
+        record.source !== 'spreadsheet_internal' ||
+        record.verification !== 'unverified')
+      throw new Error('供应商候选标识、名称、缩写或来源格式不正确');
+    const candidate = {
+      id: record.id,
+      name: record.name.trim(),
+      shortCode: record.shortCode.trim(),
+      source: 'spreadsheet_internal' as const,
       verification: 'unverified' as const,
     };
+    const normalizedCode = candidate.shortCode.toLocaleLowerCase();
+    const normalizedName = candidate.name.toLocaleLowerCase();
+    if (ids.has(candidate.id) || codes.has(normalizedCode) || names.has(normalizedName))
+      throw new Error(`重复供应商标识或名称：${candidate.id}`);
+    ids.add(candidate.id);
+    codes.add(normalizedCode);
+    names.add(normalizedName);
+    return candidate;
   });
-  if (new Set(suppliers.map((s) => s.id)).size !== suppliers.length ||
-      new Set(suppliers.map((s) => s.name)).size !== suppliers.length)
-    throw new Error('供应商候选存在重复标识');
-  const knownSuppliers = new Set(suppliers.map((s) => s.id));
-  const missingSupplierRefs = [...arrays.resourceIntake, ...arrays.supplierTests]
-    .filter((row) => object(row) &&
-      typeof row.supplierId === 'string' &&
-      !knownSuppliers.has(row.supplierId));
-  if (missingSupplierRefs.length)
-    throw new Error('资源或测试数据存在无效供应商关联');
-  const summary = Object.fromEntries(
-    keys.map((key) => [key, arrays[key].length]),
-  ) as unknown as DemoStagingSummary;
-  const warnings = [
-    '仅供预览：候选供应商未经业务核验，不自动写入主档。',
-    '资源台账与测试历史不等于通过质量或连通性验收，不自动生成可调度渠道。',
-    '采购需求需先人工映射模型及客户；经营统计为模拟数据，不生成真实报价。',
-    '不覆盖现有 LocalStorage、测试执行、审计记录及生命周期状态。',
-  ];
+  const known = new Set(suppliers.map((supplier) => supplier.id));
+  for (const row of [...datasets.resourceIntake, ...datasets.supplierTests]) {
+    if (isRecord(row) && row.supplierId !== null && row.supplierId !== undefined &&
+        (typeof row.supplierId !== 'string' || !known.has(row.supplierId)))
+      throw new Error('资源或测试数据存在无效供应商关联');
+  }
   return {
-    schemaVersion: 'demo-staging-v1',
-    summary,
+    schemaVersion: 'demo-staging-v2',
     supplierCandidates: suppliers,
-    warnings,
+    summary: {
+      suppliers: suppliers.length,
+      resourceIntake: datasets.resourceIntake.length,
+      purchaseDemands: datasets.purchaseDemands.length,
+      supplierTests: datasets.supplierTests.length,
+      customers: datasets.customers.length,
+      customerModelEconomics: datasets.customerModelEconomics.length,
+    },
+    warnings: [
+      '原始供应商名称仅写入本浏览器的演示存储，不上传服务器；公共 GitHub 不包含这份名单。',
+      '销售、解决方案和大客户角色的页面不得获得供应商名称或地名简称；仅使用不含身份含义的渠道代号。',
+      '这是浏览器 Mock：角色切换不是真实身份认证，不适合共享含真实供应商名单的公开演示。',
+      '本次只导入供应商主档；测试、资源和采购历史不自动变成已通过/可调度状态。',
+    ],
   };
 }
