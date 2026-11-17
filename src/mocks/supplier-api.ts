@@ -224,6 +224,77 @@ export function createSupplierApi({
         return { state: next, result: projectSupplier(actor, s)! };
       });
     },
+    async importDemoSupplierCandidates(candidates) {
+      const actor = requireWrite();
+      if (!canReset() || !canCreate())
+        throw new SupplierError('FORBIDDEN', '仅双域产品运营的全部业务域可导入匿名候选。');
+      if (!Array.isArray(candidates) || candidates.length < 1 || candidates.length > 300)
+        throw new SupplierError('VALIDATION', '候选数量须为 1 至 300 条。');
+      const procurementUserId = fixture.users.find((u) => u.role === 'Procurement')?.id;
+      if (!procurementUserId)
+        throw new SupplierError('VALIDATION', '未找到模拟采购负责人。');
+      const uniqueIds = new Set<string>();
+      const inputs = candidates.map((candidate) => {
+        if (!candidate || typeof candidate.id !== 'string' ||
+            !/^SUP-\\d{3,}$/.test(candidate.id) ||
+            typeof candidate.name !== 'string' ||
+            !/^演示供应商\\d{3,}$/u.test(candidate.name) ||
+            uniqueIds.has(candidate.id))
+          throw new SupplierError('VALIDATION', '匿名候选标识、名称或唯一性校验失败。');
+        uniqueIds.add(candidate.id);
+        return normalizeSupplierInput({
+          name: candidate.name,
+          shortCode: candidate.id,
+          supplierCategory: 'third_party',
+          cooperationStatus: 'potential',
+          ownerUserId: procurementUserId,
+          description: '来自脱敏 Demo 数据包，未经核验；不可作为正式资源或可调度渠道。',
+          remark: '匿名候选导入，不含真实合作事实。',
+        });
+      });
+      return repository.transact((state) => {
+        let next = state;
+        let created = 0;
+        let skipped = 0;
+        const now = new Date().toISOString();
+        for (const input of inputs) {
+          const byCode = next.suppliers.find((s) => s.shortCode === input.shortCode);
+          if (byCode) {
+            if (byCode.name !== input.name)
+              throw new SupplierError('DUPLICATE', '候选缩写已存在但名称不同，导入取消。');
+            skipped += 1;
+            continue;
+          }
+          assertSupplierUnique(next, input);
+          const supplier: Supplier = {
+            ...input,
+            source: 'mock',
+            id: `demo-import-${input.shortCode}`,
+            status: 'disabled',
+            externalAccountStatus: 'not_created',
+            createdBy: actor.user.id,
+            updatedBy: actor.user.id,
+            createdAt: now,
+            updatedAt: now,
+            version: 1,
+          };
+          next = appendSupplierChange(next, null, supplier, actor.user.id);
+          next = {
+            ...next,
+            scopes: [...next.scopes, {
+              supplierId: supplier.id,
+              managementDomains: domains,
+            }],
+            maintenance: [...next.maintenance, {
+              supplierId: supplier.id,
+              userId: procurementUserId,
+            }],
+          };
+          created += 1;
+        }
+        return { state: next, result: { created, skipped } };
+      });
+    },
     async updateSupplier(id, expectedVersion, input) {
       const actor = requireWrite();
       return repository.transact((state) => {
