@@ -11,6 +11,7 @@ import {
 } from '../domain/suppliers';
 import type { UserSupplierGrant } from '../auth/types';
 import { fixture } from './data';
+import { builtinSupplierDirectory } from './builtin-supplier-directory';
 import { modelDomain } from '../domain/rules';
 import { SupplierError } from '../services/supplier-types';
 export const supplierStorageKey = 'maas-supplier-demo-v1';
@@ -287,9 +288,76 @@ function initialState(): SupplierStore {
     })),
   };
 }
+/** Preserve browser edits while making the built-in directory visible to all new sessions. */
+function withBuiltinDirectory(state: SupplierStore): SupplierStore {
+  const presentCodes = new Set(state.suppliers.map((s) => s.shortCode.trim().toLocaleLowerCase()));
+  const presentNames = new Set(state.suppliers.map((s) => s.name.trim().toLocaleLowerCase()));
+  const presentIds = new Set(state.suppliers.map((s) => s.id));
+  const additions: Supplier[] = [];
+  const at = '2026-11-17T00:00:00.000Z';
+  for (const record of builtinSupplierDirectory) {
+    const id = `builtin-${record.id}`;
+    if (presentIds.has(id) || presentCodes.has(record.shortCode.trim().toLocaleLowerCase()) ||
+        presentNames.has(record.name.trim().toLocaleLowerCase()))
+      continue;
+    const supplier: Supplier = {
+      id,
+      source: 'mock',
+      name: record.name,
+      shortCode: record.shortCode,
+      status: 'enabled',
+      contactName: '',
+      contactEmail: '',
+      contactPhone: '',
+      ownerUserId: 'u-proc',
+      cooperationStatus: 'potential',
+      supplierCategory: 'third_party',
+      countryOrRegion: '',
+      description: '内部供应商资源台账名称，尚未逐一核对资质和合作状态。',
+      contactPosition: '',
+      alternativeContact: '',
+      remark: '内置主档；资源、报价、测试和合同需要分别核验。',
+      externalAccountStatus: 'not_created',
+      createdBy: 'u-ops',
+      updatedBy: 'u-ops',
+      createdAt: at,
+      updatedAt: at,
+      version: 1,
+    };
+    additions.push(supplier);
+    presentIds.add(id);
+    presentCodes.add(record.shortCode.trim().toLocaleLowerCase());
+    presentNames.add(record.name.trim().toLocaleLowerCase());
+  }
+  if (!additions.length) return state;
+  return {
+    ...state,
+    suppliers: [...state.suppliers, ...additions],
+    scopes: [...state.scopes, ...additions.map((s) => ({
+      supplierId: s.id,
+      managementDomains: ['domestic', 'overseas'] as const,
+    }))],
+    maintenance: [...state.maintenance, ...additions.map((s) => ({
+      supplierId: s.id,
+      userId: 'u-proc',
+    }))],
+    history: [...state.history, ...additions.map((s) => ({
+      id: `supplier-created:${s.id}`,
+      supplierId: s.id,
+      action: 'created' as const,
+      actorUserId: 'u-ops',
+      occurredAt: s.createdAt,
+      reason: '内置供应商目录初始数据（非资质或合作状态确认）',
+      changedFields: [...supplierEditableFields],
+      beforeSnapshot: null,
+      afterSnapshot: structuredClone(s),
+    }))],
+  };
+}
+
 /** One supplier store shared by legacy reads, management queries and mutations. */
 export class SupplierRepository {
-  constructor(private readonly storage: StoragePort) {}
+  constructor(private readonly storage: StoragePort, private readonly enableBuiltinDirectory = false) {}
   private raw(): string | null {
     try {
       return this.storage.getItem(supplierStorageKey);
@@ -302,11 +370,11 @@ export class SupplierRepository {
   }
   read(): SupplierStore {
     const raw = this.raw();
-    if (raw === null) return initialState();
+    if (raw === null) return this.enableBuiltinDirectory ? withBuiltinDirectory(initialState()) : initialState();
     try {
       const state: unknown = JSON.parse(raw);
       if (!isState(state)) throw new Error('schema');
-      return structuredClone(state);
+      return this.enableBuiltinDirectory ? withBuiltinDirectory(structuredClone(state)) : structuredClone(state);
     } catch {
       throw new SupplierError(
         'STORAGE',
@@ -345,14 +413,14 @@ export class SupplierRepository {
     }
   }
   reset(): void {
-    this.save(initialState());
+    this.save(this.enableBuiltinDirectory ? withBuiltinDirectory(initialState()) : initialState());
   }
 }
 const browserStorage: StoragePort = {
   getItem: (key) => globalThis.localStorage.getItem(key),
   setItem: (key, value) => globalThis.localStorage.setItem(key, value),
 };
-export const supplierRepository = new SupplierRepository(browserStorage);
+export const supplierRepository = new SupplierRepository(browserStorage, true);
 export function assertSupplierUnique(
   state: SupplierStore,
   input: Pick<Supplier, 'name' | 'shortCode'>,
