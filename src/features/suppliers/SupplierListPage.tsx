@@ -113,7 +113,6 @@ export function SupplierListPage({ session }: { session: DemoSession }) {
       group="资源管理"
       actions={
         <Space wrap>
-          {resetAllowed && <Link to="/demo/import-preview">脱敏数据预览</Link>}
           {resetAllowed && (
             <Popconfirm
               title="重置供应商演示数据？"
