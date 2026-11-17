@@ -8,8 +8,8 @@ class MemoryStorage implements StoragePort {
   setItem(_key: string, value: string) { this.raw = value; }
 }
 const candidates = [
-  { id: 'SUP-001', name: '演示供应商001' },
-  { id: 'SUP-002', name: '演示供应商002' },
+  { id: 'SUP-001', name: '北京一森科技', shortCode: '北京一森' },
+  { id: 'SUP-002', name: '成都星环科技', shortCode: '成都星环' },
 ];
 let storage: MemoryStorage;
 let repository: SupplierRepository;
@@ -41,8 +41,8 @@ describe('atomic anonymous supplier candidate import', () => {
     await api().importDemoSupplierCandidates(candidates);
     const before = repository.read();
     await expect(api().importDemoSupplierCandidates([
-      { id: 'SUP-003', name: '演示供应商003' },
-      { id: 'SUP-001', name: '演示供应商999' },
+      { id: 'SUP-003', name: '北京焕芯科技', shortCode: '北京焕芯' },
+      { id: 'SUP-001', name: '北京一森其他', shortCode: '北京一森' },
     ])).rejects.toMatchObject({ code: 'DUPLICATE' });
     expect(repository.read()).toEqual(before);
   });
@@ -54,8 +54,8 @@ describe('atomic anonymous supplier candidate import', () => {
   it('rejects duplicate unredacted and invalid candidate identifiers', async () => {
     for (const bad of [
       [...candidates, candidates[0]!],
-      [{ id: 'SUP-001', name: '真实公司' }],
-      [{ id: 'bad', name: '演示供应商003' }],
+      [{ id: 'SUP-001', name: '', shortCode: '北京一森' }],
+      [{ id: 'bad', name: '北京焕芯', shortCode: '北京焕芯' }],
     ]) {
       await expect(api().importDemoSupplierCandidates(bad)).rejects.toMatchObject({ code: 'VALIDATION' });
     }
