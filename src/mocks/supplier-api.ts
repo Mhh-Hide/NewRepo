@@ -234,31 +234,38 @@ export function createSupplierApi({
       if (!procurementUserId)
         throw new SupplierError('VALIDATION', '未找到模拟采购负责人。');
       const uniqueIds = new Set<string>();
+      const uniqueCodes = new Set<string>();
+      const uniqueNames = new Set<string>();
       const inputs = candidates.map((candidate) => {
         if (!candidate || typeof candidate.id !== 'string' ||
-            !/^SUP-\\d{3,}$/.test(candidate.id) ||
-            typeof candidate.name !== 'string' ||
-            !/^演示供应商\\d{3,}$/u.test(candidate.name) ||
-            uniqueIds.has(candidate.id))
-          throw new SupplierError('VALIDATION', '匿名候选标识、名称或唯一性校验失败。');
+            !/^SUP-[0-9]{3,}$/.test(candidate.id) ||
+            typeof candidate.name !== 'string' || !candidate.name.trim() ||
+            candidate.name.length > 160 ||
+            typeof candidate.shortCode !== 'string' || !candidate.shortCode.trim() ||
+            candidate.shortCode.length > 40 || uniqueIds.has(candidate.id) ||
+            uniqueCodes.has(candidate.shortCode.trim().toLocaleLowerCase()) ||
+            uniqueNames.has(candidate.name.trim().toLocaleLowerCase()))
+          throw new SupplierError('VALIDATION', '供应商候选标识、名称或唯一性校验失败。');
         uniqueIds.add(candidate.id);
-        return normalizeSupplierInput({
+        uniqueCodes.add(candidate.shortCode.trim().toLocaleLowerCase());
+        uniqueNames.add(candidate.name.trim().toLocaleLowerCase());
+        return { externalId: candidate.id, ...normalizeSupplierInput({
           name: candidate.name,
-          shortCode: candidate.id,
+          shortCode: candidate.shortCode,
           supplierCategory: 'third_party',
           cooperationStatus: 'potential',
           ownerUserId: procurementUserId,
-          description: '来自脱敏 Demo 数据包，未经核验；不可作为正式资源或可调度渠道。',
-          remark: '匿名候选导入，不含真实合作事实。',
-        });
+          description: '源自内部供应商资源台账；合作状态须人工核对。',
+          remark: '内部数据导入；未据此判断资质、测试或可调度状态。',
+        }) };
       });
       return repository.transact((state) => {
         let next = state;
         let created = 0;
         let skipped = 0;
         const now = new Date().toISOString();
-        for (const input of inputs) {
-          const byCode = next.suppliers.find((s) => s.shortCode === input.shortCode);
+        for (const { externalId, ...input } of inputs) {
+          const byCode = next.suppliers.find((s) => s.shortCode.toLocaleLowerCase() === input.shortCode.toLocaleLowerCase());
           if (byCode) {
             if (byCode.name !== input.name)
               throw new SupplierError('DUPLICATE', '候选缩写已存在但名称不同，导入取消。');
@@ -269,7 +276,7 @@ export function createSupplierApi({
           const supplier: Supplier = {
             ...input,
             source: 'mock',
-            id: `demo-import-${input.shortCode}`,
+            id: `demo-import-${externalId}`,
             status: 'disabled',
             externalAccountStatus: 'not_created',
             createdBy: actor.user.id,
