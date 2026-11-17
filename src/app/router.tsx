@@ -1,3 +1,4 @@
+import { DemoImportPreviewPage } from './DemoImportPreviewPage';
 import { RolePerspectivesRoute } from './RolePerspectivesRoute';
 import { RemediationRoute } from './RemediationRoute';
 import { TestingRoute } from './TestingRoute';
@@ -62,6 +63,7 @@ export const router = createBrowserRouter([
       { path: '/tests/:taskId', element: <TestingRoute /> },
       { path: '/channels', element: <ChannelListRoute /> },
       { path: '/suppliers', element: <SupplierRoute /> },
+      { path: '/demo/import-preview', element: <DemoImportPreviewPage /> },
       { path: '/suppliers/:supplierId', element: <SupplierRoute /> },
       ...navigation
         .filter(
