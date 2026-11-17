@@ -1,3 +1,4 @@
+import { businessStorage } from '../services/runtime-data';
 import {
   LifecycleRepository,
   assertLifecycleReferences,
@@ -337,6 +338,6 @@ export class ChannelRepository {
   }
 }
 export const channelRepository = new ChannelRepository({
-  getItem: (k) => localStorage.getItem(k),
-  setItem: (k, v) => localStorage.setItem(k, v),
+  getItem: (k) => businessStorage.getItem(k),
+  setItem: (k, v) => businessStorage.setItem(k, v),
 });

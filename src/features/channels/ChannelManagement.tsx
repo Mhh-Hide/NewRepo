@@ -52,7 +52,7 @@ export function ChannelManagement({
   };
   return (
     <>
-      <Card title="渠道主档维护 · Mock" className="resource-card">
+      <Card title="渠道资料" className="resource-card">
         <Alert
           type="info"
           showIcon

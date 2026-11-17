@@ -1,21 +1,39 @@
 import { isLifecycleNotice } from '../../domain/lifecycle';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import { Button, Card, Select, Space, Table, Alert, Modal, Input } from 'antd';
 import { Link } from 'react-router-dom';
 import type { DemoSession } from '../../services/demo-session';
 import { useResourceQuery } from '../models/use-resource-query';
 import { LoadingState, ErrorState } from '../../components/FeedbackStates';
-export function WorkInbox({ session }: { session: DemoSession }) {
+export function WorkInbox({
+  session,
+  compact = false,
+  fallback,
+}: {
+  session: DemoSession;
+  compact?: boolean;
+  fallback?: ReactNode;
+}) {
   if (!session.permits('task:read') || !session.profile.domains.length)
     return null;
   return (
     <Inbox
       key={`${session.profile.user.id}:${session.domain}`}
       session={session}
+      compact={compact}
+      fallback={fallback}
     />
   );
 }
-function Inbox({ session }: { session: DemoSession }) {
+function Inbox({
+  session,
+  compact,
+  fallback,
+}: {
+  session: DemoSession;
+  compact: boolean;
+  fallback?: ReactNode;
+}) {
   const [view, setView] = useState<
       | 'mine'
       | 'mentions'
@@ -39,10 +57,15 @@ function Inbox({ session }: { session: DemoSession }) {
     { result, reload } = useResourceQuery(load);
   return (
     <Card
-      title="资源交付协作任务与通知（模拟）"
+      title="我的任务"
       data-testid="lifecycle-inbox"
       className="resource-card"
-      extra={<Button onClick={reload}>刷新协作任务</Button>}
+      extra={
+        <Space>
+          <Link to="/tasks">全部任务</Link>
+          <Button onClick={reload}>刷新协作任务</Button>
+        </Space>
+      }
     >
       <Space wrap>
         <Select
@@ -59,22 +82,21 @@ function Inbox({ session }: { session: DemoSession }) {
             { value: 'overdue', label: '逾期事项' },
           ]}
         />
-        <span>
-          只显示当前身份授权范围；通知不包含采购价格、客户信息或凭据。
-        </span>
       </Space>
       {error && <Alert type="error" title={error} />}{' '}
       {result.status === 'loading' ? (
         <LoadingState />
       ) : result.status === 'error' ? (
         <ErrorState message={result.message} onRetry={reload} />
+      ) : compact && view === 'mine' && result.data.length === 0 && fallback ? (
+        fallback
       ) : (
         <Table
           rowKey="id"
-          dataSource={result.data}
+          dataSource={compact ? result.data.slice(0, 5) : result.data}
           size="small"
           scroll={{ x: 900 }}
-          pagination={{ pageSize: 5 }}
+          pagination={compact ? false : { pageSize: 5 }}
           columns={[
             { title: '事项', dataIndex: 'title', width: 230 },
             {

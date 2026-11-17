@@ -150,6 +150,7 @@ export function createSourcingApi(
     demandId: i.demandId,
     modelId: i.modelId,
     targetPurchaseDiscount: i.targetPurchaseDiscount,
+    ...(i.targetDiscountUnknown ? { targetDiscountUnknown: true } : {}),
     requiredTpm: i.requiredTpm,
     requiredRpm: i.requiredRpm,
     requiredConcurrency: i.requiredConcurrency,

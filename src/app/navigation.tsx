@@ -63,7 +63,7 @@ export const navigation: readonly NavigationItem[] = [
   {
     id: 'channels',
     path: '/channels',
-    name: '渠道管理',
+    name: '渠道总览',
     group: '资源管理',
     icon: <ApartmentOutlined />,
     permission: 'channel:read',
@@ -74,7 +74,7 @@ export const navigation: readonly NavigationItem[] = [
   {
     id: 'sourcing',
     path: '/sourcing',
-    name: '采购寻源',
+    name: '采购需求',
     group: '业务协同',
     icon: <FileSearchOutlined />,
     permission: 'sourcing:read',
@@ -85,7 +85,7 @@ export const navigation: readonly NavigationItem[] = [
   {
     id: 'quotes',
     path: '/quotes',
-    name: '采购报价管理',
+    name: '采购报价',
     group: '业务协同',
     icon: <AuditOutlined />,
     permission: 'quote:read',

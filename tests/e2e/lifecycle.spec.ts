@@ -266,7 +266,7 @@ async function originalRun(
   await page.getByRole('button', { name: '录入本轮结果', exact: true }).click();
   await select(page, '人工执行结果', result);
   await page
-    .getByRole('textbox', { name: '共享技术摘要', exact: true })
+    .getByRole('textbox', { name: '问题说明', exact: true })
     .fill('模拟质量测试失败，需供应商整改');
   await page
     .getByRole('textbox', { name: '内部技术说明', exact: true })
@@ -477,7 +477,7 @@ for (const width of [1440, 390])
     await page.setViewportSize({ width, height: 1000 });
     await page.goto('/channels');
     await expect(
-      page.getByText('渠道资源推进总览', { exact: true }),
+      page.getByRole('heading', { name: '渠道总览', exact: true }),
     ).toBeVisible();
     await select(page, '进度模型筛选', 'Seedance 示例国内版');
     await expect(
@@ -508,10 +508,12 @@ test('前台仍为匿名旧视图，运维只读、单域隔离和无写入能�
   await seed(page, 'configured');
   await page.goto('/channels');
   await persona(page, '模拟Sales');
-  await expect(page.getByText('渠道资源推进总览', { exact: true })).toHaveCount(
-    0,
+  await expect(
+    page.getByRole('columnheader', { name: '动态交付进度' }),
+  ).toHaveCount(0);
+  await expect(page.locator('main')).not.toContainText(
+    /华北资源合作方|华东模型合作方|海外资源合作方/,
   );
-  await expect(page.locator('main')).not.toContainText('虚构供应商');
   await expect(page.locator('main')).not.toContainText('采购折扣');
   await persona(page, '模拟OperationsSupport');
   await page.goto('/channels?delivery=ch-1');
@@ -541,15 +543,11 @@ test('验收补丁：测试人工确认质量通过，采购合同待办、运�
   await save(page);
   await page.goto('/dashboard');
   await persona(page, '模拟Procurement');
-  await expect(
-    page.getByTestId('lifecycle-inbox').getByRole('table'),
-  ).toBeVisible();
+  await expect(page.getByTestId('lifecycle-inbox')).toBeVisible();
   await expect(page.getByText('推进采购合同', { exact: true })).toBeVisible();
   await expect(page.getByText('补充替代资源', { exact: true })).toHaveCount(0);
   await persona(page, '模拟ProductOperations');
-  await expect(
-    page.getByTestId('lifecycle-inbox').getByRole('table'),
-  ).toBeVisible();
+  await expect(page.getByTestId('lifecycle-inbox')).toBeVisible();
   await expect(page.getByText('监督整改进度', { exact: true })).toHaveCount(0);
   await select(page, '协作任务视角', '站内通知（仅需知悉）');
   const row = page
@@ -603,9 +601,7 @@ for (const width of [1440, 390])
       page.getByText('向供应商反馈并跟进整改', { exact: true }),
     ).toBeVisible();
     await persona(page, '模拟Procurement');
-    await expect(
-      page.getByTestId('lifecycle-inbox').getByRole('table'),
-    ).toBeVisible();
+    await expect(page.getByTestId('lifecycle-inbox')).toBeVisible();
     await expect(page.getByText('补充替代资源', { exact: true })).toHaveCount(
       0,
     );
@@ -619,9 +615,7 @@ for (const width of [1440, 390])
       notice.getByRole('button', { name: '完成任务', exact: true }),
     ).toHaveCount(0);
     await persona(page, '模拟ProductOperations');
-    await expect(
-      page.getByTestId('lifecycle-inbox').getByRole('table'),
-    ).toBeVisible();
+    await expect(page.getByTestId('lifecycle-inbox')).toBeVisible();
     await expect(page.getByText('监督整改进度', { exact: true })).toBeVisible();
     await page.goto('/channels');
     await select(page, '进度异常筛选', '异常渠道');

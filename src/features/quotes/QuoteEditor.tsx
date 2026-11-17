@@ -413,7 +413,7 @@ export function QuoteEditor({
           </div>
           <Form.Item
             name="evidenceReference"
-            label="报价证据模拟引用"
+            label="报价证据引用"
             rules={[
               { required: true },
               {

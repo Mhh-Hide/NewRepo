@@ -1,3 +1,4 @@
+import { businessStorage } from '../services/runtime-data';
 import { LifecycleRepository } from './lifecycle-repository';
 import type {
   ManagedRemediation,
@@ -457,8 +458,8 @@ export class RemediationRepository {
   }
 }
 export const remediationRepository = new RemediationRepository({
-  getItem: (k) => localStorage.getItem(k),
-  setItem: (k, v) => localStorage.setItem(k, v),
+  getItem: (k) => businessStorage.getItem(k),
+  setItem: (k, v) => businessStorage.setItem(k, v),
 });
 export function projectLegacyRemediation(r: ManagedRemediation) {
   return {

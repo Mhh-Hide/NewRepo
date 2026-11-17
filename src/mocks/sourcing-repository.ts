@@ -1,3 +1,4 @@
+import { businessStorage } from '../services/runtime-data';
 import { projectLegacyRemediation } from './remediation-repository';
 import { testingSnapshot } from './testing-state';
 import { fixture } from './data';
@@ -162,6 +163,7 @@ function seed(): SourcingState {
       version: 1,
       createdBy: d.requesterUserId,
       updatedBy: d.requesterUserId,
+      ...d,
     })),
     items: fixture.demandItems.map((i) => ({
       ...i,
@@ -284,6 +286,6 @@ export class SourcingRepository {
   }
 }
 export const sourcingRepository = new SourcingRepository({
-  getItem: (k) => localStorage.getItem(k),
-  setItem: (k, v) => localStorage.setItem(k, v),
+  getItem: (k) => businessStorage.getItem(k),
+  setItem: (k, v) => businessStorage.setItem(k, v),
 });

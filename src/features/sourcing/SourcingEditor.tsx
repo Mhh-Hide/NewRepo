@@ -113,7 +113,15 @@ export function SourcingEditor({
           onFinish={save}
           initialValues={
             initial
-              ? { ...initial.demand, items: initial.items.map((i) => i.item) }
+              ? {
+                  ...initial.demand,
+                  items: initial.items.map((i) => ({
+                    ...i.item,
+                    ...(i.item.targetDiscountUnknown
+                      ? { targetPurchaseDiscount: undefined }
+                      : {}),
+                  })),
+                }
               : {
                   priority: 'normal',
                   customerId: null,

@@ -31,7 +31,7 @@ export function SidebarNavigation({
     <nav aria-label="主导航">
       <Menu
         mode="inline"
-        theme="dark"
+        theme="light"
         selectedKeys={[
           entries.find(
             (n) =>

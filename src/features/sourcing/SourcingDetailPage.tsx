@@ -250,7 +250,9 @@ export default function SourcingDetailPage() {
               {
                 key: 'discount',
                 label: '目标采购折扣',
-                children: `${item.item.targetPurchaseDiscount} 基点（${item.item.targetPurchaseDiscount / 1000} 折）`,
+                children: item.item.targetDiscountUnknown
+                  ? '待补充'
+                  : `${item.item.targetPurchaseDiscount} 基点（${item.item.targetPurchaseDiscount / 1000} 折）`,
               },
               {
                 key: 'priority',
@@ -433,14 +435,15 @@ export default function SourcingDetailPage() {
             ]}
             locale={{ emptyText: '尚未添加候选；不表示已调查后确认资源不足。' }}
           />
-          {session.permits('quote:read') && (
-            <RelatedQuotes
-              session={session}
-              demandId={master.id}
-              demandItemId={item.item.id}
-              target={item.item.targetPurchaseDiscount}
-            />
-          )}
+          {session.permits('quote:read') &&
+            !item.item.targetDiscountUnknown && (
+              <RelatedQuotes
+                session={session}
+                demandId={master.id}
+                demandItemId={item.item.id}
+                target={item.item.targetPurchaseDiscount}
+              />
+            )}
         </Card>
       ))}
       <ResourceGoal session={session} demandId={d.demand.id} />

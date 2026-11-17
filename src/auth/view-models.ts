@@ -33,6 +33,7 @@ export type SupplierView = Pick<
       | 'ownerUserId'
       | 'contactPosition'
       | 'alternativeContact'
+      | 'wechatGroupName'
       | 'description'
       | 'remark'
       | 'createdBy'

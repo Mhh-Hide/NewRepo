@@ -21,9 +21,9 @@ async function persona(page: Page, label: string) {
 async function create(page: Page) {
   await page.goto('/procurement/bulk-quotes');
   await page.getByRole('button', { name: '创建报价批次', exact: true }).click();
-  await select(page, '创建批次供应商', '虚构供应商1');
+  await select(page, '创建批次供应商', '华北资源合作方');
   await page
-    .getByLabel('共同来源模拟引用', { exact: true })
+    .getByLabel('共同来源引用', { exact: true })
     .fill('mock:evidence:browser-bulk');
   await page
     .getByLabel('共同说明', { exact: true })
@@ -42,7 +42,7 @@ async function row(page: Page, discount = '6200') {
   await select(page, '批次报价渠道', '模拟渠道1');
   await page.getByRole('spinbutton', { name: '行报价折扣' }).fill(discount);
   await page
-    .getByLabel('供应商提交人模拟引用', { exact: true })
+    .getByLabel('供应商提交人引用', { exact: true })
     .fill('mock:bulk-contact');
   await page.getByRole('button', { name: '保留行编辑' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);

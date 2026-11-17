@@ -443,3 +443,226 @@ a {
   color: #8a96a6;
   margin-top: 4px;
 }
+
+/* Stage 07E: quiet, compact workspace. Business state remains in view models. */
+:root {
+  color: #262626;
+  background: #fff;
+}
+a {
+  color: #315d53;
+}
+.sidebar.ant-layout-sider,
+.sidebar .ant-menu {
+  background: #f7f7f8;
+}
+.brand {
+  height: 76px;
+  color: #262626;
+  padding: 20px;
+}
+.brand-mark {
+  background: #fff;
+  border-color: #ddd;
+  color: #262626;
+}
+.brand small {
+  color: #777;
+}
+.sidebar .ant-menu-item-group-title {
+  color: #999;
+  font-size: 11px;
+  padding-top: 14px;
+}
+.sidebar .ant-menu-item {
+  border-radius: 7px;
+  height: 38px;
+  line-height: 38px;
+}
+.sidebar .ant-menu-item-selected {
+  background: #e9e9eb;
+  color: #202020;
+  font-weight: 600;
+}
+.sidebar-footer {
+  color: #888;
+  border-color: #e5e5e5;
+  margin-top: 12px;
+  padding: 16px 24px;
+}
+.main-layout {
+  background: #fff;
+}
+.topbar {
+  min-height: 64px;
+  padding: 12px 28px;
+  border-color: #eee;
+}
+.topbar-controls label:last-child .ant-select {
+  min-width: 218px;
+}
+.page-content {
+  padding: 28px 32px;
+  max-width: 1740px;
+  width: 100%;
+  margin: 0 auto;
+}
+.page-heading-row {
+  margin: 0 0 24px;
+}
+.page-heading h1.ant-typography {
+  font-size: 26px;
+  letter-spacing: -0.6px;
+  font-weight: 600;
+  margin: 0;
+}
+.stats-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.stat-card {
+  background: #fafafa;
+  border: 0;
+}
+.stat-label {
+  margin-bottom: 8px;
+  color: #666;
+}
+.stat-card .ant-statistic-content {
+  font-size: 28px;
+  color: #242424;
+}
+.ant-card {
+  border-color: #eaeaea;
+  border-radius: 12px;
+}
+.ant-card .ant-card-head {
+  min-height: 50px;
+  border-bottom-color: #eee;
+}
+.ant-card .ant-card-body {
+  padding: 20px;
+}
+.ant-table {
+  font-size: 13px !important;
+}
+.ant-table-wrapper .ant-table-thead > tr > th {
+  background: #fafafa;
+  color: #777;
+  font-size: 12px;
+  font-weight: 500;
+}
+.ant-table-wrapper .ant-table-tbody > tr > td {
+  padding: 14px 12px;
+  border-bottom-color: #f0f0f0;
+}
+.ant-table-cell small {
+  color: #888;
+  line-height: 1.6;
+}
+.ant-progress {
+  min-width: 170px;
+}
+.ant-progress .ant-progress-bg {
+  background: #65877a;
+}
+.resource-filters,
+.supplier-filters {
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.resource-filters .ant-input-affix-wrapper {
+  max-width: 280px;
+}
+.resource-card {
+  margin-bottom: 20px;
+}
+.module-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+.module-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  color: #444;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 10px;
+}
+.module-link:hover {
+  background: #f1f1f1;
+  color: #222;
+}
+.module-link .anticon {
+  margin-right: 8px;
+}
+.supplier-stats,
+.resource-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.supplier-stats .stat-card,
+.resource-stats .stat-card {
+  flex: 1;
+  min-width: 120px;
+}
+.supplier-stats .stat-card .ant-card-body,
+.resource-stats .stat-card .ant-card-body {
+  padding: 12px 18px;
+}
+.supplier-stats .ant-statistic-content,
+.resource-stats .ant-statistic-content {
+  font-size: 22px;
+}
+@media (min-width: 1700px) {
+  .page-content {
+    padding-left: 48px;
+    padding-right: 48px;
+  }
+}
+@media (max-width: 700px) {
+  .page-content {
+    padding: 20px 12px;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .module-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .page-heading-row {
+    flex-wrap: wrap;
+  }
+  .resource-filters .ant-input-affix-wrapper {
+    max-width: 100%;
+  }
+}
+.home-stats + .resource-card .ant-space {
+  margin-bottom: 8px;
+}
+.nav-soon {
+  background: #eee !important;
+  color: #888 !important;
+}
+.ant-table-cell .resource-subtitle {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  max-width: 360px;
+}
+.ant-table-cell .supplier-wrap {
+  max-width: 200px;
+}
+.testing-task-table p {
+  margin: 3px 0;
+}
+.testing-task-table .ant-table-cell {
+  line-height: 1.5;
+}

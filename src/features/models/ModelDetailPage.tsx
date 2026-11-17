@@ -114,7 +114,7 @@ export default function ModelDetailPage() {
             </div>
           </div>
         }
-        extra={<Tag color="blue">模拟资源 · 只读</Tag>}
+        extra={<Tag color="blue">模型资料</Tag>}
       >
         <Descriptions
           column={{ xs: 1, sm: 2, lg: 3 }}
@@ -208,7 +208,7 @@ export default function ModelDetailPage() {
                 ),
               },
               {
-                title: '内部缩写',
+                title: '供应商简称',
                 width: 110,
                 render: (_, r) => r.supplier.shortCode,
               },

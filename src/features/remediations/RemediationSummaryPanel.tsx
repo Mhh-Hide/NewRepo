@@ -49,7 +49,7 @@ function Summary({
     open = rows.filter((r) => r.status !== 'closed');
   return (
     <Card
-      title="整改技术摘要（模拟）"
+      title="整改进度"
       className="resource-card"
       extra={<Button onClick={reload}>刷新整改摘要</Button>}
     >

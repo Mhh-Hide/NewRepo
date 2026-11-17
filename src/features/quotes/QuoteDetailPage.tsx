@@ -334,7 +334,7 @@ export default function QuoteDetailPage() {
             },
             { title: '操作人', dataIndex: 'actorUserId' },
             { title: '时间', dataIndex: 'occurredAt', render: displayDate },
-            { title: '证据模拟引用', dataIndex: 'evidenceReference' },
+            { title: '证据引用', dataIndex: 'evidenceReference' },
             { title: '说明', dataIndex: 'reason' },
           ]}
           locale={{

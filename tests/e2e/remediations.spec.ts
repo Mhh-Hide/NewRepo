@@ -34,15 +34,16 @@ async function create(page: Page) {
     .getByRole('textbox', { name: '验证目标引用' })
     .fill('mock:target-a');
   await page
-    .getByRole('textbox', { name: '共享技术摘要', exact: true })
+    .getByRole('textbox', { name: '问题说明', exact: true })
     .fill('浏览器模拟技术问题');
   await page
     .getByRole('textbox', { name: '内部技术说明', exact: true })
     .fill('内部模拟说明 browser-remediation-private');
   await save(page);
   await page
-    .getByRole('link', { name: /mock-remediation-/ })
-    .last()
+    .getByRole('row')
+    .filter({ hasText: '浏览器模拟技术问题' })
+    .getByRole('link')
     .click();
   await expect(page.getByRole('heading', { name: '整改详情' })).toBeVisible();
 }
@@ -122,6 +123,7 @@ test('创建、分配负责人、开始、提交、退回和第二轮结果在�
     .fill('第二轮内部说明');
   await save(page);
   await page.reload();
+  await page.getByRole('button', { name: '跟进与复测历史' }).click();
   await expect(page.getByText(/第 1 轮 ·/)).toBeVisible();
   await expect(page.getByText(/第 2 轮 ·/)).toBeVisible();
 });
@@ -191,6 +193,7 @@ test('关联真实已保存复测、显式现行采纳后由运营预览并关�
   ).toBeVisible();
   await page.getByRole('button', { name: '确认正常关闭' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByRole('button', { name: '跟进与复测历史' }).click();
   await expect(page.getByText('运营正常关闭', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '提交本轮结果' })).toHaveCount(
     0,
@@ -204,6 +207,7 @@ for (const width of [1440, 390])
     await action(page, '例外关闭');
     await select(page, '例外原因分类', '无法验证');
     await save(page);
+    await page.getByRole('button', { name: '跟进与复测历史' }).click();
     await expect(
       page.getByText('例外结束，不代表技术修复已验证成功。', { exact: true }),
     ).toBeVisible();

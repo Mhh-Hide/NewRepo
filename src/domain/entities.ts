@@ -58,6 +58,7 @@ export interface Supplier extends Identified, Timestamps {
   readonly description: string;
   readonly contactPosition: string;
   readonly alternativeContact: string;
+  readonly wechatGroupName?: string;
   readonly remark: string;
   readonly externalAccountStatus: SupplierAccountStatus;
   readonly createdBy: string;
@@ -91,6 +92,7 @@ export interface Demand extends Identified, Timestamps {
   readonly status: SourcingStatus;
 }
 export interface DemandItem extends Identified {
+  readonly targetDiscountUnknown?: boolean;
   readonly demandId: string;
   readonly modelId: string;
   readonly targetPurchaseDiscount: DiscountBps;
@@ -123,6 +125,7 @@ export interface ChannelQuote extends Identified {
   readonly previousQuoteId: string | null;
 }
 export interface TestTask extends Identified, Timestamps {
+  readonly stageLabel?: string;
   readonly channelId: string;
   readonly testType: TestType;
   readonly status: TaskStatus;

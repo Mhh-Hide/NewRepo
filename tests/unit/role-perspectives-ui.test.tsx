@@ -56,7 +56,9 @@ it('身份变更同步丢弃原预览；敏感业务内容没有进入页面', (
   expect(
     screen.queryByRole('button', { name: '体验整改管理' }),
   ).not.toBeInTheDocument();
-  expect(screen.queryByText(/虚构供应商/)).not.toBeInTheDocument();
+  expect(
+    screen.queryByText(/华北资源合作方|华东模型合作方|海外资源合作方/),
+  ).not.toBeInTheDocument();
 });
 it('无授权身份显示明确空状态及禁用业务域', () => {
   render(view(createDemoSession('u-no-domain')));

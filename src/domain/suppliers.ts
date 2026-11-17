@@ -28,6 +28,7 @@ export const supplierEditableFields = [
   'contactPhone',
   'contactPosition',
   'alternativeContact',
+  'wechatGroupName',
   'ownerUserId',
   'remark',
 ] as const;

@@ -1,3 +1,4 @@
+import { TasksRoute } from '../features/lifecycle/TasksRoute';
 import { RolePerspectivesRoute } from './RolePerspectivesRoute';
 import { RemediationRoute } from './RemediationRoute';
 import { TestingRoute } from './TestingRoute';
@@ -26,6 +27,7 @@ export const router = createBrowserRouter([
     children: [
       { path: '/', element: <Navigate to="/dashboard" replace /> },
       { path: '/dashboard', element: <DashboardRoute /> },
+      { path: '/tasks', element: <TasksRoute /> },
       { path: '/system/roles', element: <RolePerspectivesRoute /> },
       {
         path: '/models',

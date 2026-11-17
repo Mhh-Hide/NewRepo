@@ -9,7 +9,7 @@ import { LoadingState, ErrorState } from '../../components/FeedbackStates';
 import { testingStatLabels, conclusionText } from './testing-labels';
 export function TestingMetrics({ stats }: { stats: TestingStats }) {
   return (
-    <Card title="测试协作概览（模拟）" className="resource-card">
+    <Card title="测试进度" className="resource-card">
       <Descriptions
         column={{ xs: 1, sm: 2, lg: 4 }}
         items={Object.entries(testingStatLabels).map(([key, label]) => ({
@@ -22,11 +22,6 @@ export function TestingMetrics({ stats }: { stats: TestingStats }) {
           ),
         }))}
       />
-      <p className="section-note">
-        待执行只计
-        pending；失败、待复核、豁免按渠道去重，不相加。连通性待验证指缺少当前明确采纳依据，legacy
-        单独保留来源。
-      </p>
     </Card>
   );
 }
@@ -46,15 +41,13 @@ export function TestSummaryView({ row }: { row: TestSummary }) {
       )}
       <p>
         待复核执行：{row.quality.pendingReview + row.connectivity.pendingReview}{' '}
-        · 待执行任务：{row.pendingTasks} · 进行中：{row.runningTasks}
+        · 待测试：{row.pendingTasks} · 进行中：{row.runningTasks}
       </p>
       {[row.quality, row.connectivity].map((v, i) => (
         <p key={i}>
           {i ? '连通性' : '质量'}最近测试：{v.latestTestedAt ?? '尚无执行'} ·{' '}
-          {v.technicalSummary ?? '无独立共享技术摘要（不引用旧自由文本）'}
-          {v.basisChanged
-            ? ' · 原 legacy 配置依据已变，旧结论不适用于新目标'
-            : ''}
+          {v.technicalSummary ?? '待补充测试摘要'}
+          {v.basisChanged ? ' · 配置已变更，需重新测试' : ''}
         </p>
       ))}
     </div>
@@ -98,7 +91,7 @@ function AuthorizedSummary({
   const { result, reload } = useResourceQuery(load);
   return (
     <Card
-      title="授权测试技术摘要"
+      title="测试进度"
       className="resource-card"
       extra={<Button onClick={reload}>刷新测试摘要</Button>}
     >
@@ -127,7 +120,7 @@ function AuthorizedSummary({
           </section>
         ))
       ) : (
-        <Empty description="当前授权范围暂无渠道测试摘要" />
+        <Empty description="当前业务范围暂无渠道测试摘要" />
       )}
     </Card>
   );

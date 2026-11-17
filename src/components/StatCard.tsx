@@ -16,7 +16,6 @@ export function StatCard({ metric }: { metric: Metric }) {
         </Tooltip>
       </div>
       <Statistic value={metric.value} groupSeparator="," />
-      <div className="stat-foot">当前授权范围</div>
     </Card>
   );
 }

@@ -114,10 +114,7 @@ export function BulkItemEditor({
               )}
             />
           </Form.Item>
-          <Form.Item
-            name="supplierSubmitterReference"
-            label="供应商提交人模拟引用"
-          >
+          <Form.Item name="supplierSubmitterReference" label="供应商提交人引用">
             <Input placeholder="mock:supplier-contact" />
           </Form.Item>
           <Form.Item name="effectiveFrom" label="拟生效日期">
@@ -209,7 +206,7 @@ export function BulkItemEditor({
         </Form.List>
         <Form.Item
           name="evidenceReference"
-          label="行证据模拟引用（空则使用共同来源）"
+          label="行证据引用（空则使用共同来源）"
         >
           <Input placeholder="mock:evidence:bulk" />
         </Form.Item>

@@ -48,6 +48,9 @@ export function projectSupplier(
           contactPhone: s.contactPhone,
           contactPosition: s.contactPosition,
           alternativeContact: s.alternativeContact,
+          ...(s.wechatGroupName !== undefined
+            ? { wechatGroupName: s.wechatGroupName }
+            : {}),
           description: s.description,
           ownerUserId: s.ownerUserId,
         }

@@ -124,7 +124,7 @@ export default function ChannelDetailPage() {
             <span className="resource-emblem">C</span>
             <div>
               <strong>{c.displayName}</strong>
-              <small>{c.anonymousCode} · 模拟渠道</small>
+              <small>{c.anonymousCode}</small>
             </div>
           </div>
         }
@@ -266,9 +266,7 @@ export default function ChannelDetailPage() {
       {technical.length > 0 && (
         <Card title="授权技术引用" className="resource-card">
           <Descriptions column={{ xs: 1, sm: 2 }} items={technical} />
-          <p className="section-note resource-note">
-            仅为 Mock 非敏感引用；不包含真实 Endpoint 或凭据。
-          </p>
+          <p className="section-note resource-note">连接引用</p>
         </Card>
       )}
       {session.permits('channel:update') && result.data.version !== null && (

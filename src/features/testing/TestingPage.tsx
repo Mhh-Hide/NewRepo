@@ -82,13 +82,14 @@ function TaskList({ session }: { session: DemoSession }) {
     [modelId, setModel] = useState<string>(),
     [status, setStatus] = useState<TestTask['status']>(),
     [testType, setType] = useState<TestType>();
+  const [businessState, setBusinessState] = useState('all');
   const full = session.permits('test:detail');
   const load = useCallback(async () => {
     const query = {
       ...(channelId ? { channelId } : {}),
       ...(modelId ? { modelId } : {}),
     };
-    const [summaries, tasks, options] = await Promise.all([
+    const [summaries, tasks, options, remediations] = await Promise.all([
       session.api.queryTestSummaries(query),
       full
         ? session.api.queryTestTasks({
@@ -100,10 +101,13 @@ function TaskList({ session }: { session: DemoSession }) {
       full
         ? session.api.testingOptions()
         : Promise.resolve({ channels: [], assignees: [] }),
+      session.permits('remediation:summary')
+        ? session.api.queryRemediationSummaries()
+        : Promise.resolve([]),
     ]);
     const all = await session.api.queryTestSummaries();
-    return { summaries, tasks, options, all };
-  }, [session.api, full, channelId, modelId, status, testType]);
+    return { summaries, tasks, options, all, remediations };
+  }, [session, full, channelId, modelId, status, testType]);
   const { result, reload } = useResourceQuery(load);
   const [create, setCreate] = useState(false);
   return (
@@ -123,11 +127,6 @@ function TaskList({ session }: { session: DemoSession }) {
           </Space>
         }
       />
-      <Alert
-        type="info"
-        showIcon
-        title="仅记录人工模拟结果，不调用真实模型，不存储 Key；测试不自动改变开放、接入、报价或寻源判断。"
-      />
       {result.status === 'loading' ? (
         <LoadingState />
       ) : result.status === 'error' ? (
@@ -135,10 +134,7 @@ function TaskList({ session }: { session: DemoSession }) {
       ) : (
         <>
           <TestingMetrics stats={result.data.summaries.stats} />
-          <Card title="授权任务筛选" className="resource-card">
-            <p className="section-note">
-              指标按模型与渠道范围计算；任务状态和类型筛选仅作用于下方任务列表。
-            </p>
+          <Card title="筛选测试" className="resource-card">
             <Space wrap>
               <Select
                 aria-label="测试模型筛选"
@@ -171,6 +167,22 @@ function TaskList({ session }: { session: DemoSession }) {
               {full && (
                 <>
                   <Select
+                    aria-label="测试进度筛选"
+                    value={businessState}
+                    onChange={setBusinessState}
+                    style={{ width: 160 }}
+                    options={[
+                      { value: 'all', label: '全部测试进度' },
+                      { value: 'pending', label: '待测试' },
+                      { value: 'running', label: '测试中' },
+                      { value: 'passed', label: '测试通过' },
+                      { value: 'failed', label: '测试失败' },
+                      { value: 'rectifying', label: '供应商整改中' },
+                      { value: 'retest', label: '等待复测' },
+                    ]}
+                  />
+
+                  <Select
                     aria-label="任务状态筛选"
                     placeholder="全部任务状态"
                     allowClear
@@ -196,13 +208,37 @@ function TaskList({ session }: { session: DemoSession }) {
             <Card title="测试任务" className="resource-card">
               <Table<TestTaskRow>
                 rowKey={(r) => r.task.id}
-                dataSource={[...result.data.tasks]}
-                scroll={{ x: 1330 }}
+                dataSource={result.data.tasks.filter((r) => {
+                  const conclusion = r.summary[r.task.testType];
+                  if (businessState === 'all') return true;
+                  if (
+                    businessState === 'pending' ||
+                    businessState === 'running'
+                  )
+                    return r.task.status === businessState;
+                  if (businessState === 'passed' || businessState === 'failed')
+                    return (
+                      (conclusion.result ?? conclusion.status) ===
+                        businessState ||
+                      (businessState === 'failed' && conclusion.newFailureRisk)
+                    );
+                  const rems = result.data.remediations.filter(
+                    (x) => x.channelId === r.task.channelId,
+                  );
+                  return businessState === 'rectifying'
+                    ? rems.some((x) =>
+                        ['open', 'in_progress'].includes(x.status),
+                      )
+                    : rems.some((x) => x.status === 'submitted') ||
+                        !!r.task.stageLabel?.includes('复测');
+                })}
+                className="testing-task-table"
+                scroll={{ x: 980 }}
                 pagination={{ pageSize: 10 }}
                 columns={[
                   {
                     title: '模型 / 渠道',
-                    width: 220,
+                    width: 200,
                     render: (_, r) => (
                       <>
                         <strong>{r.summary.model.name}</strong>
@@ -213,17 +249,24 @@ function TaskList({ session }: { session: DemoSession }) {
                   },
                   {
                     title: '类型 / 任务状态',
-                    width: 150,
+                    width: 140,
                     render: (_, r) => (
                       <>
                         <Tag>{typeLabel(r.task.testType)}</Tag>
-                        <p>{taskStatusLabels[r.task.status]}</p>
+                        <p>
+                          {!r.latestExecution &&
+                          !r.definition.cancelledAt &&
+                          r.task.status !== 'running'
+                            ? (r.task.stageLabel ??
+                              taskStatusLabels[r.task.status])
+                            : taskStatusLabels[r.task.status]}
+                        </p>
                       </>
                     ),
                   },
                   {
                     title: '当前结论（按渠道）',
-                    width: 240,
+                    width: 180,
                     render: (_, r) =>
                       conclusionText(r.summary[r.task.testType]),
                   },
@@ -243,23 +286,24 @@ function TaskList({ session }: { session: DemoSession }) {
                     ),
                   },
                   {
-                    title: '质量豁免',
-                    width: 140,
-                    render: (_, r) =>
-                      r.summary.exempted
-                        ? '有效豁免，非测试通过'
-                        : '无有效豁免',
-                  },
-                  {
                     title: '最近测试 / 负责人',
-                    width: 240,
+                    width: 170,
                     render: (_, r) => (
                       <>
-                        {r.latestExecution?.finishedAt ?? '尚无执行'}
+                        {r.latestExecution?.finishedAt
+                          ? new Date(
+                              r.latestExecution.finishedAt,
+                            ).toLocaleDateString('zh-CN', {
+                              timeZone: 'Asia/Shanghai',
+                            })
+                          : '尚无执行'}
                         <p>
-                          {r.task.assignedTo ??
-                            r.latestExecution?.performedBy ??
-                            '未分配'}
+                          {result.data.options.assignees.find(
+                            (u) =>
+                              u.id ===
+                              (r.task.assignedTo ??
+                                r.latestExecution?.performedBy),
+                          )?.name ?? '未分配'}
                         </p>
                       </>
                     ),
@@ -532,7 +576,7 @@ function TaskDetail({ session, id }: { session: DemoSession; id: string }) {
             {
               key: 'creator',
               label: '创建人',
-              children: d.definition.createdBy ?? 'legacy 未提供',
+              children: d.definition.createdBy ?? '未提供',
             },
             {
               key: 'assignee',
@@ -636,7 +680,7 @@ function TaskDetail({ session, id }: { session: DemoSession; id: string }) {
               ),
             },
             {
-              title: '共享技术摘要',
+              title: '问题说明',
               width: 220,
               render: (_, e) =>
                 e.technicalSummary ?? '旧记录未提供独立共享摘要',
@@ -697,7 +741,7 @@ function TaskDetail({ session, id }: { session: DemoSession; id: string }) {
                   {
                     key: 'target',
                     label: '执行目标版本',
-                    children: e.targetVersion ?? 'legacy 未提供',
+                    children: e.targetVersion ?? '未提供',
                   },
                 ]}
               />
@@ -1005,11 +1049,11 @@ function ActionDialog({
             </Form.Item>
             <Form.Item
               name="technicalSummary"
-              label="跨角色共享技术摘要"
+              label="跨角色问题说明"
               rules={[{ required: true, whitespace: true }]}
             >
               <Input.TextArea
-                aria-label="共享技术摘要"
+                aria-label="问题说明"
                 maxLength={4000}
                 placeholder="仅技术结论，不得写客户身份、价格、凭据或内部分析"
               />

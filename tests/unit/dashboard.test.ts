@@ -141,7 +141,9 @@ describe('scoped dashboard aggregates', () => {
       );
       expect(d.channels.every((c) => !('supplierName' in c))).toBe(true);
       expect(d.metrics.find((m) => m.id === 'demands')?.value).toBe(1);
-      expect(JSON.stringify(d)).not.toContain('虚构供应商');
+      expect(JSON.stringify(d)).not.toMatch(
+        /华北资源合作方|华东模型合作方|海外资源合作方/,
+      );
     },
   );
   it('keeps dimensions separate and does not infer sourcing from channel test state', async () => {

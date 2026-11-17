@@ -99,11 +99,11 @@ export function InquiryPanel({
   };
   return (
     <Card
-      title="模拟询价记录"
+      title="询价记录"
       className="quote-section"
       extra={
         session.permits('inquiry:create') && (
-          <Button onClick={() => open('create')}>发起模拟询价</Button>
+          <Button onClick={() => open('create')}>发起询价</Button>
         )
       }
     >
@@ -200,7 +200,7 @@ export function InquiryPanel({
         />
       )}
       <Modal
-        title={modal === 'create' ? '发起模拟询价' : '更新询价跟进'}
+        title={modal === 'create' ? '发起询价' : '更新询价跟进'}
         open={modal !== null}
         okText="保存询价记录"
         confirmLoading={busy}

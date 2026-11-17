@@ -43,12 +43,12 @@ describe('model resource UI data lifecycle', () => {
       target: { value: 'no-such-model' },
     });
     expect(
-      await screen.findByText('当前授权范围或筛选条件下暂无模型'),
+      await screen.findByText('当前业务范围或筛选条件下暂无模型'),
     ).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '重置筛选' }));
     await waitFor(() =>
       expect(
-        screen.queryByText('当前授权范围或筛选条件下暂无模型'),
+        screen.queryByText('当前业务范围或筛选条件下暂无模型'),
       ).not.toBeInTheDocument(),
     );
   });
@@ -64,7 +64,9 @@ describe('model resource UI data lifecycle', () => {
     );
     expect(screen.queryByText('Endpoint 引用')).not.toBeInTheDocument();
     expect(screen.queryByText('OP 渠道 ID')).not.toBeInTheDocument();
-    expect(screen.queryByText(/虚构供应商/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/华北资源合作方|华东模型合作方|海外资源合作方/),
+    ).not.toBeInTheDocument();
   });
   it('sanitizes unexpected errors and can retry a failed query', async () => {
     const s = createDemoSession('u-ops');

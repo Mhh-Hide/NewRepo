@@ -48,13 +48,13 @@ export default function ChannelWorkspace() {
             type={management ? 'default' : 'primary'}
             onClick={() => setParams({})}
           >
-            资源进度视图
+            交付进度
           </Button>
           <Button
             type={management ? 'primary' : 'default'}
             onClick={() => setParams({ view: 'management' })}
           >
-            渠道管理视图
+            渠道资料
           </Button>
         </Space>
       )}
@@ -63,7 +63,7 @@ export default function ChannelWorkspace() {
       ) : (
         <>
           <PageHeader
-            title="渠道管理"
+            title="渠道总览"
             description="以资源交付进度为中心，查看真实 Mock 节点、责任与卡点。"
             group="资源管理"
           />
@@ -98,7 +98,7 @@ function ChannelListPage() {
   const { result, reload } = useResourceQuery(load);
   const header = (
     <PageHeader
-      title="渠道管理"
+      title="渠道总览"
       description="统一维护模型资源渠道、供应商关联、资源能力及接入基础信息。"
       group="资源管理"
       actions={
@@ -139,7 +139,7 @@ function ChannelListPage() {
       }}
     >
       <p>
-        恢复初始渠道和 legacy
+        恢复初始渠道和历史
         测试资料；清除所有渠道（包括初始渠道）的新增任务、执行、采纳、审阅、来源核验、质量豁免及撤销审计。保留供应商主档、报价与寻源资料；存在外部悬空引用时拒绝重置。此操作仅限本浏览器
         Mock 数据。
       </p>
@@ -346,12 +346,12 @@ function ChannelListPage() {
               id: `channel-${id}`,
               label,
               value,
-              note: '当前授权范围，各状态独立统计；仅模拟数据',
+              note: '当前业务范围，各状态独立统计；仅模拟数据',
             }}
           />
         ))}
       </div>
-      <Card title="渠道目录" extra="Mock · 资源主档">
+      <Card title="渠道目录" extra="渠道资料">
         <div className="resource-filters">
           <Input
             aria-label="渠道名称或匿名代号"
@@ -429,7 +429,7 @@ function ChannelListPage() {
           }}
           locale={{
             emptyText: (
-              <EmptyState description="当前授权范围或筛选条件下暂无渠道" />
+              <EmptyState description="当前业务范围或筛选条件下暂无渠道" />
             ),
           }}
         />

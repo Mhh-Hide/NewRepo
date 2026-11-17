@@ -172,12 +172,17 @@ export function SupplierListPage({ session }: { session: DemoSession }) {
           : null,
       width: 220,
       render: (_, r) => (
-        <Link className="supplier-name" to={`/suppliers/${r.supplier.id}`}>
-          {r.supplier.name}
+        <Link
+          aria-label={r.supplier.name}
+          className="supplier-name"
+          to={`/suppliers/${r.supplier.id}`}
+        >
+          <span title={r.supplier.name}>
+            {r.supplier.shortCode || r.supplier.name}
+          </span>
         </Link>
       ),
     },
-    { title: '内部缩写', width: 110, render: (_, r) => r.supplier.shortCode },
     {
       title: '类别',
       width: 125,
@@ -431,7 +436,7 @@ export function SupplierListPage({ session }: { session: DemoSession }) {
           columns={columns}
           dataSource={[...page.rows]}
           onChange={tableChange}
-          scroll={{ x: 1450 }}
+          scroll={{ x: 1000 }}
           pagination={{
             current: page.page,
             pageSize: page.pageSize,
@@ -442,7 +447,7 @@ export function SupplierListPage({ session }: { session: DemoSession }) {
           }}
           locale={{
             emptyText: (
-              <EmptyState description="当前授权范围或筛选条件下暂无供应商" />
+              <EmptyState description="当前业务范围或筛选条件下暂无供应商" />
             ),
           }}
         />

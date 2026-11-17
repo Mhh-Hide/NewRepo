@@ -33,7 +33,7 @@ import { useSupplierResource } from './use-supplier-resource';
 import { SupplierEditor } from './SupplierEditor';
 const fieldLabels: Readonly<Record<string, string>> = {
   name: '供应商名称',
-  shortCode: '内部缩写',
+  shortCode: '供应商简称',
   supplierCategory: '类别',
   cooperationStatus: '合作状态',
   countryOrRegion: '注册国家或地区',
@@ -43,6 +43,7 @@ const fieldLabels: Readonly<Record<string, string>> = {
   contactPhone: '电话',
   contactPosition: '联系人职务',
   alternativeContact: '备用联系人',
+  wechatGroupName: '供应商微信群名称',
   ownerUserId: '采购负责人',
   remark: '内部备注',
   status: '启用状态',
@@ -178,7 +179,7 @@ export function SupplierDetailPage({
             <span className="supplier-avatar">{s.shortCode.slice(0, 2)}</span>
             <div>
               <strong>{s.name}</strong>
-              <small>{s.shortCode} · 虚构供应商主档</small>
+              <small>{s.shortCode} · 供应商档案</small>
             </div>
           </div>
         }
@@ -304,6 +305,11 @@ export function SupplierDetailPage({
                       children: s.contactPhone || '未填写',
                     },
                     {
+                      key: 'group',
+                      label: '供应商微信群名称',
+                      children: s.wechatGroupName || '未填写',
+                    },
+                    {
                       key: 'alternative',
                       label: '备用联系人',
                       children: s.alternativeContact || '未填写',
@@ -333,7 +339,7 @@ export function SupplierDetailPage({
           title="关联资源概览"
           extra={
             <Space wrap>
-              <Tag>当前授权范围</Tag>
+              <Tag>当前业务范围</Tag>
               {detail.resources.modelCount > 0 &&
                 session.permits('model:read') && (
                   <Link to={`/models?supplierId=${encodeURIComponent(s.id)}`}>

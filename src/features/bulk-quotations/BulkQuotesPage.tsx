@@ -210,7 +210,7 @@ export default function BulkQuotesPage() {
             label: s.name,
           }))}
         />
-        <label htmlFor="bulk-source">共同来源模拟引用</label>
+        <label htmlFor="bulk-source">共同来源引用</label>
         <Input
           id="bulk-source"
           value={source}
@@ -325,7 +325,7 @@ function BulkDetail({
         />
         {b.status === 'draft' ? (
           <>
-            <label htmlFor="draft-source">共同来源模拟引用（行可覆盖）</label>
+            <label htmlFor="draft-source">共同来源引用（行可覆盖）</label>
             <Input
               id="draft-source"
               value={input.sourceReference}

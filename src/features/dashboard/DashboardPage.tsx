@@ -1,11 +1,8 @@
 import { WorkInbox } from '../lifecycle/WorkInbox';
-import { RemediationSummaryPanel } from '../remediations/RemediationSummaryPanel';
-import { TestingMetrics } from '../testing/TestSummaryPanel';
-import { Button, Card, Table, Tag, Typography } from 'antd';
+import { Button, Card, Table } from 'antd';
 import { ReloadOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { Link, useOutletContext } from 'react-router-dom';
 import type { DemoSession } from '../../services/demo-session';
-import { roleLabels } from '../../auth/types';
 import { PageHeader } from '../../components/PageHeader';
 import {
   EmptyState,
@@ -14,8 +11,8 @@ import {
 } from '../../components/FeedbackStates';
 import { StatCard } from '../../components/StatCard';
 import { StatusBadge } from '../../components/StatusBadge';
+import { navigation } from '../../app/navigation';
 import { useDashboard } from './use-dashboard';
-import type { DashboardData } from './types';
 export function DashboardRoute() {
   const session = useOutletContext<DemoSession>();
   return <DashboardPage session={session} />;
@@ -25,7 +22,7 @@ export function DashboardPage({ session }: { session: DemoSession }) {
   const header = (
     <PageHeader
       title="工作台"
-      description={`${roleLabels[session.profile.user.role]}视角 · 授权资源与业务协作概览`}
+      description="今天有哪些事情需要推进"
       group="运营总览"
       actions={
         <Button icon={<ReloadOutlined />} onClick={reload}>
@@ -54,221 +51,113 @@ export function DashboardPage({ session }: { session: DemoSession }) {
       <>
         {header}
         <Card>
-          <EmptyState description="当前演示身份及业务域暂无授权数据" />
+          <EmptyState description="暂无待处理业务" />
         </Card>
       </>
     );
+  const priorities = [
+    'channels',
+    session.permits('quote:read') ? 'gaps' : 'quality',
+    'remediations',
+    'incidents',
+    'demands',
+    'models',
+  ];
+  const metrics = priorities
+    .flatMap((id) => d.metrics.filter((m) => m.id === id))
+    .slice(0, 4);
+  const entries = navigation.filter(
+    (n) =>
+      [
+        'channels',
+        'sourcing',
+        'tests',
+        'remediations',
+        'suppliers',
+        'quotes',
+      ].includes(n.id) &&
+      (n.permission === null || session.permits(n.permission)),
+  );
+  const attention = d.channels.filter(
+    (c) => c.quality.includes('失败') || c.connectivity.includes('失败'),
+  );
   return (
     <>
       {header}
-      <div className="section-kicker">
-        当前授权范围 <span>各指标来自模拟业务记录，非实时监控数据</span>
-      </div>
-      <section className="stats-grid" aria-label="授权范围统计">
-        {d.metrics.map((metric) => (
+      <section className="stats-grid home-stats" aria-label="业务概况">
+        {metrics.map((metric) => (
           <StatCard key={metric.id} metric={metric} />
         ))}
       </section>
-      <WorkInbox session={session} />
-      <RemediationSummaryPanel session={session} />
-      {d.testing && <TestingMetrics stats={d.testing} />}
-      <div className="dashboard-middle">
-        <Card
-          title="资源状态概览"
-          extra={<Tag>独立状态维度</Tag>}
-          className="dimension-card"
-        >
-          <p className="section-note">
-            各维度分别统计，不代表连续漏斗或上线准入结论。
-          </p>
-          <div className="dimensions">
-            {d.dimensions.map((dim) => (
-              <section className="dimension" key={dim.name}>
-                <div className="dimension-heading">
-                  <strong>{dim.name}</strong>
-                  <small>按{dim.basis}计数</small>
-                </div>
-                {dim.counts.map((c) => (
-                  <div className="dimension-row" key={c.label}>
-                    <span>{c.label}</span>
-                    <b>{c.value}</b>
-                  </div>
-                ))}
-              </section>
-            ))}
-          </div>
-        </Card>
-        <Card title="我的待办" extra={<Tag>只读</Tag>}>
-          <p className="section-note">
-            按角色授权范围汇总，不代表任务认领或审批。
-          </p>
-          {d.todos.length ? (
-            <ul className="business-list">
-              {d.todos.map((todo) => (
-                <li key={todo.label}>
-                  <div>
-                    <span className="todo-count">{todo.count}</span>
-                    {todo.label}
-                  </div>
-                  <Link to={todo.path} aria-label={`${todo.label}开发计划`}>
-                    <ArrowRightOutlined />
-                  </Link>
+      <WorkInbox
+        session={session}
+        compact
+        fallback={
+          <ul className="business-list">
+            {d.todos
+              .filter((t) => t.count > 0)
+              .slice(0, 5)
+              .map((t) => (
+                <li key={t.label}>
+                  <Link to={t.path}>{t.label}</Link>
+                  <strong>{t.count}</strong>
                 </li>
               ))}
-            </ul>
-          ) : (
-            <EmptyState description="当前范围暂无待处理事项" />
-          )}
-        </Card>
-      </div>
-      <div className="dashboard-bottom">
-        <Card
-          title="渠道资源速览"
-          extra={
-            <Link to="/channels">
-              查看开发计划 <ArrowRightOutlined />
-            </Link>
-          }
-        >
-          <Table
-            size="small"
-            rowKey="id"
-            pagination={{ pageSize: 5, hideOnSinglePage: true }}
-            scroll={{ x: 720 }}
-            dataSource={[...d.channels]}
-            columns={[
-              { title: '资源渠道', dataIndex: 'name', key: 'name', width: 180 },
-              {
-                title: '模型与能力',
-                dataIndex: 'model',
-                key: 'model',
-                render: (
-                  name: string,
-                  c: DashboardData['channels'][number],
-                ) => (
-                  <div>
-                    {name}
-                    <small className="resource-capacity">
-                      TPM{' '}
-                      {c.tpm === null ? '未知' : c.tpm.toLocaleString('zh-CN')}{' '}
-                      · RPM{' '}
-                      {c.rpm === null ? '未知' : c.rpm.toLocaleString('zh-CN')}
-                    </small>
-                  </div>
-                ),
-              },
-              ...(session.permits('supplier:read')
-                ? [
-                    {
-                      title: '供应商',
-                      dataIndex: 'supplierName',
-                      key: 'supplierName',
-                    },
-                  ]
-                : []),
-              {
-                title: '质量测试',
-                dataIndex: 'quality',
-                key: 'quality',
-                render: (label: string) => <StatusBadge label={label} />,
-              },
-              {
-                title: '连通性',
-                dataIndex: 'connectivity',
-                key: 'connectivity',
-                render: (label: string) => <StatusBadge label={label} />,
-              },
-            ]}
-            locale={{ emptyText: <EmptyState /> }}
-          />
-        </Card>
-        <Card title="最近活动" extra={<Tag>授权记录摘要</Tag>}>
-          <p className="section-note">
-            每类展示最近一条记录，不包含受限审计快照。
-          </p>
-          {d.activities.length ? (
-            <ul className="business-list activity-list">
-              {d.activities.map((activity) => (
-                <li key={activity.id}>
-                  <div>
-                    <Tag>{activity.kind}</Tag>
-                    <span>{activity.title}</span>
-                    <small>
-                      {new Date(activity.occurredAt).toLocaleString('zh-CN', {
-                        timeZone: 'Asia/Shanghai',
-                        hour12: false,
-                      })}
-                    </small>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <EmptyState description="当前范围暂无可展示活动" />
-          )}
-        </Card>
-      </div>
-      {session.permits('supplier:read') && (
-        <Card
-          title="供应商速览"
-          className="lower-card"
-          extra={<Link to="/suppliers">即将开放 · 查看计划</Link>}
-        >
-          <Table
-            size="small"
-            rowKey="id"
-            pagination={false}
-            dataSource={[...d.suppliers].slice(0, 5)}
-            scroll={{ x: 450 }}
-            columns={[
-              { title: '供应商名称（模拟）', dataIndex: 'name' },
-              { title: '缩写', dataIndex: 'shortCode' },
-              {
-                title: '状态',
-                dataIndex: 'status',
-                render: (s: string) => (
-                  <StatusBadge label={s === 'enabled' ? '启用' : '停用'} />
-                ),
-              },
-            ]}
-            locale={{ emptyText: <EmptyState /> }}
-          />
-        </Card>
-      )}
-      {session.permits('quote:read') && (
-        <Card
-          title="采购报价摘要"
-          className="lower-card"
-          extra={<Link to="/analytics/procurement">查看采购价格分析</Link>}
-        >
-          <Typography.Paragraph type="secondary">
-            历史记录仅供演示，不代表当前结算价或真实商业合作。
-          </Typography.Paragraph>
-          <Table
-            size="small"
-            rowKey="id"
-            pagination={{ pageSize: 5, hideOnSinglePage: true }}
-            dataSource={[...d.quotes]}
-            scroll={{ x: 450 }}
-            columns={[
-              { title: '渠道', dataIndex: 'channel' },
-              {
-                title: '报价状态',
-                dataIndex: 'status',
-                render: (label: string) => <StatusBadge label={label} />,
-              },
-              {
-                title: '采购折扣（模拟）',
-                dataIndex: 'discount',
-                render: (n: number) => `${(n / 1000).toFixed(2)} 折`,
-              },
-            ]}
-            locale={{
-              emptyText: <EmptyState description="当前范围暂无授权报价" />,
-            }}
-          />
-        </Card>
-      )}
+          </ul>
+        }
+      />
+      <Card
+        title="需要关注的渠道"
+        className="resource-card"
+        extra={
+          <Link to="/channels">
+            全部渠道 <ArrowRightOutlined />
+          </Link>
+        }
+      >
+        <Table
+          size="small"
+          rowKey="id"
+          pagination={false}
+          dataSource={attention.slice(0, 3)}
+          scroll={{ x: 600 }}
+          columns={[
+            { title: '模型', dataIndex: 'model' },
+            {
+              title: '渠道',
+              dataIndex: 'name',
+              render: (name: string, r: (typeof d.channels)[number]) => (
+                <Link to={`/channels?delivery=${encodeURIComponent(r.id)}`}>
+                  {name}
+                </Link>
+              ),
+            },
+            {
+              title: '质量测试',
+              dataIndex: 'quality',
+              render: (s: string) => <StatusBadge label={s} />,
+            },
+            {
+              title: '连通性',
+              dataIndex: 'connectivity',
+              render: (s: string) => <StatusBadge label={s} />,
+            },
+          ]}
+          locale={{
+            emptyText: <EmptyState description="暂无需要关注的异常渠道" />,
+          }}
+        />
+      </Card>
+      <section className="module-grid" aria-label="常用模块">
+        {entries.map((n) => (
+          <Link className="module-link" key={n.id} to={n.path}>
+            <span>
+              {n.icon} {n.name}
+            </span>
+            <ArrowRightOutlined />
+          </Link>
+        ))}
+      </section>
     </>
   );
 }

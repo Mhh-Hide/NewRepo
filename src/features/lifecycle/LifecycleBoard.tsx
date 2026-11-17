@@ -1,10 +1,10 @@
 import { progressStepItem } from './ProgressStep';
 import { useCallback, useState } from 'react';
 import {
-  Alert,
   Button,
   Card,
-  Descriptions,
+  Input,
+  Collapse,
   Empty,
   Grid,
   Progress,
@@ -20,30 +20,44 @@ import { useResourceQuery } from '../models/use-resource-query';
 import { LoadingState, ErrorState } from '../../components/FeedbackStates';
 import { ChannelEditor } from '../channels/ChannelEditor';
 import { LifecycleDetail } from './LifecycleDetail';
-import { WorkInbox } from './WorkInbox';
-import { channelTypeLabels } from '../../domain/statuses';
-const statsLabels: Record<string, string> = {
-  total: '渠道总数',
-  open: '正常对客开放',
-  qualityPending: '第一阶段待测试',
-  qualityRisk: '第一阶段失败及整改',
-  contracts: '合同推进中',
-  configuration: '待生产配置',
-  integration: '第二阶段待测试',
-  abnormal: '异常渠道',
-  mine: '当前用户待处理',
-};
 export function LifecycleBoard({ session }: { session: DemoSession }) {
   const screens = Grid.useBreakpoint();
+  const [search, setSearch] = useState('');
   const [filters, setFilters] = useState<LifecycleQuery>({}),
     [editing, setEditing] = useState(false),
     [params, setParams] = useSearchParams(),
     navigate = useNavigate();
   const selected = params.get('delivery');
-  const load = useCallback(
-      () => session.api.queryLifecycle(filters),
-      [session.api, filters],
-    ),
+  const load = useCallback(async () => {
+      const [data, channels] = await Promise.all([
+        session.api.queryLifecycle(filters),
+        session.api.listChannels(),
+      ]);
+      return {
+        ...data,
+        rows: data.rows.map((r) => {
+          if (!r.legacy) return r;
+          const c = channels.find((c) => c.id === r.id);
+          return {
+            ...r,
+            dispatch:
+              c?.qualityStatus === 'failed'
+                ? '待整改'
+                : c?.qualityStatus === 'passed'
+                  ? '质量通过'
+                  : '待测试',
+            blocker:
+              c?.qualityStatus === 'failed'
+                ? '第一阶段测试未通过'
+                : '交付资料待确认',
+            nextAction:
+              c?.qualityStatus === 'failed'
+                ? '跟进供应商并安排复测'
+                : '确认资源与岗位交接',
+          };
+        }),
+      };
+    }, [session.api, filters]),
     { result, reload } = useResourceQuery(load);
   const change = (
     key: keyof LifecycleQuery,
@@ -60,29 +74,16 @@ export function LifecycleBoard({ session }: { session: DemoSession }) {
   if (result.status === 'loading') return <LoadingState />;
   if (result.status === 'error')
     return <ErrorState message={result.message} onRetry={reload} />;
-  const { rows, stats, users } = result.data;
+  const { users } = result.data;
+  const rows = result.data.rows.filter((r) =>
+    `${r.modelName} ${r.channelName} ${r.supplierName} ${r.supplierShortCode}`
+      .toLowerCase()
+      .includes(search.toLowerCase()),
+  );
   return (
     <>
-      <Alert
-        type="info"
-        title="六步资源交付 · 测试与整改引用原模块真实 Mock 记录，旧数据待补充核验。"
-        description="交付完成度不是质量评分。历史交付已完成与当前能否调度分别判断；合同与生产凭据仅记录模拟进度和安全引用。"
-      />
-      <div className="stats-grid resource-stats">
-        {Object.entries(statsLabels).map(([key, label]) => (
-          <Card key={key} size="small">
-            <span>{label}</span>
-            <strong
-              style={{ display: 'block', fontSize: 24 }}
-              data-testid={`lifecycle-stat-${key}`}
-            >
-              {stats[key]}
-            </strong>
-          </Card>
-        ))}
-      </div>
       <Card
-        title="渠道资源推进总览"
+        title="资源进度"
         extra={
           <Space wrap>
             <Button onClick={reload}>刷新资源进度</Button>
@@ -93,6 +94,13 @@ export function LifecycleBoard({ session }: { session: DemoSession }) {
         }
       >
         <div className="resource-filters">
+          <Input
+            aria-label="搜索模型、渠道或供应商"
+            placeholder="搜索模型、渠道或供应商"
+            allowClear
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
           <Select
             aria-label="进度模型筛选"
             allowClear
@@ -204,7 +212,11 @@ export function LifecycleBoard({ session }: { session: DemoSession }) {
                 </p>
                 <p>卡点：{r.blocker}</p>
                 <p>下一步：{r.nextAction}</p>
-                <Button onClick={() => setParams({ delivery: r.id })}>
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={() => setParams({ delivery: r.id })}
+                >
                   推进与历史
                 </Button>
               </Card>
@@ -215,7 +227,7 @@ export function LifecycleBoard({ session }: { session: DemoSession }) {
             rowKey="id"
             size="small"
             dataSource={rows}
-            scroll={{ x: 2400 }}
+            scroll={{ x: 1055 }}
             pagination={{ pageSize: 10 }}
             columns={[
               {
@@ -225,15 +237,17 @@ export function LifecycleBoard({ session }: { session: DemoSession }) {
                   <div>
                     {r.modelName}
                     <br />
-                    <small>{r.channelName}</small>
+                    <small>
+                      <Link to={`/channels/${r.id}`}>{r.channelName}</Link>
+                    </small>
                   </div>
                 ),
                 fixed: 'left',
-                width: 180,
+                width: 155,
               },
               {
                 title: '动态交付进度',
-                width: 260,
+                width: 215,
                 render: (_, r) => (
                   <Tooltip
                     title={r.orderedSteps.map((step) => {
@@ -262,113 +276,53 @@ export function LifecycleBoard({ session }: { session: DemoSession }) {
                         {r.schedulable ? '当前可调度' : '当前不可调度'}
                       </small>
                       <div>
-                        <small>
-                          {r.stage} · {r.currentOwner}
-                        </small>
+                        <small>{r.legacy ? '交付进度待确认' : r.stage}</small>
                       </div>
                     </div>
                   </Tooltip>
                 ),
               },
               {
-                title: '上游调用模型名',
-                dataIndex: 'upstreamModelName',
-                width: 180,
-              },
-              { title: '供应商全称', dataIndex: 'supplierName', width: 180 },
-              {
-                title: '供应商缩写',
-                dataIndex: 'supplierShortCode',
-                width: 120,
-              },
-              {
-                title: '渠道',
-                width: 200,
+                title: '供应商',
+                width: 95,
                 render: (_, r) => (
-                  <Link to={`/channels/${r.id}`}>{r.channelName}</Link>
+                  <Tooltip title={r.supplierName}>
+                    {r.supplierShortCode || r.supplierName}
+                  </Tooltip>
                 ),
               },
-              {
-                title: '渠道类型',
-                dataIndex: 'channelType',
-                width: 140,
-                render: (v) =>
-                  channelTypeLabels[v as keyof typeof channelTypeLabels],
-              },
-              { title: '当前节点', dataIndex: 'stage', width: 180 },
-              {
-                title: '当前状态',
-                width: 230,
-                dataIndex: 'dispatch',
-              },
-              { title: '当前负责人', dataIndex: 'currentOwner', width: 150 },
-              { title: '当前卡点', dataIndex: 'blocker', width: 270 },
-              { title: '下一步动作', dataIndex: 'nextAction', width: 240 },
-              {
-                title: '最近更新（北京时间）',
-                dataIndex: 'updatedAt',
-                width: 180,
-                render: (v) =>
-                  new Date(v).toLocaleString('zh-CN', {
-                    timeZone: 'Asia/Shanghai',
-                  }),
-              },
+              { title: '资源状态', dataIndex: 'dispatch', width: 80 },
+              { title: '当前负责人', dataIndex: 'currentOwner', width: 70 },
+              { title: '当前卡点', dataIndex: 'blocker', width: 120 },
+              { title: '下一步动作', dataIndex: 'nextAction', width: 130 },
               {
                 title: '操作',
                 fixed: 'right',
-                width: 120,
+                width: 90,
                 render: (_, r) => (
-                  <Button onClick={() => setParams({ delivery: r.id })}>
+                  <Button
+                    type="link"
+                    size="small"
+                    onClick={() => setParams({ delivery: r.id })}
+                  >
                     推进与历史
                   </Button>
                 ),
               },
             ]}
-            expandable={{
-              expandedRowRender: (r) => (
-                <Descriptions
-                  column={{ xs: 1, sm: 3 }}
-                  items={[
-                    {
-                      key: 'quote',
-                      label: '商务状态',
-                      children: r.quoteStatus ?? '无采购价格权限',
-                    },
-                    {
-                      key: 'promise',
-                      label: '承诺性能（采购维护）',
-                      children: `RPM ${r.promised.rpm ?? '未知'} / TPM ${r.promised.tpm ?? '未知'} / 并发 ${r.promised.concurrency ?? '未知'} / TTFT ${r.promised.ttftMs ?? '未知'}`,
-                    },
-                    {
-                      key: 'measure',
-                      label: '实测性能（测试维护）',
-                      children: r.measured
-                        ? `RPM ${r.measured.rpm ?? '未知'} / TPM ${r.measured.tpm ?? '未知'} / TTFT ${r.measured.ttftMs ?? '未知'}`
-                        : '尚无实测核验',
-                    },
-                    {
-                      key: 'rem',
-                      label: '相关整改',
-                      children: r.remediationIds.length
-                        ? r.remediationIds.map((id) =>
-                            session.permits('remediation:detail') ? (
-                              <Link key={id} to={`/remediations/${id}`}>
-                                {id}{' '}
-                              </Link>
-                            ) : (
-                              <span key={id}>存在授权整改摘要 </span>
-                            ),
-                          )
-                        : '无未关闭整改',
-                    },
-                  ]}
-                />
-              ),
-            }}
           />
         )}
       </Card>
-      <WorkInbox session={session} />
+      <Collapse
+        ghost
+        items={[
+          {
+            key: 'tasks',
+            label: '任务与通知',
+            children: <Link to="/tasks">查看我的任务</Link>,
+          },
+        ]}
+      />
       {selected && (
         <LifecycleDetail
           key={`${session.profile.user.id}:${session.domain}:${selected}`}

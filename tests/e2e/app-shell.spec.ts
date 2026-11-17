@@ -69,7 +69,7 @@ test('role switches remove sensitive content and show relevant work', async ({
   page,
 }) => {
   await page.goto('/dashboard');
-  await expect(page.getByText('采购报价摘要', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: /采购报价/ })).toBeVisible();
   await persona(page, '测试 · 模拟Testing');
   await expect(page.getByTestId('metric-quality')).toBeVisible();
   await expect(page.getByText('采购报价摘要', { exact: true })).toHaveCount(0);
@@ -82,27 +82,25 @@ test('role switches remove sensitive content and show relevant work', async ({
   await expect(page.getByText('采购报价摘要', { exact: true })).toHaveCount(0);
   await persona(page, '供应商 · 模拟SupplierUser');
   await expect(page.getByTestId('metric-channels')).toContainText('3');
-  await expect(
-    page.getByText('虚构供应商2（模拟）', { exact: true }),
-  ).toHaveCount(0);
+  await expect(page.getByText('华东模型合作方', { exact: true })).toHaveCount(
+    0,
+  );
   await page.reload();
   await expect(page.getByTestId('metric-channels')).toContainText('3');
   await persona(page, '销售 · 模拟Sales');
   await expect(page.getByTestId('metric-demands')).toContainText('1');
   await expect(page.getByTestId('metric-suppliers')).toHaveCount(0);
-  await expect(page.getByText(/虚构供应商/)).toHaveCount(0);
   await expect(
-    page.getByText('模拟匿名渠道 DEMO-ch-1', { exact: true }),
-  ).toBeVisible();
+    page.getByText(/华北资源合作方|华东模型合作方|海外资源合作方/),
+  ).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /渠道总览/ })).toBeVisible();
 });
 test('empty scope, route guard, collapsed sidebar and small screen are usable', async ({
   page,
 }) => {
   await page.goto('/dashboard');
   await persona(page, '产品运营 · 模拟未授权运营');
-  await expect(
-    page.getByText('当前演示身份及业务域暂无授权数据'),
-  ).toBeVisible();
+  await expect(page.getByText('暂无待处理业务')).toBeVisible();
   await persona(page, '销售 · 模拟Sales');
   await page.getByRole('button', { name: '收起导航' }).click();
   await expect(page.getByRole('button', { name: '展开导航' })).toBeVisible();

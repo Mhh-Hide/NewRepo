@@ -69,7 +69,7 @@ test('confirmed future price activates at start and expires at exclusive end wit
   await d.getByLabel(/生效日期（北京时间00:00）$/).fill('2026-11-16');
   await d.getByLabel(/截止日期（北京时间00:00，不含）$/).fill('2026-11-18');
   await d
-    .getByRole('textbox', { name: /报价证据模拟引用$/ })
+    .getByRole('textbox', { name: /报价证据引用$/ })
     .fill('mock:future-price');
   await d
     .getByRole('textbox', { name: /报价来源说明与备注$/ })

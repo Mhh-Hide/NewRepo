@@ -1,3 +1,4 @@
+import { businessStorage, isPrivateData } from '../services/runtime-data';
 import type { BusinessDomain, Supplier } from '../domain/entities';
 import type {
   SupplierMasterScope,
@@ -103,6 +104,9 @@ export function normalizeSupplierInput(
     contactPhone: strings.contactPhone!,
     contactPosition: strings.contactPosition!,
     alternativeContact: strings.alternativeContact!,
+    ...(input.wechatGroupName !== undefined
+      ? { wechatGroupName: strings.wechatGroupName! }
+      : {}),
     remark: strings.remark!,
   };
 }
@@ -111,8 +115,11 @@ export function isSupplier(value: unknown): value is Supplier {
     !record(value) ||
     value.source !== 'mock' ||
     !textFields.every((k) => typeof value[k] === 'string') ||
+    (value.wechatGroupName !== undefined &&
+      typeof value.wechatGroupName !== 'string') ||
     !known(value, [
       ...textFields,
+      'wechatGroupName',
       'source',
       'status',
       'supplierCategory',
@@ -188,7 +195,12 @@ function isState(v: unknown): v is SupplierStore {
         known(g, ['supplierId', 'managementDomains']) &&
         rows.some((s) => s.id === g.supplierId) &&
         Array.isArray(g.managementDomains) &&
-        g.managementDomains.length > 0 &&
+        (g.managementDomains.length > 0 ||
+          // Imported leads without channels remain unclassified. Their explicit
+          // procurement maintenance grants do not grant any operations domain.
+          (isPrivateData() &&
+            fixture.suppliers.some((s) => s.id === g.supplierId) &&
+            !fixture.channels.some((c) => c.supplierId === g.supplierId))) &&
         g.managementDomains.every(
           (d: unknown) => d === 'domestic' || d === 'overseas',
         ),
@@ -349,8 +361,8 @@ export class SupplierRepository {
   }
 }
 const browserStorage: StoragePort = {
-  getItem: (key) => globalThis.localStorage.getItem(key),
-  setItem: (key, value) => globalThis.localStorage.setItem(key, value),
+  getItem: (key) => businessStorage.getItem(key),
+  setItem: (key, value) => businessStorage.setItem(key, value),
 };
 export const supplierRepository = new SupplierRepository(browserStorage);
 export function assertSupplierUnique(

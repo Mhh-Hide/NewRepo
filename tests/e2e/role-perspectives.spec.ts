@@ -68,15 +68,17 @@ test('销售真实体验保留匿名渠道和权限拒绝，深链接刷新身�
   await expect(
     page.getByRole('button', { name: '体验供应商管理' }),
   ).toHaveCount(0);
-  await expect(
-    page.getByRole('button', { name: '体验采购报价管理' }),
-  ).toHaveCount(0);
-  await page.getByRole('button', { name: '体验渠道管理', exact: true }).click();
+  await expect(page.getByRole('button', { name: '体验采购报价' })).toHaveCount(
+    0,
+  );
+  await page.getByRole('button', { name: '体验渠道总览', exact: true }).click();
   await expect(page).toHaveURL(/\/channels$/);
   await expect(page.locator('.topbar-controls')).toContainText(
     '销售 · 模拟Sales',
   );
-  await expect(page.locator('main')).not.toContainText('虚构供应商');
+  await expect(page.locator('main')).not.toContainText(
+    /华北资源合作方|华东模型合作方|海外资源合作方/,
+  );
   await expect(page.locator('main')).not.toContainText('采购折扣');
   await page.goto('/remediations');
   await expect(page.getByText('无整改访问权限')).toBeVisible();
@@ -120,9 +122,7 @@ test('多身份选择、单域/双域切换、无授权空状态与刷新恢复'
     0,
   );
   await page.getByRole('button', { name: '体验空工作台' }).click();
-  await expect(
-    page.getByText('当前演示身份及业务域暂无授权数据'),
-  ).toBeVisible();
+  await expect(page.getByText('暂无待处理业务')).toBeVisible();
 });
 for (const width of [1440, 390])
   test(`${width}px 权限矩阵、键盘操作与真实截图`, async ({ page }) => {
@@ -171,7 +171,7 @@ test('顶部切换与页面共用身份、返回不残留旧预览', async ({ pa
     'true',
   );
   await expect(page.getByText('身份预览，尚未切换')).toHaveCount(0);
-  await expect(
-    page.getByRole('button', { name: '体验采购报价管理' }),
-  ).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '体验采购报价' })).toHaveCount(
+    0,
+  );
 });

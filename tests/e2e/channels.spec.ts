@@ -13,7 +13,7 @@ async function select(page: Page, label: string, option: string) {
 }
 async function create(page: Page, name = '虚构渠道浏览器验收') {
   await page.getByRole('button', { name: '新增渠道', exact: true }).click();
-  await select(page, '渠道供应商', '虚构供应商1');
+  await select(page, '渠道供应商', '华北资源合作方');
   await select(page, '渠道模型', 'Seedance 示例国内版');
   await page.getByRole('textbox', { name: /渠道展示名称$/ }).fill(name);
   await page.getByRole('button', { name: '保存渠道', exact: true }).click();
@@ -45,7 +45,7 @@ test('operations creates, edits, persists, navigates and synchronizes all resour
 }) => {
   await page.goto('/channels?view=management');
   await expect(
-    page.getByRole('heading', { name: '渠道管理', exact: true }),
+    page.getByRole('heading', { name: '渠道总览', exact: true }),
   ).toBeVisible();
   await expect(page.getByTestId('metric-channel-total')).toContainText('7');
   await create(page);
@@ -58,15 +58,28 @@ test('operations creates, edits, persists, navigates and synchronizes all resour
     page.getByRole('link', { name: '虚构渠道浏览器验收', exact: true }),
   ).toBeVisible();
   await page.goto(url);
-  await page.getByRole('link', { name: /虚构供应商1/ }).click();
+  await page.getByRole('link', { name: /华北资源合作方/ }).click();
   await expect(page.locator('.supplier-resource-stats strong')).toHaveText([
     '2',
     '4',
   ]);
   await page.goto('/dashboard');
   await expect(page.getByTestId('metric-channels')).toContainText('8');
-  await expect(page.getByTestId('metric-quality')).toContainText('5');
-  await expect(page.getByTestId('metric-connectivity')).toContainText('7');
+  // Full test counters moved out of the compact dashboard; keep the original
+  // cross-module data consistency assertions against the authorized adapter.
+  const pending = await page.evaluate(async () => {
+    const path = '/src/mocks/mock-adapter.ts';
+    const { createMockAdapter } = await import(/* @vite-ignore */ path);
+    const tasks = await createMockAdapter('u-ops').listTestTasks();
+    return ['quality', 'connectivity'].map(
+      (type) =>
+        tasks.filter(
+          (t: { testType: string; status: string }) =>
+            t.testType === type && ['pending', 'running'].includes(t.status),
+        ).length,
+    );
+  });
+  expect(pending).toEqual([5, 7]);
   await page.goto(url);
   await page.getByRole('button', { name: '编辑基础信息', exact: true }).click();
   await page
@@ -170,7 +183,7 @@ test('switching roles removes writes, supplier identity and OP details', async (
     page.getByRole('combobox', { name: 'OP 绑定', exact: true }),
   ).toHaveCount(0);
   await expect(page.locator('.ant-table-tbody')).not.toContainText(
-    '虚构供应商',
+    '华北资源合作方',
   );
 });
 test('1440, 1280 and 390px channel forms and detail remain usable', async ({
@@ -180,7 +193,7 @@ test('1440, 1280 and 390px channel forms and detail remain usable', async ({
     await page.setViewportSize({ width, height: 1000 });
     await page.goto('/channels?view=management');
     await expect(
-      page.getByRole('heading', { name: '渠道管理', exact: true }),
+      page.getByRole('heading', { name: '渠道总览', exact: true }),
     ).toBeVisible();
     await create(page, `虚构窄屏渠道${width}`);
     await page.getByRole('button', { name: '编辑基础信息' }).click();

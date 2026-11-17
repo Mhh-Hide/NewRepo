@@ -169,7 +169,7 @@ describe('authorized mock API projections and record scopes', () => {
     const a = createMockAdapter('u-support');
     const detail = await a.getDemand('d-1');
     expect(detail?.demand.customer?.name).toBe('虚构客户1（模拟）');
-    expect((await a.listSuppliers())[0]?.name).toContain('虚构供应商');
+    expect((await a.listSuppliers())[0]?.name).toBe('华北资源合作方');
     const records = [
       detail,
       await a.listDemands(),
@@ -228,7 +228,7 @@ describe('authorized mock API projections and record scopes', () => {
         'salesPriceMinorUnits',
       ])
         expect(keysDeep(records)).not.toContain(key);
-      expect(JSON.stringify(records)).not.toContain('虚构供应商');
+      expect(JSON.stringify(records)).not.toBe('华北资源合作方');
     },
   );
   it('operations sees complete fields within granted business domains', async () => {

@@ -1,3 +1,4 @@
+import { businessStorage } from '../services/runtime-data';
 import { projectLegacyRemediation } from './remediation-repository';
 import { testingSnapshot } from './testing-state';
 import { bulkShape, bulkReferences } from './bulk-repository-rules';
@@ -480,6 +481,6 @@ export class QuoteRepository {
   }
 }
 export const quoteRepository = new QuoteRepository({
-  getItem: (k) => localStorage.getItem(k),
-  setItem: (k, v) => localStorage.setItem(k, v),
+  getItem: (k) => businessStorage.getItem(k),
+  setItem: (k, v) => businessStorage.setItem(k, v),
 });

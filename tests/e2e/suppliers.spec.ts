@@ -27,7 +27,7 @@ async function create(page: Page) {
   await page
     .getByRole('textbox', { name: /供应商名称$/ })
     .fill('虚构星河算力（模拟）');
-  await page.getByRole('textbox', { name: /内部缩写$/ }).fill('MOCK-STAR');
+  await page.getByRole('textbox', { name: /供应商简称$/ }).fill('MOCK-STAR');
   await owner(page, '模拟Procurement');
   await page
     .getByRole('textbox', { name: '主要联系人', exact: true })
@@ -112,7 +112,7 @@ test('owner reassignment changes procurement maintenance permission', async ({
   await expect(page.getByText('供应商不存在或无权访问')).toBeVisible();
   await persona(page, '采购 · 模拟采购乙');
   await expect(page.locator('.supplier-profile-title')).toContainText(
-    '虚构供应商1（模拟）',
+    '华北资源合作方',
   );
   await page
     .locator('.supplier-profile')
@@ -195,7 +195,7 @@ test('failed local persistence keeps the editor open and never reports creation 
   await page
     .getByRole('textbox', { name: /供应商名称$/ })
     .fill('虚构存储失败样例');
-  await page.getByRole('textbox', { name: /内部缩写$/ }).fill('MOCK-FAIL');
+  await page.getByRole('textbox', { name: /供应商简称$/ }).fill('MOCK-FAIL');
   await owner(page, '模拟Procurement');
   await page.getByRole('button', { name: '保存供应商', exact: true }).click();
   await expect(

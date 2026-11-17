@@ -96,7 +96,7 @@ test('supplier rename and disable are reflected in resource views without removi
   await page
     .getByRole('textbox', { name: /供应商名称$/ })
     .fill('虚构资源同步供应商');
-  await page.getByRole('textbox', { name: /内部缩写$/ }).fill('MOCK-SYNC');
+  await page.getByRole('textbox', { name: /供应商简称$/ }).fill('MOCK-SYNC');
   await page.getByRole('button', { name: '保存供应商', exact: true }).click();
   await expect(page.locator('.supplier-profile-title')).toContainText(
     '虚构资源同步供应商',
@@ -144,9 +144,9 @@ test('test, supplier and sales perspectives keep technical and supplier boundari
   await expect(page.getByTestId('metric-model-channels')).toContainText(
     String(own.summary.channelCount),
   );
-  await expect(
-    page.getByText('虚构供应商2（模拟）', { exact: true }),
-  ).toHaveCount(0);
+  await expect(page.getByText('华东模型合作方', { exact: true })).toHaveCount(
+    0,
+  );
   await page.goto('/channels/ch-3');
   await expect(page.getByText('渠道不存在或无权访问')).toBeVisible();
   await persona(page, '销售 · 模拟Sales');
@@ -155,7 +155,9 @@ test('test, supplier and sales perspectives keep technical and supplier boundari
   await expect(page.getByTestId('metric-model-channels')).toContainText(
     String(front.summary.channelCount),
   );
-  await expect(page.getByText(/虚构供应商/)).toHaveCount(0);
+  await expect(
+    page.getByText(/华北资源合作方|华东模型合作方|海外资源合作方/),
+  ).toHaveCount(0);
   await expect(page.getByTestId('metric-model-suppliers')).toHaveCount(0);
   const channel = front.channels.find((c) => c.tpm === null)!;
   await page

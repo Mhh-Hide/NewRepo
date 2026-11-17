@@ -73,7 +73,7 @@ async function form(
     await d.getByRole('textbox', { name: /维度 1 计量单位$/ }).fill('Token');
   }
   await d
-    .getByRole('textbox', { name: /报价证据模拟引用$/ })
+    .getByRole('textbox', { name: /报价证据引用$/ })
     .fill('mock:evidence:browser');
   await d
     .getByRole('textbox', {
@@ -117,7 +117,7 @@ test('procurement initiates and follows inquiry, records linked quote and sees c
     page.getByRole('heading', { name: '采购报价管理' }),
   ).toBeVisible();
   await page.getByRole('tab', { name: '询价记录与跟进' }).click();
-  await page.getByRole('button', { name: '发起模拟询价' }).click();
+  await page.getByRole('button', { name: '发起询价' }).click();
   await select(page, '询价渠道选择', '模拟渠道1');
   await select(page, '询价关联需求明细', 'Seedance 示例国内版');
   await page
@@ -238,7 +238,7 @@ test('temporary offers remain independent and correction preserves original vers
   await expect(
     page.getByText('5500 基点（5.5 折）', { exact: true }).first(),
   ).toBeVisible();
-  await page.goto('/dashboard');
+  await page.goto('/quotes');
   await expect(page.getByTestId('metric-quote-expiring')).toContainText('3');
 });
 test('unknown old price basis is explicitly incomparable and roles never see procurement price pages', async ({

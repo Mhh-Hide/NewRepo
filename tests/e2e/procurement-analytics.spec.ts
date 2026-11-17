@@ -42,7 +42,7 @@ async function createTextQuote(page: Page, discount: string) {
     .fill('1000000');
   await d.getByRole('textbox', { name: /维度 1 计量单位$/ }).fill('Token');
   await d
-    .getByRole('textbox', { name: /报价证据模拟引用$/ })
+    .getByRole('textbox', { name: /报价证据引用$/ })
     .fill('mock:analysis-evidence');
   await d
     .getByRole('textbox', { name: /报价来源说明与备注$/ })
@@ -81,7 +81,7 @@ test('operations compares authorized same-model channels, inspects unavailable t
   await page.goto('/analysis/purchase');
   await expect(page).toHaveURL(/\/analytics\/procurement/);
   await page.goto('/dashboard');
-  await page.getByRole('link', { name: '七天内到期优惠开发计划' }).click();
+  await page.getByRole('menuitem', { name: /采购价格分析/ }).click();
   await expect(
     page.getByRole('heading', { name: '采购价格分析', exact: true }),
   ).toBeVisible();

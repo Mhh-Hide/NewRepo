@@ -1,15 +1,6 @@
+import { listDemoProfiles } from '../../services/demo-session';
 import { useCallback, useState } from 'react';
-import {
-  Alert,
-  Button,
-  Card,
-  Input,
-  Modal,
-  Select,
-  Space,
-  Table,
-  Tag,
-} from 'antd';
+import { Alert, Button, Card, Input, Modal, Select, Space, Table } from 'antd';
 import { Link, useNavigate, useOutletContext } from 'react-router-dom';
 import type { DemoSession } from '../../services/demo-session';
 import type { SourcingQuery, SourcingRow } from '../../services/sourcing-types';
@@ -54,8 +45,20 @@ export default function SourcingListPage() {
       session.api.querySourcing(query),
       session.api.listModels(),
     ]);
-    return { data, models };
-  }, [session.api, filters, page, pageSize]);
+    const [details, goals, progress] = await Promise.all([
+      Promise.all(
+        data.rows.map((r) => session.api.getSourcingDemand(r.demand.id)),
+      ),
+      session.permits('lifecycle:read')
+        ? Promise.all(
+            data.rows.map((r) => session.api.resourceGoal(r.demand.id)),
+          )
+        : [],
+      session.permits('lifecycle:read') ? session.api.queryLifecycle({}) : null,
+    ]);
+    const users = listDemoProfiles().map((p) => p.user);
+    return { data, models, details, users, goals, progress };
+  }, [session, filters, page, pageSize]);
   const { result, reload } = useResourceQuery(load);
   const filter = (key: string, value: string) => {
     setFilters((f) => ({ ...f, [key]: value }));
@@ -63,7 +66,7 @@ export default function SourcingListPage() {
   };
   const header = (
     <PageHeader
-      title="采购寻源"
+      title="采购需求"
       description="统一管理模型资源采购需求、候选渠道与资源缺口。"
       group="业务协同"
       actions={
@@ -125,7 +128,7 @@ export default function SourcingListPage() {
         {resetDialog}
       </>
     );
-  const { data, models } = result.data;
+  const { data, models, details, users, goals, progress } = result.data;
   const metrics = [
     ['total', '需求总数', data.stats.total],
     ['active', '寻源中需求', data.stats.sourcing],
@@ -157,12 +160,12 @@ export default function SourcingListPage() {
               id: `sourcing-${id}`,
               label,
               value,
-              note: '当前授权范围主单统计；未开展寻源不直接计作已确认缺口',
+              note: '当前业务范围主单统计；未开展寻源不直接计作已确认缺口',
             }}
           />
         ))}
       </div>
-      <Card title="资源寻源需求" extra={<Tag>Mock · 授权需求</Tag>}>
+      <Card title="需求清单">
         <div className="resource-filters">
           <Input
             aria-label="需求编号或标题"
@@ -238,14 +241,11 @@ export default function SourcingListPage() {
             重置筛选
           </Button>
         </div>
-        <p className="section-note">
-          缺口为已有候选或人工确认不足的明细；零候选仍区分“尚未开展”。初步符合按不同供应商去重，不代表测试通过或采购完成。
-        </p>
         <Table<SourcingRow>
           rowKey={(r) => r.demand.id}
           dataSource={[...data.rows]}
           size="small"
-          scroll={{ x: 1350 }}
+          scroll={{ x: 1050 }}
           pagination={{
             current: page,
             pageSize,
@@ -261,50 +261,90 @@ export default function SourcingListPage() {
           columns={[
             {
               title: '需求编号 / 标题',
-              width: 310,
+              width: 210,
               render: (_, r) => (
                 <div>
                   <Link to={`/sourcing/${r.demand.id}`}>{r.demand.title}</Link>
                   <small className="resource-subtitle">
-                    {r.demand.demandCode}
+                    {r.demand.demandCode} · {priorityLabels[r.demand.priority]}
                   </small>
                 </div>
               ),
             },
-            { title: '模型明细', dataIndex: 'modelCount', width: 90 },
+            {
+              title: '需求模型',
+              width: 140,
+              render: (_, r) =>
+                details
+                  .find((d) => d?.demand.id === r.demand.id)
+                  ?.items.map((i) => i.model.name)
+                  .join('、') || '待补充',
+            },
+            {
+              title: '提出人',
+              width: 80,
+              render: (_, r) =>
+                users.find((u) => u.id === r.demand.createdBy)?.name ??
+                '待补充',
+            },
+            {
+              title: '已找到 / 可测试',
+              width: 100,
+              render: (_, r) => {
+                const items =
+                  details.find((d) => d?.demand.id === r.demand.id)?.items ??
+                  [];
+                const candidates = items.flatMap((i) => i.candidates);
+                return `${candidates.length} / ${candidates.filter((c) => c.channel.resourceStatus === 'enabled' && c.match.matchStatus !== 'excluded' && c.match.matchStatus !== 'unsuitable').length}`;
+              },
+            },
             {
               title: '寻源状态',
-              width: 140,
+              width: 90,
               render: (_, r) => (
                 <StatusBadge label={sourcingStatusLabels[r.demand.status]} />
               ),
             },
             {
-              title: '缺口 / 待开展 / 待核实',
-              width: 200,
+              title: '初始 1 条 / 签约后 3 条',
+              width: 150,
               render: (_, r) =>
-                `${r.gapItems} / ${r.notStartedItems} / ${r.pendingItems}`,
+                goals[data.rows.indexOf(r)]
+                  ? `${goals[data.rows.indexOf(r)]!.usableChannels >= 1 ? '已满足' : '待补充'} / ${!goals[data.rows.indexOf(r)]!.customerSigned ? '待签约' : goals[data.rows.indexOf(r)]!.usableChannels >= 3 ? '已满足' : '待补充'}`
+                  : `${r.gapItems} 项待补充`,
             },
             {
-              title: '优先级',
-              width: 120,
-              render: (_, r) => priorityLabels[r.demand.priority],
+              title: '采购负责人',
+              width: 90,
+              render: (_, r) => {
+                const ids = [
+                  ...new Set(
+                    progress?.rows.flatMap((ch) => {
+                      const record = ch.record;
+                      return record?.demandId === r.demand.id
+                        ? [record.procurementOwnerId]
+                        : [];
+                    }) ?? [],
+                  ),
+                ];
+                return (
+                  ids
+                    .map(
+                      (id) => users.find((u) => u.id === id)?.name ?? '待分配',
+                    )
+                    .join('、') || '待分配'
+                );
+              },
             },
             {
-              title: '最近更新',
-              width: 180,
+              title: '需求截止时间',
+              width: 110,
               render: (_, r) =>
-                new Date(r.demand.updatedAt).toLocaleString('zh-CN', {
-                  timeZone: 'Asia/Shanghai',
-                }),
-            },
-            {
-              title: '创建时间',
-              width: 180,
-              render: (_, r) =>
-                new Date(r.demand.createdAt).toLocaleString('zh-CN', {
-                  timeZone: 'Asia/Shanghai',
-                }),
+                r.demand.dueAt
+                  ? new Date(r.demand.dueAt).toLocaleDateString('zh-CN', {
+                      timeZone: 'Asia/Shanghai',
+                    })
+                  : '待补充',
             },
             {
               title: '操作',
@@ -317,7 +357,7 @@ export default function SourcingListPage() {
           ]}
           locale={{
             emptyText: (
-              <EmptyState description="当前授权范围或筛选条件下暂无采购需求" />
+              <EmptyState description="当前业务范围或筛选条件下暂无采购需求" />
             ),
           }}
         />

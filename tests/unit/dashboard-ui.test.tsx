@@ -24,18 +24,14 @@ describe('dashboard query lifecycle', () => {
     expect(
       screen.getByRole('status', { name: '正在加载授权数据' }),
     ).toBeInTheDocument();
-    expect(await screen.findByTestId('metric-suppliers')).toHaveTextContent(
-      '3',
-    );
+    expect(await screen.findByTestId('metric-channels')).toHaveTextContent('7');
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
       '工作台',
     );
   });
   it('renders a meaningful authorized empty state', async () => {
     render(page(createDemoSession('u-no-domain')));
-    expect(
-      await screen.findByText('当前演示身份及业务域暂无授权数据'),
-    ).toBeVisible();
+    expect(await screen.findByText('暂无待处理业务')).toBeVisible();
   });
   it('shows generic error and retries without exposing internal error content', async () => {
     const s = createDemoSession('u-ops');
@@ -71,7 +67,9 @@ describe('dashboard query lifecycle', () => {
       expect(screen.getByTestId('metric-demands')).toBeInTheDocument(),
     );
     expect(screen.queryByText('采购报价摘要')).not.toBeInTheDocument();
-    expect(screen.queryByText(/虚构供应商/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/华北资源合作方|华东模型合作方|海外资源合作方/),
+    ).not.toBeInTheDocument();
     await act(async () => {
       resolve?.(await s.api.listModels());
     });
@@ -80,7 +78,7 @@ describe('dashboard query lifecycle', () => {
   });
   it('removes an already rendered privileged response when identity changes', async () => {
     const r = render(page(createDemoSession('u-ops')));
-    expect(await screen.findByText('采购报价摘要')).toBeVisible();
+    expect(await screen.findByRole('link', { name: /采购报价/ })).toBeVisible();
     r.rerender(page(createDemoSession('u-test')));
     expect(screen.queryByText('采购报价摘要')).not.toBeInTheDocument();
     await waitFor(() =>

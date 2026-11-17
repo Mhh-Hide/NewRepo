@@ -1,10 +1,11 @@
+import { isPrivateData } from '../services/runtime-data';
 import { DemoControlsContext } from '../services/demo-controls';
 import {
   selectDemoIdentity,
   replaceDemoSession,
 } from '../services/demo-selection';
 import { useState } from 'react';
-import { Alert, Drawer, Layout, Tag } from 'antd';
+import { Drawer, Layout } from 'antd';
 import { Outlet } from 'react-router-dom';
 import { createDemoSession, listDemoProfiles } from '../services/demo-session';
 import type { DomainSelection, DemoSession } from '../services/demo-session';
@@ -81,8 +82,9 @@ export function AppShell() {
       />
       {!collapsed && (
         <div className="sidebar-footer">
-          <Tag>Mock 演示</Tag>
-          <small>资源 · 协作 · 治理</small>
+          <small>
+            {isPrivateData() ? '内部资料 · 本机会话' : '内部原型 · 样本场景'}
+          </small>
         </div>
       )}
     </>
@@ -96,7 +98,7 @@ export function AppShell() {
         breakpoint="lg"
         onBreakpoint={setMobile}
         className={`sidebar ${mobile ? 'is-mobile' : ''}`}
-        theme="dark"
+        theme="light"
       >
         {sidebar}
       </Layout.Sider>
@@ -105,7 +107,7 @@ export function AppShell() {
         size={270}
         open={mobile && drawer}
         onClose={() => setDrawer(false)}
-        styles={{ body: { padding: 0, background: '#10243a' } }}
+        styles={{ body: { padding: 0, background: '#f7f7f8' } }}
         title="导航菜单"
       >
         {sidebar}
@@ -121,14 +123,6 @@ export function AppShell() {
           onUser={changeUser}
           onDomain={changeDomain}
         />
-        <div className="environment-banner">
-          <Alert
-            type="info"
-            showIcon
-            title="演示身份 · 所有展示数据均为模拟数据"
-            description="仅作用于本地模拟数据；角色切换不是真实登录，未连接生产系统。"
-          />
-        </div>
         <Layout.Content className="page-content">
           <DemoControlsContext.Provider value={{ changeUser, changeDomain }}>
             <SessionContent
@@ -137,9 +131,7 @@ export function AppShell() {
             />
           </DemoControlsContext.Provider>
         </Layout.Content>
-        <footer className="app-footer">
-          MaaS Resource Lifecycle Management · Stage 07D · Mock Demo
-        </footer>
+        <footer className="app-footer">MaaS · 资源管理</footer>
       </Layout>
     </Layout>
   );

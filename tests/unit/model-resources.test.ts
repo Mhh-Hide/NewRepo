@@ -341,7 +341,9 @@ describe('resource API field and record boundaries', () => {
         'salesPriceMinorUnits',
       ])
         expect(keys(values)).not.toContain(key);
-      expect(JSON.stringify(values)).not.toContain('虚构供应商');
+      expect(JSON.stringify(values)).not.toMatch(
+        /华北资源合作方|华东模型合作方|海外资源合作方/,
+      );
       expect((await a.getChannelResource('ch-1'))?.displayName).toBe(
         '模拟匿名渠道 DEMO-ch-1',
       );
@@ -401,7 +403,7 @@ describe('resource API field and record boundaries', () => {
     const d = (await a.getModelResource('m-seed-cn'))!;
     Object.assign(d.suppliers[0]!.supplier, { name: 'tampered' });
     expect((await a.getChannelResource('ch-1'))?.supplier?.name).toBe(
-      '虚构供应商1（模拟）',
+      '华北资源合作方',
     );
     expect(storage.value).toBeNull();
   });

@@ -1,4 +1,4 @@
-import { Button, Select, Tag, Tooltip } from 'antd';
+import { Button, Select, Tooltip } from 'antd';
 import { MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
 import type {
   DemoProfile,
@@ -23,7 +23,7 @@ export function Topbar({
 }) {
   const domains = session.profile.domains;
   const options = [
-    ...(domains.length > 1 ? [{ value: 'all', label: '全部授权业务域' }] : []),
+    ...(domains.length > 1 ? [{ value: 'all', label: '全部业务域' }] : []),
     ...domains.map((d) => ({
       value: d,
       label: d === 'domestic' ? '国内模型' : '海外模型',
@@ -38,8 +38,7 @@ export function Topbar({
           icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
           onClick={onToggle}
         />
-        <span>MaaS 模型资源全生命周期管理平台</span>
-        <Tag color="blue">Mock 环境</Tag>
+        <span>资源管理平台</span>
       </div>
       <div className="topbar-controls">
         <label>

@@ -203,11 +203,6 @@ export default function QuoteListPage() {
           />
         ))}
       </div>
-      <Alert
-        type="info"
-        showIcon
-        title="仅 Mock 价格台账，不决定唯一当前结算价；Demo 确认不代表真实合同签署。"
-      />
       <Tabs
         defaultActiveKey={
           params.get('tab') === 'inquiries' ? 'inquiries' : 'quotes'

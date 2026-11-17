@@ -3,6 +3,7 @@ import {
   Alert,
   Button,
   Card,
+  Collapse,
   Descriptions,
   Form,
   Input,
@@ -12,6 +13,7 @@ import {
   Space,
   Table,
   Tag,
+  Typography,
 } from 'antd';
 import { Link, useOutletContext, useParams } from 'react-router-dom';
 import type { DemoSession } from '../../services/demo-session';
@@ -26,7 +28,6 @@ import {
 import { useResourceQuery } from '../models/use-resource-query';
 import { LoadingState, ErrorState } from '../../components/FeedbackStates';
 import { PageHeader } from '../../components/PageHeader';
-import { RemediationSummaryPanel } from './RemediationSummaryPanel';
 const actionLabels: Record<string, string> = {
   create: '登记整改',
   update: '补充或维护问题',
@@ -99,19 +100,21 @@ function Content({ session }: { session: DemoSession }) {
   const [form] = Form.useForm<Values>();
   const sourceExecutionId = Form.useWatch('sourceExecutionId', form);
   const selectedChannelId = Form.useWatch('channelId', form);
-  const load = useCallback(
-    async () => ({
-      rows: await session.api.queryRemediationSummaries(),
-      detail:
-        remediationId && session.permits('remediation:detail')
-          ? await session.api.getRemediation(remediationId)
-          : null,
-      options: session.permits('remediation:detail')
-        ? await session.api.remediationOptions()
+  const load = useCallback(async () => {
+    const rows = await session.api.queryRemediationSummaries();
+    const canRead = session.permits('remediation:detail');
+    const [detail, options, details, channels] = await Promise.all([
+      remediationId && canRead
+        ? session.api.getRemediation(remediationId)
         : null,
-    }),
-    [session, remediationId],
-  );
+      canRead ? session.api.remediationOptions() : null,
+      canRead
+        ? Promise.all(rows.map((r) => session.api.getRemediation(r.id)))
+        : [],
+      session.permits('channel:read') ? session.api.listChannels() : [],
+    ]);
+    return { rows, detail, options, details, channels };
+  }, [session, remediationId]);
   const { result, reload } = useResourceQuery(load);
   const open = (op: string) => {
     setOperation(op);
@@ -162,7 +165,7 @@ function Content({ session }: { session: DemoSession }) {
         <ErrorState message={result.message} onRetry={reload} />
       </>
     );
-  const { rows, detail, options } = result.data,
+  const { rows, detail, options, details, channels } = result.data,
     r = detail?.record;
   if (remediationId && !r)
     return (
@@ -312,7 +315,7 @@ function Content({ session }: { session: DemoSession }) {
       </Form.Item>
       <Form.Item
         name="sharedSummary"
-        label="共享技术摘要"
+        label="问题说明"
         rules={[{ required: true }]}
       >
         <Input.TextArea />
@@ -333,13 +336,9 @@ function Content({ session }: { session: DemoSession }) {
   return (
     <>
       {header}
-      <Alert
-        type="info"
-        title="已提交不等于已修复；passed 不会自动关闭；例外结束不代表技术修复已验证成功。"
-      />
       {r && detail ? (
         <>
-          <Card title={r.id} className="resource-card">
+          <Card title="问题与跟进" className="resource-card">
             <Descriptions
               column={{ xs: 1, sm: 2 }}
               items={[
@@ -352,57 +351,141 @@ function Content({ session }: { session: DemoSession }) {
                   key: 'channel',
                   label: '渠道',
                   children: (
-                    <Link to={`/channels/${r.channelId}`}>{r.channelId}</Link>
+                    <Link to={`/channels/${r.channelId}`}>
+                      {channels.find((c) => c.id === r.channelId)
+                        ?.displayName ?? '待补充'}
+                    </Link>
                   ),
                 },
                 {
-                  key: 'source',
-                  label: '来源',
-                  children: `${{ manual: '人工技术问题', failed_execution: '测试失败', legacy: '旧事项来源' }[r.sourceType]} · ${{ manual: '人工登记', current: '当前适用', invalidated: '依据已失效', legacy_unknown: '历史适用性未确认' }[detail.sourceApplicability]}`,
-                },
-                {
-                  key: 'sourceExecution',
-                  label: '来源执行',
-                  children: r.relatedTestExecutionId ?? '无',
-                },
-                {
-                  key: 'assignee',
-                  label: '整改负责人',
+                  key: 'owner',
+                  label: '跟进人',
                   children:
                     options?.assignees.find((u) => u.id === r.assigneeUserId)
-                      ?.name ?? '未分配',
+                      ?.name ?? '待分配',
                 },
                 {
-                  key: 'round',
-                  label: '当前轮次',
-                  children: r.activeRound ?? '旧事项，尚无新轮次',
+                  key: 'recent',
+                  label: '最近跟进',
+                  children: date(
+                    detail.events.filter((e) => e.action === 'followup').at(-1)
+                      ?.occurredAt ?? null,
+                  ),
                 },
                 {
-                  key: 'due',
-                  label: '截止时间（北京时间）',
-                  children: date(r.dueAt),
+                  key: 'feedback',
+                  label: '供应商反馈',
+                  children:
+                    detail.submissions.at(-1)?.sharedSummary ??
+                    r.supplierResponse ??
+                    '待反馈',
+                },
+                { key: 'next', label: '下次跟进', children: date(r.dueAt) },
+                {
+                  key: 'retest',
+                  label: '复测安排',
+                  children:
+                    r.status === 'submitted'
+                      ? '可以安排复测'
+                      : r.status === 'closed'
+                        ? '已结束'
+                        : '等待供应商反馈',
                 },
                 {
-                  key: 'conclusion',
-                  label: '当前运营采纳依据',
-                  children: detail.currentConclusion
-                    ? `${detail.currentConclusion.result === 'passed' ? '通过' : '失败'} · 执行 ${detail.currentConclusion.executionId} · 结论 ${detail.currentConclusion.id}`
-                    : '暂无现行采纳依据（不代表测试已验证通过）',
+                  key: 'problem',
+                  label: '具体问题',
+                  children: (
+                    <Typography.Paragraph
+                      ellipsis={{
+                        rows: 3,
+                        expandable: true,
+                        symbol: '展开问题',
+                      }}
+                    >
+                      {r.sharedSummary || r.description}
+                    </Typography.Paragraph>
+                  ),
                 },
+              ]}
+            />
+            <Collapse
+              ghost
+              items={[
                 {
-                  key: 'summary',
-                  label: '共享技术摘要',
-                  children: r.sharedSummary ?? '尚未补充',
-                },
-                {
-                  key: 'internal',
-                  label: '内部说明',
-                  children: r.internalNotes ?? r.description,
-                },
-                {
-                  key: 'target',
-                  label: '验证目标',
-                  children: r.targetReference ?? '尚未补充',
+                  key: 'verification',
+                  label: '核验信息',
+                  children: (
+                    <Descriptions
+                      column={{ xs: 1, sm: 2 }}
+                      items={[
+                        { key: 'recordId', label: '记录编号', children: r.id },
+                        {
+                          key: 'status',
+                          label: '状态',
+                          children: remediationStatusLabels[r.status],
+                        },
+                        {
+                          key: 'channel',
+                          label: '渠道',
+                          children: (
+                            <Link to={`/channels/${r.channelId}`}>
+                              {r.channelId}
+                            </Link>
+                          ),
+                        },
+                        {
+                          key: 'source',
+                          label: '来源',
+                          children: `${{ manual: '人工技术问题', failed_execution: '测试失败', legacy: '旧事项来源' }[r.sourceType]} · ${{ manual: '人工登记', current: '当前适用', invalidated: '依据已失效', legacy_unknown: '历史适用性未确认' }[detail.sourceApplicability]}`,
+                        },
+                        {
+                          key: 'sourceExecution',
+                          label: '来源执行',
+                          children: r.relatedTestExecutionId ?? '无',
+                        },
+                        {
+                          key: 'assignee',
+                          label: '整改负责人',
+                          children:
+                            options?.assignees.find(
+                              (u) => u.id === r.assigneeUserId,
+                            )?.name ?? '未分配',
+                        },
+                        {
+                          key: 'round',
+                          label: '当前轮次',
+                          children: r.activeRound ?? '旧事项，尚无新轮次',
+                        },
+                        {
+                          key: 'due',
+                          label: '截止时间（北京时间）',
+                          children: date(r.dueAt),
+                        },
+                        {
+                          key: 'conclusion',
+                          label: '当前运营采纳依据',
+                          children: detail.currentConclusion
+                            ? `${detail.currentConclusion.result === 'passed' ? '通过' : '失败'} · 执行 ${detail.currentConclusion.executionId} · 结论 ${detail.currentConclusion.id}`
+                            : '暂无现行采纳依据（不代表测试已验证通过）',
+                        },
+                        {
+                          key: 'summary',
+                          label: '问题说明',
+                          children: r.sharedSummary ?? '尚未补充',
+                        },
+                        {
+                          key: 'internal',
+                          label: '内部说明',
+                          children: r.internalNotes ?? r.description,
+                        },
+                        {
+                          key: 'target',
+                          label: '验证目标',
+                          children: r.targetReference ?? '尚未补充',
+                        },
+                      ]}
+                    />
+                  ),
                 },
               ]}
             />
@@ -464,67 +547,139 @@ function Content({ session }: { session: DemoSession }) {
               </Link>
             </Space>
           </Card>
-          <Card title="不可变提交与复测历史" className="resource-card">
-            {detail.submissions.map((v) => (
-              <p key={v.id}>
-                第 {v.round} 轮 · {date(v.submittedAt)} · {v.sharedSummary} ·{' '}
-                {v.internalNotes} · {v.evidenceReference}
-              </p>
-            ))}
-            {detail.links.map((v) => (
-              <p key={v.id}>
-                第 {v.round} 轮复测：
-                <Link to={`/tests/${v.taskId}`}>{v.executionId}</Link> ·{' '}
-                {v.applicabilityReason}
-              </p>
-            ))}
-            {detail.closures.map((v) => (
-              <Alert
-                key={v.id}
-                type={v.closureType === 'normal' ? 'success' : 'warning'}
-                title={
-                  v.closureType === 'normal'
-                    ? '运营正常关闭'
-                    : '例外结束，不代表技术修复已验证成功。'
-                }
-                description={`${v.reason} · ${date(v.closedAt)}${v.verificationExecutionId ? ` · 复测：${v.verificationExecutionId} · 采纳结论：${v.verificationConclusionId}` : ''}`}
-              />
-            ))}
-            {detail.events.map((v) => (
-              <p key={v.id}>
-                {date(v.occurredAt)} · {actionLabels[v.action] ?? v.action} ·{' '}
-                {v.actorUserId} · {v.reason} · 版本 {v.beforeVersion ?? '无'} →{' '}
-                {v.afterVersion}
-              </p>
-            ))}
-          </Card>
+          <Collapse
+            className="resource-card"
+            items={[
+              {
+                key: 'history',
+                label: '跟进与复测历史',
+                children: (
+                  <>
+                    {detail.submissions.map((v) => (
+                      <p key={v.id}>
+                        第 {v.round} 轮 · {date(v.submittedAt)} ·{' '}
+                        {v.sharedSummary} · {v.internalNotes} ·{' '}
+                        {v.evidenceReference}
+                      </p>
+                    ))}
+                    {detail.links.map((v) => (
+                      <p key={v.id}>
+                        第 {v.round} 轮复测：
+                        <Link to={`/tests/${v.taskId}`}>
+                          {v.executionId}
+                        </Link> · {v.applicabilityReason}
+                      </p>
+                    ))}
+                    {detail.closures.map((v) => (
+                      <Alert
+                        key={v.id}
+                        type={
+                          v.closureType === 'normal' ? 'success' : 'warning'
+                        }
+                        title={
+                          v.closureType === 'normal'
+                            ? '运营正常关闭'
+                            : '例外结束，不代表技术修复已验证成功。'
+                        }
+                        description={`${v.reason} · ${date(v.closedAt)}${v.verificationExecutionId ? ` · 复测：${v.verificationExecutionId} · 采纳结论：${v.verificationConclusionId}` : ''}`}
+                      />
+                    ))}
+                    {detail.events.map((v) => (
+                      <p key={v.id}>
+                        {date(v.occurredAt)} ·{' '}
+                        {actionLabels[v.action] ?? v.action} · {v.actorUserId} ·{' '}
+                        {v.reason} · 版本 {v.beforeVersion ?? '无'} →{' '}
+                        {v.afterVersion}
+                      </p>
+                    ))}
+                  </>
+                ),
+              },
+            ]}
+          />
         </>
       ) : (
         <>
-          <RemediationSummaryPanel session={session} />
           <Card title="整改事项" className="resource-card">
             <Input
               aria-label="搜索整改编号"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜索整改编号"
+              placeholder="搜索渠道、问题或编号"
             />
             <Table
               rowKey="id"
-              scroll={{ x: 700 }}
-              dataSource={rows.filter((r) => r.id.includes(search))}
+              scroll={{ x: 1050 }}
+              dataSource={rows.filter((r) =>
+                `${r.id} ${channels.find((c) => c.id === r.channelId)?.displayName ?? ''} ${details.find((d) => d?.record.id === r.id)?.record.description ?? ''}`
+                  .toLowerCase()
+                  .includes(search.toLowerCase()),
+              )}
               columns={[
                 {
-                  title: '编号',
-                  dataIndex: 'id',
-                  render: (id) =>
-                    session.permits('remediation:detail') ? (
-                      <Link to={`/remediations/${id}`}>{id}</Link>
-                    ) : (
-                      id
+                  title: '渠道 / 问题',
+                  render: (_, row) => (
+                    <div>
+                      {session.permits('remediation:detail') ? (
+                        <Link to={`/remediations/${row.id}`}>
+                          {channels.find((c) => c.id === row.channelId)
+                            ?.displayName ?? '待补充渠道'}
+                        </Link>
+                      ) : (
+                        <span>
+                          {channels.find((c) => c.id === row.channelId)
+                            ?.displayName ?? '待补充渠道'}
+                        </span>
+                      )}
+                      <small className="resource-subtitle">
+                        {details.find((d) => d?.record.id === row.id)?.record
+                          .sharedSummary ??
+                          details.find((d) => d?.record.id === row.id)?.record
+                            .description ??
+                          (row.category
+                            ? problemCategoryLabels[row.category]
+                            : '待补充')}
+                      </small>
+                    </div>
+                  ),
+                },
+                {
+                  title: '跟进人',
+                  render: (_, row) =>
+                    options?.assignees.find(
+                      (u) =>
+                        u.id ===
+                        details.find((d) => d?.record.id === row.id)?.record
+                          .assigneeUserId,
+                    )?.name ?? '待分配',
+                },
+                {
+                  title: '最近跟进 / 供应商反馈',
+                  render: (_, row) => {
+                    const d = details.find((d) => d?.record.id === row.id);
+                    const event = d?.events
+                      .filter((e) => e.action === 'followup')
+                      .at(-1);
+                    return (
+                      <div>
+                        {event ? date(event.occurredAt) : '尚未跟进'}
+                        <small className="resource-subtitle">
+                          {event?.reason ??
+                            d?.record.supplierResponse ??
+                            '待反馈'}
+                        </small>
+                      </div>
+                    );
+                  },
+                },
+                {
+                  title: '下次跟进',
+                  render: (_, row) =>
+                    date(
+                      details.find((d) => d?.record.id === row.id)?.record
+                        .dueAt ?? null,
                     ),
                 },
-                { title: '渠道', dataIndex: 'channelId' },
                 {
                   title: '状态',
                   dataIndex: 'status',

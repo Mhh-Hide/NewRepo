@@ -21,3 +21,10 @@ test-results/
 secrets/
 credentials/
 sensitive-data/
+
+# Stage 07E: raw attachments, private normalized data and scratch files
+work/
+private-data/
+attachments/
+*.xlsx
+__pycache__/

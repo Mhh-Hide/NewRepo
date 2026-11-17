@@ -52,6 +52,7 @@ export function SupplierEditor({
     contactPhone: initial?.contactPhone ?? '',
     contactPosition: initial?.contactPosition ?? '',
     alternativeContact: initial?.alternativeContact ?? '',
+    wechatGroupName: initial?.wechatGroupName ?? '',
     remark: initial?.remark ?? '',
   };
   const save = async (input: SupplierInput) => {
@@ -88,12 +89,6 @@ export function SupplierEditor({
         </Space>
       }
     >
-      <Alert
-        type="info"
-        showIcon
-        title="仅填写虚构演示资料"
-        description="禁止输入真实客户或供应商敏感信息、密码、API Key 或密钥。"
-      />
       {initial && (
         <Typography.Paragraph className="supplier-id">
           内部 ID：<Typography.Text code>{initial.id}</Typography.Text> · 版本{' '}
@@ -138,12 +133,12 @@ export function SupplierEditor({
           </Form.Item>
           <Form.Item
             name="shortCode"
-            label="内部缩写"
+            label="供应商简称"
             rules={[
               {
                 required: true,
                 whitespace: true,
-                message: '请填写供应商内部缩写',
+                message: '请填写供应商供应商简称',
               },
             ]}
           >
@@ -206,6 +201,9 @@ export function SupplierEditor({
             <Input maxLength={64} />
           </Form.Item>
         </div>
+        <Form.Item name="wechatGroupName" label="供应商微信群名称">
+          <Input maxLength={160} />
+        </Form.Item>
         <Form.Item name="alternativeContact" label="备用联系人">
           <Input maxLength={160} />
         </Form.Item>

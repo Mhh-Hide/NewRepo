@@ -64,7 +64,7 @@ async function execute(page: Page, result = '通过', retest = false) {
   await page.getByRole('button', { name: '录入本轮结果', exact: true }).click();
   await select(page, '人工执行结果', result);
   await page
-    .getByRole('textbox', { name: '共享技术摘要', exact: true })
+    .getByRole('textbox', { name: '问题说明', exact: true })
     .fill(`人工模拟${result}；无真实调用`);
   await page
     .getByRole('textbox', { name: '内部技术说明', exact: true })
@@ -91,13 +91,11 @@ test('operations runs, adopts, retests failure without replacing adopted result 
   ).toBeVisible();
   await expect(page.getByText(/第 2 轮 · 执行人/)).toBeVisible();
   await page.getByRole('link', { name: '关联渠道详情' }).click();
-  await expect(
-    page.getByText('授权测试技术摘要', { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText('测试进度', { exact: true })).toBeVisible();
   await expect(
     page.getByText(/新失败待复核；原采纳结论保持不变/),
   ).toBeVisible();
-  await page.goto('/dashboard');
+  await page.goto('/tests');
   await expect(page.getByTestId('testing-stat-reviewChannels')).toHaveText('1');
   await expect(page.getByTestId('testing-stat-newFailureChannels')).toHaveText(
     '1',
@@ -177,9 +175,7 @@ test('official verification, exemption and revocation preserve connectivity pend
   await expect(
     page.getByText('质量豁免（不是测试通过）', { exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByText(/连通性：待验证 · 暂无明确采纳依据/),
-  ).toBeVisible();
+  await expect(page.getByText(/连通性：待验证 · 待确认/)).toBeVisible();
   await expect(
     page.getByText('尚无完成执行；开始后会记录独立轮次。'),
   ).toBeVisible();
@@ -188,9 +184,7 @@ test('official verification, exemption and revocation preserve connectivity pend
   await expect(
     page.getByText('当前：无有效质量豁免', { exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByText(/连通性：待验证 · 暂无明确采纳依据/),
-  ).toBeVisible();
+  await expect(page.getByText(/连通性：待验证 · 待确认/)).toBeVisible();
 });
 test('procurement and support see summary only; supplier and front roles are denied full test routes', async ({
   page,
@@ -221,7 +215,9 @@ test('procurement and support see summary only; supplier and front roles are den
   await expect(page.getByText('当前演示身份无此模块访问权限')).toBeVisible();
   await persona(page, '销售 · 模拟Sales');
   await expect(page.getByText('当前演示身份无此模块访问权限')).toBeVisible();
-  await expect(page.getByText(/模拟渠道2|虚构供应商/)).toHaveCount(0);
+  await expect(
+    page.getByText(/模拟渠道2|华北资源合作方|华东模型合作方|海外资源合作方/),
+  ).toHaveCount(0);
 });
 test('running cancellation records null terminal result and cannot reopen', async ({
   page,
@@ -249,7 +245,7 @@ test('storage quota failure preserves result inputs and retries atomically', asy
   await confirm(page);
   await page.getByRole('button', { name: '录入本轮结果', exact: true }).click();
   await page
-    .getByRole('textbox', { name: '共享技术摘要', exact: true })
+    .getByRole('textbox', { name: '问题说明', exact: true })
     .fill('模拟失败重试保留输入');
   await page.evaluate(() => {
     const original = Storage.prototype.setItem;
@@ -268,7 +264,7 @@ test('storage quota failure preserves result inputs and retries atomically', asy
     page.getByText('渠道保存失败，未提交任何更改。', { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole('textbox', { name: '共享技术摘要', exact: true }),
+    page.getByRole('textbox', { name: '问题说明', exact: true }),
   ).toHaveValue('模拟失败重试保留输入');
   await page.evaluate(() => {
     (

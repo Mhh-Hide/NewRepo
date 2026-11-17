@@ -140,8 +140,8 @@ export const mockData: DomainStore = {
       source: 'mock',
       createdAt: '2026-11-13T00:00:00.000Z',
       updatedAt: '2026-11-13T00:00:00.000Z',
-      name: '虚构供应商1（模拟）',
-      shortCode: 'MOCK1',
+      name: '华北资源合作方',
+      shortCode: '华北资源',
       status: 'enabled',
       contactName: '模拟联系人1',
       contactEmail: 'supplier1@example.invalid',
@@ -164,8 +164,8 @@ export const mockData: DomainStore = {
       source: 'mock',
       createdAt: '2026-11-13T00:00:00.000Z',
       updatedAt: '2026-11-13T00:00:00.000Z',
-      name: '虚构供应商2（模拟）',
-      shortCode: 'MOCK2',
+      name: '华东模型合作方',
+      shortCode: '华东模型',
       status: 'enabled',
       contactName: '模拟联系人2',
       contactEmail: 'supplier2@example.invalid',
@@ -188,8 +188,8 @@ export const mockData: DomainStore = {
       source: 'mock',
       createdAt: '2026-11-13T00:00:00.000Z',
       updatedAt: '2026-11-13T00:00:00.000Z',
-      name: '虚构供应商3（模拟）',
-      shortCode: 'MOCK3',
+      name: '海外资源合作方',
+      shortCode: '海外资源',
       status: 'enabled',
       contactName: '模拟联系人3',
       contactEmail: 'supplier3@example.invalid',
@@ -969,7 +969,7 @@ const additionalTasks = mockData.channels.flatMap((c) => {
     updatedAt: c.updatedAt,
   }));
 });
-export const fixture: DomainStore = {
+export let fixture: DomainStore = {
   ...mockData,
   users: [
     ...mockData.users,
@@ -1020,3 +1020,28 @@ export const fixture: DomainStore = {
     { ...mockData.audits[0]!, id: 'audit-overseas', entityId: 'q-overseas' },
   ],
 };
+
+/** Called before repositories are imported; payload is served only on loopback in dev. */
+export function applyPrivateFixture(data: Partial<DomainStore>) {
+  fixture = {
+    ...fixture,
+    ...data,
+    users: [
+      ...fixture.users.filter((u) => !u.id.startsWith('unassigned-')),
+      {
+        id: 'unassigned-proc',
+        source: 'mock',
+        name: '待分配',
+        role: 'Procurement',
+        salesPriceLevel: null,
+      },
+      {
+        id: 'unassigned-ops',
+        source: 'mock',
+        name: '待补充',
+        role: 'ProductOperations',
+        salesPriceLevel: null,
+      },
+    ],
+  };
+}

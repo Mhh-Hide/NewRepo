@@ -384,7 +384,7 @@ export default function ModelPoolPage() {
           }}
           locale={{
             emptyText: (
-              <EmptyState description="当前授权范围或筛选条件下暂无模型" />
+              <EmptyState description="当前业务范围或筛选条件下暂无模型" />
             ),
           }}
         />

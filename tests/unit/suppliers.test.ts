@@ -456,3 +456,33 @@ describe('audit, concurrency and persistence', () => {
     expect(supplierEditableFields).not.toContain('id');
   });
 });
+
+describe('supplier collaboration group', () => {
+  it('maintains a separate group name while preserving existing alternative contacts', async () => {
+    const a = api();
+    const s = await a.createSupplier(
+      input({
+        alternativeContact: '备用联系人样本',
+        wechatGroupName: '资源协作群样本',
+      }),
+    );
+    const detail = await a.getSupplier(s.id);
+    await a.updateSupplier(s.id, s.version, {
+      ...edit(detail),
+      wechatGroupName: '更新协作群样本',
+    });
+    const updated = await a.getSupplier(s.id);
+    expect(updated?.supplier.wechatGroupName).toBe('更新协作群样本');
+    expect(updated?.supplier.alternativeContact).toBe('备用联系人样本');
+  });
+  it('keeps group contact data out of technical-only supplier projections', async () => {
+    const a = api();
+    const detail = await a.getSupplier('s-1');
+    await a.updateSupplier('s-1', detail!.supplier.version, {
+      ...edit(detail),
+      wechatGroupName: '采购协作群样本',
+    });
+    const restricted = await api('u-test').getSupplier('s-1');
+    expect(restricted?.supplier).not.toHaveProperty('wechatGroupName');
+  });
+});

@@ -260,6 +260,7 @@ export function createTestingApi(
     source: t.source,
     channelId: t.channelId,
     testType: t.testType,
+    ...(t.stageLabel ? { stageLabel: t.stageLabel } : {}),
     status: t.status,
     assignedTo: t.assignedTo,
     createdAt: t.createdAt,
