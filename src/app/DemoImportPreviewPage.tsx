@@ -1,18 +1,24 @@
 import { useState } from 'react';
-import { Alert, Button, Card, Space, Table, Typography, Upload } from 'antd';
+import { Alert, Button, Card, Popconfirm, Space, Table, Typography, Upload } from 'antd';
 import type { UploadProps } from 'antd';
 import { previewDemoStaging, type DemoStagingPreview } from '../demo-import/staging';
 import { PageHeader } from '../components/PageHeader';
-import { Link } from 'react-router-dom';
+import { Link, useOutletContext } from 'react-router-dom';
+import type { DemoSession } from '../services/demo-session';
 
 const { Text, Paragraph } = Typography;
 /** The selected file is parsed in the current browser only. Never persisted or uploaded. */
 export function DemoImportPreviewPage() {
+  const session = useOutletContext<DemoSession>();
   const [preview, setPreview] = useState<DemoStagingPreview | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('');
+  const permitted = session.domain === 'all' && session.permits('demo:reset');
   const [error, setError] = useState('');
   const [filename, setFilename] = useState('');
   const beforeUpload: NonNullable<UploadProps['beforeUpload']> = (file) => {
     setError('');
+    setNotice('');
     setPreview(null);
     setFilename(file.name);
     if (!file.name.toLowerCase().endsWith('.json') || file.size > 5 * 1024 * 1024) {
@@ -27,6 +33,20 @@ export function DemoImportPreviewPage() {
     });
     return false;
   };
+  const importCandidates = async () => {
+    if (!preview || !permitted || busy) return;
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const result = await session.api.importDemoSupplierCandidates(preview.supplierCandidates);
+      setNotice(`已导入 ${result.created} 条匿名供应商候选；跳过 ${result.skipped} 条已有同名候选。均处于停用、待核验状态。`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '候选导入失败');
+    } finally {
+      setBusy(false);
+    }
+  };
   const rows = preview ? [
     { key: 'suppliers', label: '供应商候选', count: preview.summary.suppliers },
     { key: 'resourceIntake', label: '资源线索', count: preview.summary.resourceIntake },
@@ -40,7 +60,7 @@ export function DemoImportPreviewPage() {
       <PageHeader
         group="资源管理"
         title="Demo 数据导入预览"
-        description="仅本地读取脱敏 JSON，检查字段和关联。不保存、不修改任何现有供应商、渠道或测试记录。"
+        description="本地读取脱敏 JSON，先校验、后人工确认。只允许将匿名供应商候选原子化写入本浏览器 Mock 主档，不自动生成渠道或测试结论。"
         actions={<Link to="/suppliers">返回供应商管理</Link>}
       />
       <Card title="选择脱敏数据包">
@@ -53,14 +73,14 @@ export function DemoImportPreviewPage() {
           >
             <Button>选择 JSON 文件进行校验</Button>
           </Upload>
-          <Text type="secondary">浏览器本地解析；不会上传服务器，也不会写入 LocalStorage。</Text>
+          <Text type="secondary">浏览器本地解析；不会上传服务器。仅点击确认导入后，匿名供应商候选才会写入本浏览器 LocalStorage。</Text>
           {filename && <Text>当前文件：{filename}</Text>}
           {error && <Alert type="error" showIcon title="校验失败" description={error} />}
         </Space>
       </Card>
       {preview && (
         <Card title="预览结果">
-          <Alert type="warning" showIcon title="当前仅为候选数据预览，尚未导入系统" />
+          <Alert type="warning" showIcon title="候选数据尚未导入，后续操作仅影响本浏览器 Mock 数据" />
           <Table
             style={{ marginTop: 16 }}
             pagination={false}
@@ -71,6 +91,13 @@ export function DemoImportPreviewPage() {
               { title: '记录数', dataIndex: 'count', key: 'count' },
             ]}
           />
+          {permitted && <Space style={{ marginTop: 16 }}>
+            <Popconfirm title="确认导入匿名供应商候选？" description="一次性写入本浏览器 Mock 主档，全部默认停用、待核验；不创建渠道、不覆盖历史。若存在冲突，将整体失败。" okText="确认导入" cancelText="取消" onConfirm={() => void importCandidates()}>
+              <Button type="primary" loading={busy}>导入 {preview.supplierCandidates.length} 条匿名供应商候选</Button>
+            </Popconfirm>
+          </Space>}
+          {notice && <Alert style={{ marginTop: 12 }} showIcon type="success" title={notice} />}
+          {error && <Alert style={{ marginTop: 12 }} showIcon type="error" title={error} />}
           <Paragraph style={{ marginTop: 16 }}>
             {preview.warnings.map((warning) => <div key={warning}><Text>{warning}</Text></div>)}
           </Paragraph>
