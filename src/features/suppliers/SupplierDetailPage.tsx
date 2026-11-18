@@ -1,3 +1,4 @@
+import { CooperationPanel } from './CooperationPanel';
 import { SupplierCommunication } from '../lifecycle/SupplierCommunication';
 import { RemediationSummaryPanel } from '../remediations/RemediationSummaryPanel';
 import { useCallback, useState } from 'react';
@@ -159,7 +160,6 @@ export function SupplierDetailPage({
   return (
     <>
       <SupplierCommunication session={session} supplierId={s.id} />
-      <RemediationSummaryPanel session={session} supplierId={s.id} />
       {header}
       {(notice || stateNotice) && (
         <Alert type="success" showIcon title={notice || stateNotice} />
@@ -266,8 +266,9 @@ export function SupplierDetailPage({
           ]}
         />
       </Card>
+      <CooperationPanel session={session} supplierId={s.id} />
       <div className="supplier-detail-grid">
-        <Card title="合作与联系人">
+        <Card title="合作资料">
           <Descriptions
             column={1}
             items={[
@@ -282,40 +283,11 @@ export function SupplierDetailPage({
                     },
                   ]
                 : []),
-              ...(s.contactName !== undefined
-                ? [
-                    {
-                      key: 'contact',
-                      label: '主要联系人',
-                      children: s.contactName || '未填写',
-                    },
-                    {
-                      key: 'position',
-                      label: '联系人职务',
-                      children: s.contactPosition || '未填写',
-                    },
-                    {
-                      key: 'email',
-                      label: '联系人邮箱',
-                      children: s.contactEmail || '未填写',
-                    },
-                    {
-                      key: 'phone',
-                      label: '联系电话',
-                      children: s.contactPhone || '未填写',
-                    },
-                    {
-                      key: 'group',
-                      label: '供应商微信群名称',
-                      children: s.wechatGroupName || '未填写',
-                    },
-                    {
-                      key: 'alternative',
-                      label: '备用联系人',
-                      children: s.alternativeContact || '未填写',
-                    },
-                  ]
-                : []),
+              {
+                key: 'group',
+                label: '微信群',
+                children: s.wechatGroupName || '未填写',
+              },
               ...(s.remark !== undefined
                 ? [
                     {
@@ -445,6 +417,7 @@ export function SupplierDetailPage({
           当前不支持报价、渠道编辑、测试结果提交或外部供应商门户。
         </p>
       </Card>
+      <RemediationSummaryPanel session={session} supplierId={s.id} />
       {editing && (
         <SupplierEditor
           api={session.api}

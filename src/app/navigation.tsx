@@ -140,7 +140,7 @@ export const navigation: readonly NavigationItem[] = [
   {
     id: 'purchase-analysis',
     path: '/analytics/procurement',
-    name: '采购价格分析',
+    name: '价格寻源表',
     group: '运营分析',
     icon: <BarChartOutlined />,
     permission: 'quote:read',

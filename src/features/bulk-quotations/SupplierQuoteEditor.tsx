@@ -1,3 +1,4 @@
+import { channelTypeOptions } from '../../domain/channel-types';
 import { useCallback, useState } from 'react';
 import {
   Alert,
@@ -241,7 +242,19 @@ export function SupplierQuoteEditor({
                   optionFilterProp="label"
                   style={{ width: '100%' }}
                   value={r.modelId || undefined}
-                  onChange={(v) => change(r.id, { modelId: v ?? '' })}
+                  onChange={(v) =>
+                    change(r.id, {
+                      modelId: v ?? '',
+                      channelType:
+                        channelTypeOptions(
+                          vendors.find(
+                            (vendor) =>
+                              vendor.id ===
+                              models.find((m) => m.id === v)?.vendorId,
+                          )!,
+                        )[0]?.value ?? 'other',
+                    })
+                  }
                   options={models.map((m) => ({ value: m.id, label: m.name }))}
                 />
               ),
@@ -250,24 +263,17 @@ export function SupplierQuoteEditor({
               title: '渠道类型',
               width: 170,
               render: (_, r, i) => {
-                const domestic =
-                  vendors.find(
-                    (v) =>
-                      v.id === models.find((m) => m.id === r.modelId)?.vendorId,
-                  )?.businessDomain === 'domestic';
+                const vendor = vendors.find(
+                  (v) =>
+                    v.id === models.find((m) => m.id === r.modelId)?.vendorId,
+                );
                 return (
                   <Select
                     aria-label={`第${i + 1}行渠道类型`}
                     style={{ width: '100%' }}
                     value={r.channelType}
                     onChange={(v) => change(r.id, { channelType: v })}
-                    options={Object.entries(channelTypeLabels)
-                      .filter(
-                        ([k]) =>
-                          !domestic ||
-                          !['third_party_proxy', 'other'].includes(k),
-                      )
-                      .map(([value, label]) => ({ value, label }))}
+                    options={vendor ? channelTypeOptions(vendor) : []}
                   />
                 );
               },

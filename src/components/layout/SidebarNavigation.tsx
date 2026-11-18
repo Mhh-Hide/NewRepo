@@ -14,7 +14,9 @@ export function SidebarNavigation({
   const location = useLocation();
   const navigate = useNavigate();
   const entries = navigation.filter(
-    (n) => n.permission === null || session.permits(n.permission),
+    (n) =>
+      !['remediations', 'governance'].includes(n.id) &&
+      (n.permission === null || session.permits(n.permission)),
   );
   const groups = [...new Set(entries.map((n) => n.group))];
   const item = (n: (typeof entries)[number]) => ({

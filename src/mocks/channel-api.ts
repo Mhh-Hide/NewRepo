@@ -1,3 +1,7 @@
+import {
+  businessChannelTypes,
+  channelTypeOptions,
+} from '../domain/channel-types';
 import { initialDefinition, basisFor } from './testing-state';
 import type {
   ChannelApi,
@@ -213,6 +217,13 @@ export function createChannelApi(
         (domain && modelDomain(model, fixture.vendors) !== domain)
       )
         throw new SupplierError('FORBIDDEN', '模型不在授权业务域。');
+      if (
+        Object.hasOwn(businessChannelTypes, input.channelType) &&
+        !channelTypeOptions(
+          fixture.vendors.find((v) => v.id === model.vendorId)!,
+        ).some((o) => o.value === input.channelType)
+      )
+        throw new SupplierError('VALIDATION', '渠道类型不属于该模型厂商。');
       const supplierState = suppliers.read();
       const supplier = supplierState.suppliers.find(
         (s) => s.id === input.supplierId,
@@ -268,6 +279,16 @@ export function createChannelApi(
     },
     async updateChannel(id, v, input) {
       guard('channel:update');
+      const existing = repo.read().channels.find((c) => c.id === id);
+      const model = fixture.models.find((m) => m.id === existing?.modelId);
+      if (
+        model &&
+        Object.hasOwn(businessChannelTypes, input.channelType) &&
+        !channelTypeOptions(
+          fixture.vendors.find((v) => v.id === model.vendorId)!,
+        ).some((o) => o.value === input.channelType)
+      )
+        throw new SupplierError('VALIDATION', '渠道类型不属于该模型厂商。');
       return change(id, v, 'channel:update', (c) => ({
         ...c,
         ...validate(input),

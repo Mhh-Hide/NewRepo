@@ -1,3 +1,4 @@
+import { channelTypeOptions } from '../../domain/channel-types';
 import { useCallback, useState } from 'react';
 import {
   Alert,
@@ -34,14 +35,16 @@ export function ChannelEditor({
   onSaved: (id: string) => void;
 }) {
   const [form] = Form.useForm<Values>();
+  const selectedModel = Form.useWatch('modelId', form);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const load = useCallback(async () => {
-    const [suppliers, models] = await Promise.all([
+    const [suppliers, models, vendors] = await Promise.all([
       session.api.listSuppliers(),
       session.api.listModels(),
+      session.api.listVendors(),
     ]);
-    return { suppliers, models };
+    return { suppliers, models, vendors };
   }, [session.api]);
   const { result, reload } = useResourceQuery(load);
   const submit = async (values: Values) => {
@@ -98,7 +101,6 @@ export function ChannelEditor({
             channel
               ? { ...channel }
               : {
-                  channelType: 'other',
                   tpm: null,
                   rpm: null,
                   concurrencyLimit: null,
@@ -156,9 +158,26 @@ export function ChannelEditor({
           >
             <Select
               aria-label="渠道类型"
-              options={Object.entries(channelTypeLabels).map(
-                ([value, label]) => ({ value, label }),
-              )}
+              options={(() => {
+                const vendor = result.data.vendors.find(
+                  (v) =>
+                    v.id ===
+                    result.data.models.find(
+                      (m) => m.id === (channel?.modelId ?? selectedModel),
+                    )?.vendorId,
+                );
+                const options = vendor ? channelTypeOptions(vendor) : [];
+                return channel &&
+                  !options.some((o) => o.value === String(channel.channelType))
+                  ? [
+                      ...options,
+                      {
+                        value: channel.channelType,
+                        label: `${channelTypeLabels[channel.channelType]} · 待确认`,
+                      },
+                    ]
+                  : options;
+              })()}
             />
           </Form.Item>
           <Form.Item name="modelInvocationName" label="实际模型调用名称">

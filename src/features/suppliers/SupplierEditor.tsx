@@ -201,8 +201,11 @@ export function SupplierEditor({
             <Input maxLength={64} />
           </Form.Item>
         </div>
-        <Form.Item name="wechatGroupName" label="供应商微信群名称">
-          <Input maxLength={160} />
+        <Form.Item
+          name="wechatGroupName"
+          label="供应商微信群名称（每行一个，首行为主要群）"
+        >
+          <Input.TextArea rows={3} maxLength={160} />
         </Form.Item>
         <Form.Item name="alternativeContact" label="备用联系人">
           <Input maxLength={160} />

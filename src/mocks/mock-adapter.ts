@@ -1,3 +1,4 @@
+import { createCooperationApi } from './cooperation-api';
 import { createResponsibilityApi } from './responsibility-api';
 import { createSupplierQuoteApi } from './supplier-quote-api';
 import { createLifecycleApi } from './lifecycle-api';
@@ -207,6 +208,14 @@ export function createMockAdapter(
           new SourcingRepository(port),
           new QuoteRepository(port),
         ),
+    ),
+    ...createCooperationApi(
+      supplierApi,
+      quotationApi,
+      channels,
+      repository.storagePort,
+      writeActive,
+      ctx?.user.id ?? '',
     ),
     ...responsibilityApi,
     ...lifecycle.api,

@@ -7,6 +7,8 @@ export interface SupplierQuoteInput {
   readonly remark: string;
   readonly rows: readonly (ChannelInput & {
     readonly modelId: string;
+    readonly promotionFrom?: string;
+    readonly promotionUntil?: string;
     readonly discount: DiscountBps;
     readonly channelId?: string;
     readonly cacheRequirement?: string;

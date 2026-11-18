@@ -1,3 +1,4 @@
+import type { CooperationApi } from './cooperation-types';
 import type { ResponsibilityApi } from './responsibility-types';
 import type { SupplierQuoteApi } from './supplier-quote-types';
 import type { LifecycleApi } from './lifecycle-types';
@@ -38,6 +39,7 @@ export interface DemandDetail {
 /** Unified domain contract. Supplier writes are Demo-only; no raw store escape hatch. */
 export interface ApiAdapter
   extends
+    CooperationApi,
     ResponsibilityApi,
     SupplierQuoteApi,
     SupplierApi,

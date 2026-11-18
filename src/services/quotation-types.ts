@@ -53,6 +53,9 @@ export interface QuoteOptions {
   }[];
 }
 export interface QuoteQuery {
+  readonly channelType?: string;
+  readonly limited?: boolean;
+  readonly priorityOnly?: boolean;
   readonly view?: 'current' | 'history';
   readonly businessStatus?: BusinessQuoteStatus;
   readonly ownerId?: string;

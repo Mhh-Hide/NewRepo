@@ -27,7 +27,6 @@ import {
 } from '../../domain/suppliers';
 import { PageHeader } from '../../components/PageHeader';
 import { StatCard } from '../../components/StatCard';
-import { StatusBadge } from '../../components/StatusBadge';
 import {
   EmptyState,
   ErrorState,
@@ -78,6 +77,9 @@ export function SupplierListPage({ session }: { session: DemoSession }) {
     async () => ({
       page: await session.api.querySuppliers(query),
       owners: await session.api.listSupplierOwners(),
+      channels: await session.api.listChannels(),
+      models: await session.api.listModels(),
+      vendors: await session.api.listVendors(),
     }),
     [session.api, query],
   );
@@ -159,156 +161,45 @@ export function SupplierListPage({ session }: { session: DemoSession }) {
       </>
     );
   const { page, owners } = result.data;
+  const count = (supplierId: string, domain: string) =>
+    result.data.channels.filter(
+      (c) =>
+        c.supplierId === supplierId &&
+        result.data.vendors.find(
+          (v) =>
+            v.id ===
+            result.data.models.find((m) => m.id === c.modelId)?.vendorId,
+        )?.businessDomain === domain,
+    ).length;
   const columns: ColumnsType<SupplierRecordView> = [
     {
       title: '供应商名称',
-      key: 'name',
-      sorter: true,
-      sortOrder:
-        sort.sort === 'name'
-          ? sort.order === 'asc'
-            ? 'ascend'
-            : 'descend'
-          : null,
-      width: 220,
+      width: 260,
       render: (_, r) => (
-        <Link
-          aria-label={r.supplier.name}
-          className="supplier-name"
-          to={`/suppliers/${r.supplier.id}`}
-        >
-          <span title={r.supplier.name}>
-            {r.supplier.shortCode || r.supplier.name}
-          </span>
-        </Link>
+        <Link to={`/suppliers/${r.supplier.id}`}>{r.supplier.name}</Link>
       ),
     },
+    { title: '简称', width: 140, render: (_, r) => r.supplier.shortCode },
     {
-      title: '类别',
-      width: 125,
-      render: (_, r) => supplierCategoryLabels[r.supplier.supplierCategory],
+      title: '主要微信群',
+      width: 240,
+      render: (_, r) => r.supplier.wechatGroupName?.split(/\n|；/)[0] || '—',
     },
     {
-      title: '合作状态',
-      width: 115,
-      render: (_, r) => (
-        <StatusBadge
-          label={cooperationStatusLabels[r.supplier.cooperationStatus]}
-        />
-      ),
+      title: '国内厂商渠道',
+      width: 150,
+      render: (_, r) => count(r.supplier.id, 'domestic'),
     },
     {
-      title: '启用状态',
-      width: 100,
-      render: (_, r) => (
-        <StatusBadge
-          label={r.supplier.status === 'enabled' ? '启用' : '停用'}
-        />
-      ),
-    },
-    ...(session.permits('supplier:maintain')
-      ? [
-          {
-            title: '采购负责人',
-            width: 160,
-            render: (_: unknown, r: SupplierRecordView) =>
-              owners.find((o) => o.id === r.supplier.ownerUserId)?.name ?? '—',
-          },
-        ]
-      : []),
-    ...(page.rows.some((r) => r.supplier.contactName !== undefined)
-      ? [
-          {
-            title: '联系人',
-            width: 120,
-            render: (_: unknown, r: SupplierRecordView) =>
-              r.supplier.contactName || '—',
-          },
-          {
-            title: '联系方式',
-            width: 210,
-            render: (_: unknown, r: SupplierRecordView) => (
-              <div className="supplier-wrap">
-                {r.supplier.contactEmail || '—'}
-                <small>{r.supplier.contactPhone || '—'}</small>
-              </div>
-            ),
-          },
-        ]
-      : []),
-    {
-      title: '最近更新时间',
-      key: 'updatedAt',
-      sorter: true,
-      sortOrder:
-        sort.sort === 'updatedAt'
-          ? sort.order === 'asc'
-            ? 'ascend'
-            : 'descend'
-          : null,
-      width: 170,
-      render: (_, r) =>
-        new Date(r.supplier.updatedAt).toLocaleString('zh-CN', {
-          timeZone: 'Asia/Shanghai',
-          hour12: false,
-        }),
+      title: '海外厂商渠道',
+      width: 150,
+      render: (_, r) => count(r.supplier.id, 'overseas'),
     },
     {
       title: '操作',
-      key: 'actions',
-      fixed: 'right',
-      width: 200,
+      width: 100,
       render: (_, r) => (
-        <Space wrap size={8}>
-          <Link to={`/suppliers/${r.supplier.id}`}>查看详情</Link>
-          {r.capabilities.edit && (
-            <Button
-              type="link"
-              size="small"
-              disabled={busy}
-              onClick={() =>
-                setEditor({
-                  initial: r.supplier,
-                  canAssign: r.capabilities.assign,
-                })
-              }
-            >
-              编辑资料
-            </Button>
-          )}
-          {r.capabilities.toggle && (
-            <Popconfirm
-              title={
-                r.supplier.status === 'enabled'
-                  ? '确认停用供应商？'
-                  : '确认恢复启用？'
-              }
-              description="停用后，该供应商将不再作为新增采购合作的默认可选对象，但历史报价、渠道、测试及事件记录不会删除。本阶段只改变主档状态。"
-              okText="确认"
-              cancelText="取消"
-              onConfirm={() =>
-                action(
-                  () =>
-                    session.api.setSupplierStatus(
-                      r.supplier.id,
-                      r.supplier.version,
-                      r.supplier.status === 'enabled' ? 'disabled' : 'enabled',
-                    ),
-                  '供应商主档状态已更新，关联资源保持不变。',
-                )
-              }
-            >
-              <Button
-                type="link"
-                size="small"
-                danger={r.supplier.status === 'enabled'}
-                disabled={busy}
-              >
-                {r.supplier.status === 'enabled' ? '停用' : '启用'}
-              </Button>
-            </Popconfirm>
-          )}
-        </Space>
+        <Link to={`/suppliers/${r.supplier.id}`}>查看详情</Link>
       ),
     },
   ];

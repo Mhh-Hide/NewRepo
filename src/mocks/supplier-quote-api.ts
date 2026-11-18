@@ -131,8 +131,14 @@ export function createSupplierQuoteApi(
           proposedQuoteInput: {
             channelId: channel.id,
             discount: row.discount,
-            priceStatus: 'reference' as const,
-            sourceType: 'supplier_submission' as const,
+            priceStatus: row.promotionFrom
+              ? ('temporary' as const)
+              : ('reference' as const),
+            effectiveFrom: row.promotionFrom ?? null,
+            effectiveUntil: row.promotionUntil ?? null,
+            sourceType: row.promotionFrom
+              ? ('promotion' as const)
+              : ('supplier_submission' as const),
             supplierQuotedAt: input.quotedAt,
             supplierSubmitterReference: `mock:staff:${ctx.user.id}`,
             reason:

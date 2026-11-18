@@ -1,3 +1,4 @@
+import { businessChannelTypes } from './channel-types';
 /** Stable codes and presentation labels; no unapproved workflow transitions. */
 export const sourcingStatusLabels = {
   draft: '草稿',
@@ -57,6 +58,7 @@ export const incidentStatusLabels = {
 } as const;
 export type IncidentStatus = keyof typeof incidentStatusLabels;
 export const channelTypeLabels = {
+  ...businessChannelTypes,
   official_direct: '官 Key',
   official_proxy: '官转',
   cloud_self_hosted: '云厂商自部署',

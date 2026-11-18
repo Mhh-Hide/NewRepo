@@ -337,3 +337,9 @@ AppShell 保持原 Outlet DemoSession 契约，DemoControlsContext 只暴露与 
 - 逐张检查五类公开演示截图，位于 docs/stage-07f/screenshots。Diff 凭据模式扫描无命中，未纳入附件或私有导入数据。
 - 剩余限制：旧未获取渠道可能待分配；数字控件补零及原生日期区域格式；部分旧页面筛选较多；模型目录非实时同步；构建分包超过500 kB警告。详见 docs/stage-07f/README.md。
 - 仅提交推送阶段分支，不修改 main、不部署、不进入下一阶段。
+
+## Stage 07G Preview checkpoint — 2026-11-18
+
+用户要求先推送部署当前演示版，暂停功能完善。当前生产构建成功；原有及字典775项单元测试通过，新增事故/权限/重点跟进3项通过；完整Playwright已发现旧页面断言与渠道类型选择器失效，未通过，不作为验收完成版本。五类公开样本截图已生成。事故/合作/寻源表仍有未完项，见docs/stage-07g-progress.md。
+
+新增Vercel SPA回退以支持直接打开及刷新业务路径。仅部署maas-resource-demo的Preview，不改main或Production；原始Excel及private-data保持忽略，不进入公开构建。

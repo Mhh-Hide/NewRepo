@@ -290,6 +290,16 @@ export function createQuotationApi(
             (!query.businessStatus ||
               r.businessStatus === query.businessStatus) &&
             (!query.ownerId || r.ownerUserId === query.ownerId) &&
+            (!query.channelType ||
+              r.channel.channelType === query.channelType) &&
+            (query.limited === undefined ||
+              (r.quote.priceStatus === 'temporary') === query.limited) &&
+            (!query.priorityOnly ||
+              (
+                JSON.parse(
+                  repo.storagePort.getItem('maas-quote-followup-v1') ?? '[]',
+                ) as string[]
+              ).includes(r.quote.id)) &&
             (!query.channelId || r.channel.id === query.channelId) &&
             (!query.supplierId || r.supplier.id === query.supplierId) &&
             (!query.modelId || r.model.id === query.modelId) &&
