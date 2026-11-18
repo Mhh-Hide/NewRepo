@@ -20,20 +20,29 @@ async function persona(page: Page, label: string) {
 }
 async function create(page: Page) {
   await page.goto('/procurement/bulk-quotes');
-  await page.getByRole('button', { name: '创建报价批次', exact: true }).click();
-  await select(page, '创建批次供应商', '华北资源合作方');
-  await page
-    .getByLabel('共同来源引用', { exact: true })
-    .fill('mock:evidence:browser-bulk');
-  await page
-    .getByLabel('共同说明', { exact: true })
-    .fill('模拟批量报价，仅供演示');
-  await page.getByRole('button', { name: '创建草稿', exact: true }).click();
+  // The old draft editor remains a compatibility surface; new entry is tested in 07F.
+  const id = await page.evaluate(async () => {
+    const path = '/src/mocks/mock-adapter.ts';
+    const { createMockAdapter } = await import(/* @vite-ignore */ path);
+    const selected = JSON.parse(
+      sessionStorage.getItem('maas-demo-selection') ?? '{"id":"u-ops"}',
+    );
+    const d = await createMockAdapter(selected.id).createBulkBatch(
+      {
+        supplierId: 's-1',
+        sourceReference: 'mock:evidence:browser-bulk',
+        sharedReason: '模拟批量报价，仅供演示',
+      },
+      crypto.randomUUID(),
+    );
+    return d.batch.id;
+  });
+  await page.goto(`/procurement/bulk-quotes/${id}`);
   await expect(
     page.getByRole('heading', { name: '编辑报价批次' }),
   ).toBeVisible();
 }
-async function row(page: Page, discount = '6200') {
+async function row(page: Page, discount = '6.2') {
   await page.getByRole('button', { name: '添加报价行', exact: true }).click();
   await page
     .getByRole('button', { name: '编辑行', exact: true })
@@ -79,7 +88,7 @@ test('operations creates multiple same-channel rows, reopens, previews, submits 
   await save(page);
   const url = page.url();
   await page.getByRole('button', { name: '返回批次列表' }).click();
-  await page.locator('a').filter({ hasText: 'MOCK-BATCH-' }).click();
+  await page.getByRole('link', { name: '查看报价', exact: true }).click();
   await expect(page).toHaveURL(url);
   await preview(page);
   await expect(page.getByText(/疑似完全重复报价/).first()).toBeVisible();
@@ -124,9 +133,9 @@ test('procurement repairs row errors, submits and retains independent verificati
   page,
 }) => {
   await page.goto('/dashboard');
-  await persona(page, '模拟Procurement');
+  await persona(page, '陈嘉宁');
   await create(page);
-  await row(page, '10001');
+  await row(page, '');
   await save(page);
   await preview(page);
   await expect(page.getByText(/阻断 · 第 1 行 · discount/)).toBeVisible();
@@ -134,7 +143,7 @@ test('procurement repairs row errors, submits and retains independent verificati
     page.getByRole('button', { name: '提交整批报价', exact: true }),
   ).toBeDisabled();
   await page.getByRole('button', { name: '编辑行', exact: true }).click();
-  await page.getByRole('spinbutton', { name: '行报价折扣' }).fill('6500');
+  await page.getByRole('spinbutton', { name: '行报价折扣' }).fill('6.5');
   await page.getByRole('button', { name: '保留行编辑' }).click();
   await save(page);
   await preview(page);
@@ -173,7 +182,7 @@ test('storage failure preserves draft and enables safe retry; submitted page rem
   await expect(
     page.getByRole('heading', { name: '编辑报价批次' }),
   ).toBeVisible();
-  await expect(page.getByText('6200 bps /')).toBeVisible();
+  await expect(page.getByText(/6.2 折 \//)).toBeVisible();
   await page.reload();
   await preview(page);
   await confirm(page);
@@ -217,7 +226,7 @@ test('testing and sales cannot access batch workbench, direct batch IDs or procu
 }) => {
   await create(page);
   const url = page.url();
-  for (const role of ['模拟Testing', '模拟Sales']) {
+  for (const role of ['周予安', '沈悦']) {
     await persona(page, role);
     await page.goto(url);
     await expect(

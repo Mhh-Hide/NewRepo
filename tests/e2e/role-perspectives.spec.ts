@@ -30,9 +30,7 @@ test('八角色、采购摘要预览、自动切换测试身份体验并由菜�
   await roles(page);
   await expect(page.locator('[data-testid^="role-card-"]')).toHaveCount(8);
   await page.getByTestId('role-card-Procurement').click();
-  await expect(page.getByTestId('roles-current-user')).toHaveText(
-    '模拟ProductOperations',
-  );
+  await expect(page.getByTestId('roles-current-user')).toHaveText('林知远');
   const row = page
     .getByRole('row')
     .filter({ has: page.getByRole('cell', { name: '模型测试', exact: true }) });
@@ -41,16 +39,12 @@ test('八角色、采购摘要预览、自动切换测试身份体验并由菜�
   await page.getByTestId('role-card-Testing').click();
   await page.getByRole('button', { name: '体验模型测试', exact: true }).click();
   await expect(page).toHaveURL(/\/tests$/);
-  await expect(page.locator('.topbar-controls')).toContainText(
-    '测试 · 模拟Testing',
-  );
+  await expect(page.locator('.topbar-controls')).toContainText('测试 · 周予安');
   await expect(
     page.getByRole('button', { name: '新建测试任务' }),
   ).toBeVisible();
   await page.getByRole('menuitem', { name: /角色视角/ }).click();
-  await expect(page.getByTestId('roles-current-user')).toHaveText(
-    '模拟Testing',
-  );
+  await expect(page.getByTestId('roles-current-user')).toHaveText('周予安');
   await expect(page.getByTestId('role-card-Testing')).toHaveAttribute(
     'aria-pressed',
     'true',
@@ -73,9 +67,7 @@ test('销售真实体验保留匿名渠道和权限拒绝，深链接刷新身�
   );
   await page.getByRole('button', { name: '体验渠道总览', exact: true }).click();
   await expect(page).toHaveURL(/\/channels$/);
-  await expect(page.locator('.topbar-controls')).toContainText(
-    '销售 · 模拟Sales',
-  );
+  await expect(page.locator('.topbar-controls')).toContainText('销售 · 沈悦');
   await expect(page.locator('main')).not.toContainText(
     /华北资源合作方|华东模型合作方|海外资源合作方/,
   );
@@ -84,7 +76,7 @@ test('销售真实体验保留匿名渠道和权限拒绝，深链接刷新身�
   await expect(page.getByText('无整改访问权限')).toBeVisible();
   await roles(page);
   await page.reload();
-  await expect(page.getByTestId('roles-current-user')).toHaveText('模拟Sales');
+  await expect(page.getByTestId('roles-current-user')).toHaveText('沈悦');
   await expect(page.getByTestId('role-card-Sales')).toHaveAttribute(
     'aria-pressed',
     'true',
@@ -92,7 +84,7 @@ test('销售真实体验保留匿名渠道和权限拒绝，深链接刷新身�
 });
 test('多身份选择、单域/双域切换、无授权空状态与刷新恢复', async ({ page }) => {
   await roles(page);
-  await select(page, '角色对应模拟用户', '模拟国内运营');
+  await select(page, '角色对应模拟用户', '苏雨晴');
   await page.getByRole('button', { name: '切换到此身份' }).click();
   await expect(page.getByTestId('roles-current-domain')).toHaveText('国内模型');
   await page.getByRole('combobox', { name: '角色页业务域' }).click();
@@ -100,17 +92,17 @@ test('多身份选择、单域/双域切换、无授权空状态与刷新恢复'
     '海外模型',
   );
   await page.keyboard.press('Escape');
-  await select(page, '角色对应模拟用户', '模拟海外运营');
+  await select(page, '角色对应模拟用户', '程以宁');
   await page.getByRole('button', { name: '切换到此身份' }).click();
   await expect(page.getByTestId('roles-current-domain')).toHaveText('海外模型');
-  await select(page, '角色对应模拟用户', '模拟ProductOperations');
+  await select(page, '角色对应模拟用户', '林知远');
   await page.getByRole('button', { name: '切换到此身份' }).click();
   await select(page, '角色页业务域', '海外模型');
   await expect(page.getByTestId('roles-current-domain')).toHaveText('海外模型');
   await expect(page.locator('.topbar-controls')).toContainText('海外模型');
   await page.reload();
   await expect(page.getByTestId('roles-current-domain')).toHaveText('海外模型');
-  await select(page, '角色对应模拟用户', '模拟未授权运营');
+  await select(page, '角色对应模拟用户', '未分配权限');
   await page.getByRole('button', { name: '切换到此身份' }).click();
   await expect(page.getByTestId('roles-current-domain')).toHaveText(
     '暂无业务域授权',
@@ -141,9 +133,7 @@ for (const width of [1440, 390])
       page.getByRole('button', { name: '体验供应商治理' }),
     ).toHaveCount(0);
     await page.getByRole('button', { name: '切换到此身份' }).click();
-    await expect(page.getByTestId('roles-current-user')).toHaveText(
-      '模拟Testing',
-    );
+    await expect(page.getByTestId('roles-current-user')).toHaveText('周予安');
     await expect
       .poll(() =>
         page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
@@ -160,12 +150,12 @@ test('顶部切换与页面共用身份、返回不残留旧预览', async ({ pa
   await page.getByTestId('role-card-Procurement').click();
   await page
     .getByRole('combobox', { name: '演示身份', exact: true })
-    .fill('模拟Sales');
+    .fill('沈悦');
   await page
     .locator('.ant-select-dropdown:visible .ant-select-item-option')
-    .filter({ hasText: '模拟Sales' })
+    .filter({ hasText: '沈悦' })
     .click();
-  await expect(page.getByTestId('roles-current-user')).toHaveText('模拟Sales');
+  await expect(page.getByTestId('roles-current-user')).toHaveText('沈悦');
   await expect(page.getByTestId('role-card-Sales')).toHaveAttribute(
     'aria-pressed',
     'true',

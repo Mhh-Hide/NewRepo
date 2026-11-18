@@ -29,13 +29,9 @@ it('实际身份直接来自 Outlet；预览角色不创建会话或读取他人
   const session = createDemoSession('u-ops');
   const query = vi.spyOn(session.api, 'queryRemediationSummaries');
   render(view(session));
-  expect(screen.getByTestId('roles-current-user')).toHaveTextContent(
-    '模拟ProductOperations',
-  );
+  expect(screen.getByTestId('roles-current-user')).toHaveTextContent('林知远');
   fireEvent.click(screen.getByTestId('role-card-Procurement'));
-  expect(screen.getByTestId('roles-current-user')).toHaveTextContent(
-    '模拟ProductOperations',
-  );
+  expect(screen.getByTestId('roles-current-user')).toHaveTextContent('林知远');
   expect(screen.getByText('身份预览，尚未切换')).toBeVisible();
   expect(query).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: '切换到此身份' }));
@@ -45,9 +41,7 @@ it('身份变更同步丢弃原预览；敏感业务内容没有进入页面', (
   const r = render(view(createDemoSession('u-ops')));
   fireEvent.click(screen.getByTestId('role-card-Procurement'));
   r.rerender(view(createDemoSession('u-sales', 'domestic')));
-  expect(screen.getByTestId('roles-current-user')).toHaveTextContent(
-    '模拟Sales',
-  );
+  expect(screen.getByTestId('roles-current-user')).toHaveTextContent('沈悦');
   expect(screen.getByTestId('role-card-Sales')).toHaveAttribute(
     'aria-pressed',
     'true',

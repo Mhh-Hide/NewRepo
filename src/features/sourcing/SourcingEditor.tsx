@@ -1,3 +1,9 @@
+import {
+  demandBusinessFields,
+  itemBusinessFields,
+} from '../../domain/procurement-fields';
+import { listDemoProfiles } from '../../services/demo-session';
+import { DiscountInput } from '../procurement/DiscountInput';
 import { useCallback, useState } from 'react';
 import {
   Alert,
@@ -60,11 +66,16 @@ export function SourcingEditor({
         requiredRpm: i.requiredRpm ?? null,
         requiredConcurrency: i.requiredConcurrency ?? null,
         requiredTtftMs: i.requiredTtftMs ?? null,
-        targetPurchaseDiscount: discountBps(i.targetPurchaseDiscount),
+        targetPurchaseDiscount: discountBps(i.targetPurchaseDiscount ?? 0),
+        targetDiscountUnknown: i.targetPurchaseDiscount == null,
+        ...Object.fromEntries(itemBusinessFields.map((k) => [k, i[k] || null])),
         requiredRegion: i.requiredRegion ?? '',
         priority: i.priority,
       }));
       const input: SourcingInput = {
+        ...Object.fromEntries(
+          demandBusinessFields.map((k) => [k, v[k] || null]),
+        ),
         title: v.title,
         description: v.description ?? '',
         sharedTitle: v.sharedTitle,
@@ -96,12 +107,6 @@ export function SourcingEditor({
       onClose={onClose}
       destroyOnHidden
     >
-      <Alert
-        type="info"
-        showIcon
-        title="仅模拟需求。运营受限信息与采购共享内容分别填写。"
-        description="采购共享标题、摘要、地区限制及后续跟进中请勿填写客户身份、售价或受限背景；系统不以关键词替换冒充脱敏。"
-      />
       {result.status === 'loading' ? (
         <LoadingState />
       ) : result.status === 'error' ? (
@@ -131,18 +136,18 @@ export function SourcingEditor({
           }
           style={{ marginTop: 20 }}
         >
-          <Card size="small" title="运营受限信息">
+          <Card size="small" title="客户采购需求">
             <Form.Item
-              label="运营需求标题（受限）"
+              label="需求名称"
               name="title"
               rules={[{ required: true, whitespace: true }]}
             >
               <Input maxLength={2000} />
             </Form.Item>
-            <Form.Item label="运营原始说明（受限）" name="description">
+            <Form.Item label="客户背景" name="description">
               <Input.TextArea maxLength={4000} rows={2} />
             </Form.Item>
-            <Form.Item label="客户关联（可为空，仅运营）" name="customerId">
+            <Form.Item label="客户（可选）" name="customerId">
               <Select
                 allowClear
                 aria-label="需求客户关联"
@@ -181,6 +186,44 @@ export function SourcingEditor({
               </Form.Item>
             </div>
           </Card>
+          <details style={{ marginTop: 16 }}>
+            <summary>客户商务信息（可选）</summary>
+            <div className="sourcing-form-grid">
+              {demandBusinessFields.map((k, i) => (
+                <Form.Item
+                  key={k}
+                  name={k}
+                  label={
+                    [
+                      '销售负责人',
+                      '产品运营负责人',
+                      '预计月用量',
+                      '币种',
+                      '合作形式',
+                      '目标折扣范围',
+                      '客户备注',
+                      '销售反馈',
+                    ][i]
+                  }
+                >
+                  {k === 'salesOwnerId' || k === 'operationsOwnerId' ? (
+                    <Select
+                      allowClear
+                      options={listDemoProfiles()
+                        .filter((p) =>
+                          k === 'salesOwnerId'
+                            ? p.user.role === 'Sales'
+                            : p.user.role === 'ProductOperations',
+                        )
+                        .map((p) => ({ value: p.user.id, label: p.user.name }))}
+                    />
+                  ) : (
+                    <Input maxLength={2000} />
+                  )}
+                </Form.Item>
+              ))}
+            </div>
+          </details>
           <Form.List name="items">
             {(fields, { add, remove }) => (
               <>
@@ -266,28 +309,33 @@ export function SourcingEditor({
                     </div>
                     <Form.Item
                       name={[field.name, 'targetPurchaseDiscount']}
-                      label={`明细 ${index + 1} 目标采购折扣（基点，8000 = 八折）`}
+                      label={`明细 ${index + 1} 目标采购折扣（可空）`}
                       rules={[
-                        { required: true, message: '请填写采购目标' },
                         {
                           validator: (_, v: unknown) =>
-                            typeof v === 'number' &&
-                            Number.isSafeInteger(v) &&
-                            v >= 0 &&
-                            v <= 10000
+                            v == null ||
+                            (typeof v === 'number' &&
+                              Number.isSafeInteger(v) &&
+                              v >= 0 &&
+                              v <= 10000)
                               ? Promise.resolve()
-                              : Promise.reject(
-                                  new Error('折扣须为 0–10000 的整数基点。'),
-                                ),
+                              : Promise.reject(new Error('请输入 0–10 折。')),
                         },
                       ]}
                     >
-                      <InputNumber
-                        min={0}
-                        max={10000}
-                        style={{ width: '100%' }}
+                      <DiscountInput
+                        aria-label={`明细 ${index + 1} 目标折扣`}
                       />
                     </Form.Item>
+                    {itemBusinessFields.map((k, i) => (
+                      <Form.Item
+                        key={k}
+                        name={[field.name, k]}
+                        label={['缓存要求', '预计调用用量', '资源质量要求'][i]}
+                      >
+                        <Input maxLength={2000} />
+                      </Form.Item>
+                    ))}
                     <div className="sourcing-form-grid">
                       <Form.Item
                         name={[field.name, 'requiredRegion']}

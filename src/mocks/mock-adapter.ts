@@ -1,3 +1,5 @@
+import { createResponsibilityApi } from './responsibility-api';
+import { createSupplierQuoteApi } from './supplier-quote-api';
 import { createLifecycleApi } from './lifecycle-api';
 import { createRemediationApi } from './remediation-api';
 import {
@@ -9,26 +11,17 @@ import { testingSnapshot } from './testing-state';
 import { createBulkQuotationApi } from './bulk-quotation-api';
 import { bulkReferences } from './bulk-repository-rules';
 import { createProcurementAnalyticsApi } from '../services/procurement-analytics';
-import { quoteRepository, type QuoteRepository } from './quote-repository';
+import { quoteRepository, QuoteRepository } from './quote-repository';
 import { createQuotationApi, resolvedQuote } from './quotation-api';
-import {
-  sourcingRepository,
-  type SourcingRepository,
-} from './sourcing-repository';
+import { sourcingRepository, SourcingRepository } from './sourcing-repository';
 import { createSourcingApi } from './sourcing-api';
-import {
-  channelRepository,
-  type ChannelRepository,
-} from './channel-repository';
+import { channelRepository, ChannelRepository } from './channel-repository';
 import { SupplierError } from '../services/supplier-types';
 import { createChannelApi } from './channel-api';
 import { createResourceApi } from './resource-api';
 import type { ResourceApi } from '../services/resource-types';
 import { createSupplierApi } from './supplier-api';
-import {
-  supplierRepository,
-  type SupplierRepository,
-} from './supplier-repository';
+import { supplierRepository, SupplierRepository } from './supplier-repository';
 import type { ApiAdapter } from '../services/api-adapter';
 import type { AccessContext } from '../auth/types';
 import type {
@@ -193,7 +186,29 @@ export function createMockAdapter(
     writeActive,
   );
 
+  const responsibilityApi = createResponsibilityApi(
+    ctx,
+    () => data.models.filter(modelAllowed),
+    repository.storagePort,
+    writeActive,
+  );
   const base: Omit<ApiAdapter, keyof ResourceApi> = {
+    ...createSupplierQuoteApi(
+      ctx,
+      writeActive,
+      repository.storagePort,
+      (port) =>
+        createMockAdapter(
+          userId,
+          businessDomain,
+          new SupplierRepository(port),
+          writeActive,
+          new ChannelRepository(port),
+          new SourcingRepository(port),
+          new QuoteRepository(port),
+        ),
+    ),
+    ...responsibilityApi,
     ...lifecycle.api,
     ...remediationApi,
     ...testingApi,
@@ -392,8 +407,21 @@ export function createMockAdapter(
       );
     },
     async listModels() {
+      if (!ctx || !can(ctx, 'model:read')) return [];
+      const owners = await responsibilityApi.modelResponsibilities();
       return copy(
-        ctx && can(ctx, 'model:read') ? data.models.filter(modelAllowed) : [],
+        data.models.filter(modelAllowed).map((m) => {
+          const o = owners.find((o) => o.modelId === m.id);
+          return {
+            ...m,
+            ...(o
+              ? {
+                  procurementOwnerId: o.procurementOwnerId,
+                  operationsOwnerId: o.operationsOwnerId,
+                }
+              : {}),
+          };
+        }),
       );
     },
     async listChannels(filter = {}) {

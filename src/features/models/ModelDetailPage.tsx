@@ -1,3 +1,4 @@
+import { OwnerPicker } from '../procurement/OwnerPicker';
 import { TestSummaryPanel } from '../testing/TestSummaryPanel';
 import { useCallback } from 'react';
 import { Button, Card, Descriptions, Result, Space, Table, Tag } from 'antd';
@@ -120,6 +121,17 @@ export default function ModelDetailPage() {
           column={{ xs: 1, sm: 2, lg: 3 }}
           items={[
             { key: 'vendor', label: '模型厂商', children: s.vendor.name },
+            {
+              key: 'owners',
+              label: '默认采购 / 运营',
+              children: (
+                <OwnerPicker
+                  session={session}
+                  modelId={m.id}
+                  domain={s.businessDomain}
+                />
+              ),
+            },
             { key: 'code', label: '模型代码', children: m.modelCode },
             { key: 'version', label: '模型版本', children: m.version },
             {

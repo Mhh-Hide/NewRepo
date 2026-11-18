@@ -1,3 +1,4 @@
+import { discountText } from '../procurement/discount';
 import { Table, Tag } from 'antd';
 import { Link } from 'react-router-dom';
 import type { AnalysisRecord } from '../../domain/procurement-analytics';
@@ -84,10 +85,9 @@ export function AnalysisTable({
           ),
         },
         {
-          title: '折扣（整数基点）',
+          title: '采购折扣',
           width: 150,
-          render: (_, r) =>
-            `${r.quote.discount} 基点（${r.quote.discount / 1000}折）`,
+          render: (_, r) => discountText(r.quote.discount),
         },
         {
           title: '币种 / 单价与规格',

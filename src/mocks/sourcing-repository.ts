@@ -1,3 +1,8 @@
+import {
+  demandBusinessFields,
+  itemBusinessFields,
+} from '../domain/procurement-fields';
+import { atomicStorage } from '../services/atomic-storage';
 import { businessStorage } from '../services/runtime-data';
 import { projectLegacyRemediation } from './remediation-repository';
 import { testingSnapshot } from './testing-state';
@@ -36,6 +41,9 @@ function shape(v: unknown): v is SourcingState {
     !v.demands.every(
       (d) =>
         record(d) &&
+        demandBusinessFields.every(
+          (k) => d[k] == null || typeof d[k] === 'string',
+        ) &&
         d.source === 'mock' &&
         text(d, [
           'id',
@@ -65,6 +73,11 @@ function shape(v: unknown): v is SourcingState {
     !v.items.every(
       (i) =>
         record(i) &&
+        itemBusinessFields.every(
+          (k) => i[k] == null || typeof i[k] === 'string',
+        ) &&
+        (i.targetDiscountUnknown === undefined ||
+          typeof i.targetDiscountUnknown === 'boolean') &&
         i.source === 'mock' &&
         text(i, [
           'id',
@@ -182,7 +195,13 @@ function seed(): SourcingState {
   };
 }
 export class SourcingRepository {
-  constructor(private storage: StoragePort) {}
+  private storage: StoragePort;
+  get storagePort() {
+    return this.storage;
+  }
+  constructor(storage: StoragePort) {
+    this.storage = atomicStorage(storage);
+  }
   read(): SourcingState {
     try {
       const raw = this.storage.getItem(sourcingStorageKey);
@@ -285,7 +304,4 @@ export class SourcingRepository {
     }
   }
 }
-export const sourcingRepository = new SourcingRepository({
-  getItem: (k) => businessStorage.getItem(k),
-  setItem: (k, v) => businessStorage.setItem(k, v),
-});
+export const sourcingRepository = new SourcingRepository(businessStorage);

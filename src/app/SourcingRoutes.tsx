@@ -4,6 +4,9 @@ import { Link, useOutletContext, useParams } from 'react-router-dom';
 import type { DemoSession } from '../services/demo-session';
 import { LoadingState } from '../components/FeedbackStates';
 import '../features/sourcing/sourcing.css';
+const SalesProgress = lazy(
+  () => import('../features/sourcing/SalesProgressPage'),
+);
 const SourcingList = lazy(
   () => import('../features/sourcing/SourcingListPage'),
 );
@@ -13,6 +16,16 @@ const SourcingDetail = lazy(
 export function SourcingRoute() {
   const session = useOutletContext<DemoSession>();
   const { demandId } = useParams();
+  if (
+    ['Sales', 'AccountManager', 'SolutionArchitect'].includes(
+      session.profile.user.role,
+    )
+  )
+    return (
+      <Suspense fallback={<LoadingState />}>
+        <SalesProgress />
+      </Suspense>
+    );
   if (!session.permits('sourcing:read'))
     return (
       <Result

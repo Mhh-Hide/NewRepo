@@ -1,3 +1,7 @@
+import { quoteBusinessStatus } from '../domain/quote-business';
+import { applicableDiscount } from '../domain/current-price';
+import { supplierQuoteReceiptsKey } from './supplier-quote-api';
+import { currentChannelRows } from '../domain/current-price';
 import {
   quoteFields,
   quoteIso as iso,
@@ -140,7 +144,19 @@ export function createQuotationApi(
       .suppliers.find((v) => v.id === c.supplierId)!;
     const decisions = s.decisions.filter((e) => e.quoteId === q.id);
     const resolved = resolvedQuote(s, q);
+    const receipts = JSON.parse(
+      repo.storagePort.getItem(supplierQuoteReceiptsKey) ?? '[]',
+    ) as { ownerId: string; quoteIds: string[] }[];
+    const record = channelRepo.lifecycle
+      .read()
+      .records.find((r) => r.channelId === c.id);
     return {
+      businessStatus: quoteBusinessStatus(resolved, record?.contractStage),
+      ownerUserId:
+        receipts.find((r) => r.quoteIds.includes(q.id))?.ownerId ??
+        record?.procurementOwnerId ??
+        q.recordedBy ??
+        supplier.ownerUserId,
       quote: resolved,
       storedPriceStatus: q.priceStatus,
       channel: projectChannel(ctx!, c),
@@ -249,17 +265,37 @@ export function createQuotationApi(
         .map((q) => row(s, q));
       const now = Date.now(),
         week = 7 * 86400000;
-      const filtered = all
+      const filtered = (
+        query.view === 'current'
+          ? currentChannelRows(all, now).map((r) => ({
+              ...r,
+              currentDiscount:
+                r.businessStatus === 'ended'
+                  ? null
+                  : (applicableDiscount(r.quote, now) ??
+                    (['reference', 'pending_contract'].includes(
+                      r.quote.priceStatus,
+                    ) && r.validity !== 'expired'
+                      ? r.quote.discount
+                      : null)),
+            }))
+          : all
+      )
         .filter(
           (r) =>
             (!query.search ||
               `${r.quote.id} ${r.channel.displayName} ${r.model.name} ${r.supplier.name}`
                 .toLowerCase()
                 .includes(query.search.toLowerCase())) &&
+            (!query.businessStatus ||
+              r.businessStatus === query.businessStatus) &&
+            (!query.ownerId || r.ownerUserId === query.ownerId) &&
             (!query.channelId || r.channel.id === query.channelId) &&
             (!query.supplierId || r.supplier.id === query.supplierId) &&
             (!query.modelId || r.model.id === query.modelId) &&
             (!query.vendorId || r.vendor.id === query.vendorId) &&
+            (!query.manufacturerDomain ||
+              r.vendor.businessDomain === query.manufacturerDomain) &&
             (!query.status ||
               (query.status === 'expired'
                 ? r.validity === 'expired'

@@ -100,7 +100,7 @@ test('创建、分配负责人、开始、提交、退回和第二轮结果在�
 }) => {
   await create(page);
   await action(page, '分配负责人');
-  await select(page, '整改负责人', '模拟Testing');
+  await select(page, '整改负责人', '周予安');
   await save(page);
   await action(page, '开始跟进');
   await save(page);
@@ -268,21 +268,19 @@ test('双窗口版本冲突拒绝覆盖', async ({ page, context }) => {
 test('角色切换摘要隔离和前台直接访问拒绝', async ({ page }) => {
   const id = await seed(page);
   await page.goto(`/remediations/${id}`);
-  await page
-    .getByRole('combobox', { name: '演示身份' })
-    .fill('模拟Procurement');
+  await page.getByRole('combobox', { name: '演示身份' }).fill('陈嘉宁');
   await page
     .locator('.ant-select-dropdown:visible .ant-select-item-option')
-    .filter({ hasText: '模拟Procurement' })
+    .filter({ hasText: '陈嘉宁' })
     .click();
   await expect(page.getByText('整改不存在或无权查看完整详情')).toBeVisible();
   await page.goto('/remediations');
   await expect(page.getByText('internal-sentinel')).toHaveCount(0);
   await expect(page.getByRole('button', { name: '新建整改' })).toHaveCount(0);
-  await page.getByRole('combobox', { name: '演示身份' }).fill('模拟Sales');
+  await page.getByRole('combobox', { name: '演示身份' }).fill('沈悦');
   await page
     .locator('.ant-select-dropdown:visible .ant-select-item-option')
-    .filter({ hasText: '模拟Sales' })
+    .filter({ hasText: '沈悦' })
     .click();
   await expect(page.getByText('无整改访问权限')).toBeVisible();
 });

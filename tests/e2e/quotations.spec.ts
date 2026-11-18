@@ -42,15 +42,18 @@ async function form(
     name: correction ? '更正历史报价' : '录入采购报价',
     exact: true,
   });
-  await d.getByRole('spinbutton', { name: /上游实际报价折扣/ }).fill(discount);
+  await d
+    .getByRole('spinbutton', { name: '采购折扣', exact: true })
+    .fill(String(Number(discount) / 1000));
+  await d.locator('summary').filter({ hasText: '报价依据与计价明细' }).click();
   if (!correction && !promo)
     await d
       .getByRole('textbox', { name: /供应商原始提交人引用$/ })
       .fill('mock:supplier:source');
   if (promo) {
     await select(page, '原始报价来源', '临时优惠');
-    await d.getByLabel(/生效日期（北京时间00:00）$/).fill(date(-1));
-    await d.getByLabel(/截止日期（北京时间00:00，不含）$/).fill(date(3));
+    await d.getByLabel(/^生效日期$/).fill(date(-1));
+    await d.getByLabel(/截止日期（可空，不含当日）$/).fill(date(3));
   }
   if (price) {
     await d
@@ -73,9 +76,6 @@ async function form(
     await d.getByRole('textbox', { name: /维度 1 计量单位$/ }).fill('Token');
   }
   await d
-    .getByRole('textbox', { name: /报价证据引用$/ })
-    .fill('mock:evidence:browser');
-  await d
     .getByRole('textbox', {
       name: correction ? /更正原因（不覆盖原值）$/ : /报价来源说明与备注$/,
     })
@@ -92,7 +92,7 @@ async function form(
 }
 async function create(page: Page, options: Parameters<typeof form>[1] = {}) {
   await page.goto('/quotes');
-  await page.getByRole('button', { name: '录入采购报价', exact: true }).click();
+  await page.getByRole('button', { name: '新增单条报价', exact: true }).click();
   await select(page, '报价渠道选择', '模拟渠道1');
   await form(page, options);
 }
@@ -112,14 +112,14 @@ test('procurement initiates and follows inquiry, records linked quote and sees c
   page,
 }) => {
   await page.goto('/quotes');
-  await persona(page, '模拟Procurement');
+  await persona(page, '陈嘉宁');
   await expect(
     page.getByRole('heading', { name: '采购报价管理' }),
   ).toBeVisible();
   await page.getByRole('tab', { name: '询价记录与跟进' }).click();
   await page.getByRole('button', { name: '发起询价' }).click();
   await select(page, '询价渠道选择', '模拟渠道1');
-  await select(page, '询价关联需求明细', 'Seedance 示例国内版');
+  await select(page, '询价关联需求明细', 'Seedance 1.0 国内版');
   await page
     .getByRole('textbox', { name: /询价共享跟进说明$/ })
     .fill('模拟待询价记录，不对外发送。');
@@ -145,6 +145,7 @@ test('procurement initiates and follows inquiry, records linked quote and sees c
   ).toHaveCount(0);
   await expect(page.locator('body')).not.toContainText('虚构客户1');
   await page.reload();
+  await page.locator('summary').filter({ hasText: '计价明细' }).click();
   await expect(
     page
       .getByText('0.123456 / 1000000 Token（输入 Token）', { exact: false })
@@ -156,7 +157,7 @@ test('procurement initiates and follows inquiry, records linked quote and sees c
   ).toHaveCount(5);
   await page.goto('/sourcing/d-1');
   const section = page.getByTestId('sourcing-item-1');
-  await expect(section).toContainText('6000 基点');
+  await expect(section).toContainText('6 折');
   await expect(section).toContainText('不具备直接可比性');
   await expect(
     section
@@ -196,9 +197,16 @@ test('operations formally confirms only after independent verification and expli
   await d.getByRole('button', { name: '确认模拟正式生效' }).click();
   await expect(d).toHaveCount(0);
   await expect(
-    page.getByText('正式生效价', { exact: true }).first(),
+    page
+      .getByText('正式生效价', { exact: true })
+      .filter({ visible: true })
+      .first(),
   ).toBeVisible();
   await page.reload();
+  await page
+    .locator('summary')
+    .filter({ hasText: '报价依据与详细信息' })
+    .click();
   await expect(
     page.getByText('mock:formal:reference', { exact: true }).first(),
   ).toBeVisible();
@@ -212,22 +220,29 @@ test('temporary offers remain independent and correction preserves original vers
   await create(page, { promo: true, discount: '5500' });
   const original = page.url();
   await expect(
-    page.getByText('临时优惠报价', { exact: true }).first(),
+    page
+      .getByText('临时优惠报价', { exact: true })
+      .filter({ visible: true })
+      .first(),
   ).toBeVisible();
   await page.getByRole('button', { name: '更正历史报价' }).click();
   await form(page, { correction: true, promo: false, discount: '5800' });
+  await page
+    .locator('summary')
+    .filter({ hasText: '报价依据与详细信息' })
+    .click();
   await expect(
     page.getByText('历史纠错', { exact: true }).first(),
   ).toBeVisible();
   await expect(
-    page.getByText('5500 基点（5.5 折）', { exact: true }),
+    page.getByText('5.5 折', { exact: true }).filter({ visible: true }).first(),
   ).toBeVisible();
   await expect(
     page.getByRole('link', { name: '查看报价', exact: true }),
   ).toHaveCount(6);
   await page.reload();
   await expect(
-    page.getByText('5800 基点（5.8 折）', { exact: true }).first(),
+    page.getByText('5.8 折', { exact: true }).filter({ visible: true }).first(),
   ).toBeVisible();
   await expect(
     page
@@ -236,10 +251,16 @@ test('temporary offers remain independent and correction preserves original vers
   ).toBeVisible();
   await page.goto(original);
   await expect(
-    page.getByText('5500 基点（5.5 折）', { exact: true }).first(),
+    page
+      .getByText('5.5 折', { exact: true })
+      .filter({ visible: true })
+      .first()
+      .first(),
   ).toBeVisible();
   await page.goto('/quotes');
-  await expect(page.getByTestId('metric-quote-expiring')).toContainText('3');
+  await expect(
+    page.getByRole('columnheader', { name: '当前采购折扣' }),
+  ).toBeVisible();
 });
 test('unknown old price basis is explicitly incomparable and roles never see procurement price pages', async ({
   page,
@@ -251,12 +272,7 @@ test('unknown old price basis is explicitly incomparable and roles never see pro
   await page.getByRole('button', { name: '检查可比性' }).click();
   await expect(page.getByText('不具备可比性', { exact: true })).toBeVisible();
   await expect(page.getByText('价格基准未提供', { exact: true })).toBeVisible();
-  for (const label of [
-    '模拟Testing',
-    '模拟OperationsSupport',
-    '模拟SupplierUser',
-    '模拟Sales',
-  ]) {
+  for (const label of ['周予安', '许明哲', '供应商联系人', '沈悦']) {
     await persona(page, label);
     await expect(
       page.getByText('当前身份无采购报价访问权限', { exact: true }),
@@ -305,7 +321,9 @@ test('explicit quote reset restores legacy data without deleting channel or sour
     '供应商、渠道、寻源、测试保持原样',
   );
   await page.getByRole('button', { name: '确认重置报价', exact: true }).click();
-  await expect(page.getByTestId('metric-quote-reference')).toContainText('2');
+  await expect(
+    page.getByRole('columnheader', { name: '当前采购折扣' }),
+  ).toBeVisible();
   await page.goto('/channels?view=management');
   await expect(page.getByTestId('metric-channel-total')).toContainText('7');
   await page.evaluate(() =>
@@ -320,5 +338,7 @@ test('explicit quote reset restores legacy data without deleting channel or sour
   await expect(
     page.getByRole('heading', { name: '采购报价管理' }),
   ).toBeVisible();
-  await expect(page.getByTestId('metric-quote-reference')).toBeVisible();
+  await expect(
+    page.getByRole('columnheader', { name: '当前采购折扣' }),
+  ).toBeVisible();
 });

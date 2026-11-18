@@ -22,7 +22,7 @@ test('1440 and 390px distinguish all active formal prices, confirmed history and
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 });
     await page.goto('/analytics/procurement');
-    await select(page, '分析模型', 'Seedance 示例国内版');
+    await select(page, '分析模型', 'Seedance 1.0 国内版');
     await select(page, '分析比较基准报价', 'q-1 ·');
     await expect(
       page.getByText(/查询时刻有效性：基准有效期内；此报价有效期内/).first(),
@@ -59,18 +59,19 @@ test('confirmed future price activates at start and expires at exclusive end wit
 }, info) => {
   await page.clock.setFixedTime(new Date('2026-11-13T08:00:00Z'));
   await page.goto('/quotes');
-  await page.getByRole('button', { name: '录入采购报价', exact: true }).click();
+  await page.getByRole('button', { name: '新增单条报价', exact: true }).click();
   await select(page, '报价渠道选择', '模拟渠道3');
   const d = page.getByRole('dialog', { name: '录入采购报价', exact: true });
-  await d.getByRole('spinbutton', { name: /上游实际报价折扣/ }).fill('6500');
+  await d
+    .getByRole('spinbutton', { name: '采购折扣', exact: true })
+    .fill('6.5');
+  await d.locator('summary').filter({ hasText: '报价依据与计价明细' }).click();
   await d
     .getByRole('textbox', { name: /供应商原始提交人引用$/ })
     .fill('mock:supplier');
-  await d.getByLabel(/生效日期（北京时间00:00）$/).fill('2026-11-16');
-  await d.getByLabel(/截止日期（北京时间00:00，不含）$/).fill('2026-11-18');
-  await d
-    .getByRole('textbox', { name: /报价证据引用$/ })
-    .fill('mock:future-price');
+  await d.getByLabel(/^生效日期$/).fill('2026-11-16');
+  await d.getByLabel(/截止日期（可空，不含当日）$/).fill('2026-11-18');
+
   await d
     .getByRole('textbox', { name: /报价来源说明与备注$/ })
     .fill('模拟未来生效报价，用于时间边界验收');
@@ -111,13 +112,13 @@ test('confirmed future price activates at start and expires at exclusive end wit
   await expect(confirmation).toHaveCount(0);
   async function inspect(state: string, active: boolean) {
     await page.goto('/analytics/procurement');
-    await select(page, '分析模型', 'Seedance 示例国内版');
+    await select(page, '分析模型', 'Seedance 1.0 国内版');
     const history = page.getByTestId('channel-formal-history-ch-3'),
       current = page.getByTestId('channel-current-formals-ch-3');
     await expect(history).toContainText(`查询时刻：${state}`);
     if (active)
       await expect(
-        current.getByRole('link', { name: '6500 基点 · 查看正式报价' }),
+        current.getByRole('link', { name: '6.5 折 · 查看正式报价' }),
       ).toHaveCount(1);
     else await expect(current).toHaveText('暂无当前有效正式报价');
     await select(page, '分析比较基准报价', `${quoteId} ·`);

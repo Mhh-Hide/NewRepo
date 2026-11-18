@@ -1,3 +1,4 @@
+import { catalogModels, catalogVendors } from '../../src/mocks/catalog';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMockAdapter } from '../../src/mocks/mock-adapter';
 import { createResourceApi } from '../../src/mocks/resource-api';
@@ -9,8 +10,8 @@ import { createDemoSession } from '../../src/services/demo-session';
 import { formatCapacity } from '../../src/features/channels/format-capacity';
 class MemoryStorage implements StoragePort {
   value: string | null = null;
-  getItem() {
-    return this.value;
+  getItem(key: string) {
+    return key === 'maas-supplier-demo-v1' ? this.value : null;
   }
   setItem(_key: string, value: string) {
     this.value = value;
@@ -58,9 +59,9 @@ describe('authorized model resource summaries', () => {
       d?.suppliers.find((s) => s.supplier.id === 's-1')?.channelCount,
     ).toBe(2);
     expect((await api().queryModelResources()).stats).toEqual({
-      models: 6,
+      models: 14,
       withChannels: 4,
-      withoutChannels: 2,
+      withoutChannels: 10,
       channels: 7,
       threeSupplierModels: 1,
     });
@@ -123,10 +124,10 @@ describe('authorized model resource summaries', () => {
         await a.queryModelResources({ supplierCoverage: 'three_plus' })
       ).rows.map((r) => r.model.id),
     ).toEqual(['m-seed-cn']);
-    expect((await a.queryModelResources({ hasChannels: 'no' })).total).toBe(2);
+    expect((await a.queryModelResources({ hasChannels: 'no' })).total).toBe(10);
     expect(
       (await a.queryModelResources({ page: 2, pageSize: 5 })).rows,
-    ).toHaveLength(1);
+    ).toHaveLength(5);
     expect(
       (await a.queryModelResources({ search: 'missing', page: 99 })).page,
     ).toBe(1);
@@ -134,7 +135,7 @@ describe('authorized model resource summaries', () => {
       (await a.queryModelResources({ sort: 'channelCount', order: 'desc' }))
         .rows[0]?.model.id,
     ).toBe('m-seed-cn');
-    expect((await a.queryModelResources()).total).toBe(6);
+    expect((await a.queryModelResources()).total).toBe(14);
   });
   it('uses exactly one batch of each reader per query, independent of row count', async () => {
     const a = api();
@@ -286,11 +287,13 @@ describe('resource API field and record boundaries', () => {
   it('filters vendors and nested resources by authorized business domain', async () => {
     const a = api('u-domestic', 'domestic');
     const p = await a.queryModelResources();
-    expect(p.rows.map((r) => r.model.id).sort()).toEqual([
-      'm-seed-cn',
-      'm-seed-os',
+    expect(p.rows.map((r) => r.model.id).sort()).toEqual(
+      ['m-seed-cn', 'm-seed-os', ...catalogModels.map((m) => m.id)].sort(),
+    );
+    expect(p.vendors.map((v) => v.id)).toEqual([
+      'v-byte',
+      ...catalogVendors.map((v) => v.id),
     ]);
-    expect(p.vendors.map((v) => v.id)).toEqual(['v-byte']);
     expect(await a.getModelResource('m-gpt')).toBeNull();
     expect(await a.getChannelResource('ch-5')).toBeNull();
     expect((await a.queryModelResources({ vendorId: 'v-open' })).total).toBe(0);

@@ -1,3 +1,4 @@
+import { catalogModels } from '../../src/mocks/catalog';
 import { describe, expect, it } from 'vitest';
 import {
   createDemoSession,
@@ -22,7 +23,7 @@ describe('scoped dashboard aggregates', () => {
     const d = await dashboard();
     expect(d.metrics.map((m) => [m.id, m.value])).toEqual([
       ['suppliers', 3],
-      ['models', 6],
+      ['models', 14],
       ['channels', 7],
       ['demands', 2],
       ['gaps', 1],
@@ -44,7 +45,7 @@ describe('scoped dashboard aggregates', () => {
     const overseas = await dashboard('u-ops', 'overseas');
     expect(domestic.channels).toHaveLength(5);
     expect(overseas.channels).toHaveLength(2);
-    expect(domestic.metrics.find((m) => m.id === 'models')?.value).toBe(2);
+    expect(domestic.metrics.find((m) => m.id === 'models')?.value).toBe(10);
     expect(domestic.metrics.find((m) => m.id === 'gaps')?.value).toBe(0);
     expect(overseas.metrics.find((m) => m.id === 'gaps')?.value).toBe(1);
     expect(domestic.suppliers).toHaveLength(3);
@@ -60,6 +61,7 @@ describe('scoped dashboard aggregates', () => {
     expect((await a.listModels()).map((m) => m.id)).toEqual([
       'm-seed-cn',
       'm-seed-os',
+      ...catalogModels.map((m) => m.id),
     ]);
     expect(await a.listChannels({ modelId: 'm-gpt' })).toEqual([]);
     expect(await a.getQuoteHistory('ch-5')).toEqual([]);

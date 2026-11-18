@@ -14,7 +14,7 @@ async function select(page: Page, label: string, option: string) {
 async function create(page: Page, name = '虚构渠道浏览器验收') {
   await page.getByRole('button', { name: '新增渠道', exact: true }).click();
   await select(page, '渠道供应商', '华北资源合作方');
-  await select(page, '渠道模型', 'Seedance 示例国内版');
+  await select(page, '渠道模型', 'Seedance 1.0 国内版');
   await page.getByRole('textbox', { name: /渠道展示名称$/ }).fill(name);
   await page.getByRole('button', { name: '保存渠道', exact: true }).click();
   await expect(page).toHaveURL(/\/channels\/mock-channel-/);
@@ -51,7 +51,7 @@ test('operations creates, edits, persists, navigates and synchronizes all resour
   await create(page);
   const url = page.url();
   await page
-    .getByRole('link', { name: 'Seedance 示例国内版', exact: true })
+    .getByRole('link', { name: 'Seedance 1.0 国内版', exact: true })
     .click();
   await expect(page.getByTestId('metric-model-channels')).toContainText('5');
   await expect(
@@ -161,10 +161,10 @@ test('switching roles removes writes, supplier identity and OP details', async (
     .getByRole('dialog', { name: '编辑渠道' })
     .getByRole('button', { name: /取.*消/ })
     .click();
-  await page.getByRole('combobox', { name: '演示身份' }).fill('模拟Sales');
+  await page.getByRole('combobox', { name: '演示身份' }).fill('沈悦');
   await page
     .locator('.ant-select-dropdown:visible .ant-select-item-option')
-    .filter({ hasText: '模拟Sales' })
+    .filter({ hasText: '沈悦' })
     .click();
   await expect(
     page.getByRole('heading', { name: '渠道只读详情' }),

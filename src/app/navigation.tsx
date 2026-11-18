@@ -77,7 +77,7 @@ export const navigation: readonly NavigationItem[] = [
     name: '采购需求',
     group: '业务协同',
     icon: <FileSearchOutlined />,
-    permission: 'sourcing:read',
+    permission: 'demand:read',
     available: true,
     stage: '05A',
     description: '围绕需求明细匹配多供应商候选资源。',

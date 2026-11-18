@@ -1,3 +1,7 @@
+import { listDemoProfiles } from '../../services/demo-session';
+import { SupplierQuoteEditor } from './SupplierQuoteEditor';
+import { DiscountInput } from '../procurement/DiscountInput';
+import { discountText } from '../procurement/discount';
 import { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
@@ -6,7 +10,6 @@ import {
   Checkbox,
   Descriptions,
   Input,
-  InputNumber,
   Modal,
   Result,
   Select,
@@ -68,13 +71,9 @@ export default function BulkQuotesPage() {
     [session.api, batchId, search, supplierId, status],
   );
   const { result, reload } = useResourceQuery(load);
-  const [create, setCreate] = useState(false);
-  const [newSupplier, setNewSupplier] = useState<string>();
-  const [source, setSource] = useState('');
-  const [reason, setReason] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [createRequest, setCreateRequest] = useState('');
+  const [simple, setSimple] = useState(
+    () => new URLSearchParams(location.search).get('new') === '1',
+  );
   if (result.status === 'loading') return <LoadingState />;
   if (result.status === 'error')
     return <ErrorState message={result.message} onRetry={reload} />;
@@ -93,19 +92,17 @@ export default function BulkQuotesPage() {
   return (
     <>
       <PageHeader
-        title="批量采购报价"
+        title="供应商报价"
         group="业务协同"
-        description="同供应商、多模型、多渠道报价集中录入；模拟数据，仅追加记录，不自动核验或正式确认。"
+        description=""
         actions={
           <Button
             type="primary"
             onClick={() => {
-              setCreate(true);
-              setError('');
-              setCreateRequest(crypto.randomUUID());
+              setSimple(true);
             }}
           >
-            创建报价批次
+            新增供应商报价
           </Button>
         }
       />
@@ -147,9 +144,9 @@ export default function BulkQuotesPage() {
           scroll={{ x: 1100 }}
           columns={[
             {
-              title: '批次编号',
+              title: '操作',
               render: (_, r) => (
-                <Link to={`/procurement/bulk-quotes/${r.id}`}>{r.batchNo}</Link>
+                <Link to={`/procurement/bulk-quotes/${r.id}`}>查看报价</Link>
               ),
             },
             { title: '供应商', render: (_, r) => r.supplier.name },
@@ -160,7 +157,12 @@ export default function BulkQuotesPage() {
               ),
             },
             { title: '行数', dataIndex: 'itemCount' },
-            { title: '创建人', dataIndex: 'createdBy' },
+            {
+              title: '录入人',
+              render: (_, r) =>
+                listDemoProfiles().find((p) => p.user.id === r.createdBy)?.user
+                  .name || '待补充',
+            },
             { title: '创建时间', dataIndex: 'createdAt', render: displayDate },
             { title: '最近修改', dataIndex: 'updatedAt', render: displayDate },
             {
@@ -171,60 +173,17 @@ export default function BulkQuotesPage() {
           ]}
         />
       </Card>
-      <Modal
-        title="创建报价批次"
-        open={create}
-        confirmLoading={busy}
-        okText="创建草稿"
-        onCancel={() => setCreate(false)}
-        onOk={async () => {
-          if (busy) return;
-          setBusy(true);
-          setError('');
-          try {
-            const d = await session.api.createBulkBatch(
-              {
-                supplierId: newSupplier ?? '',
-                sourceReference: source,
-                sharedReason: reason,
-              },
-              createRequest,
-            );
-            setCreate(false);
-            navigate(`/procurement/bulk-quotes/${d.batch.id}`);
-          } catch (e) {
-            setError(resourceErrorMessage(e));
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        <label>授权供应商</label>
-        <Select
-          aria-label="创建批次供应商"
-          style={{ width: '100%' }}
-          value={newSupplier}
-          onChange={setNewSupplier}
-          options={result.data.options.suppliers.map((s) => ({
-            value: s.id,
-            label: s.name,
-          }))}
+      {simple && (
+        <SupplierQuoteEditor
+          session={session}
+          onClose={() => setSimple(false)}
+          onSaved={() => {
+            setSimple(false);
+            reload();
+            navigate('/quotes');
+          }}
         />
-        <label htmlFor="bulk-source">共同来源引用</label>
-        <Input
-          id="bulk-source"
-          value={source}
-          onChange={(e) => setSource(e.target.value)}
-          placeholder="mock:evidence:bulk"
-        />
-        <label htmlFor="bulk-reason">共同说明</label>
-        <Input.TextArea
-          id="bulk-reason"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-        />
-        {error && <Alert type="error" title={error} />}
-      </Modal>
+      )}
     </>
   );
 }
@@ -395,9 +354,9 @@ function BulkDetail({
               </Button>
             </Space>
             <Space wrap className="bulk-toolbar">
-              <InputNumber
-                aria-label="共同折扣基点"
-                placeholder="共同折扣基点"
+              <DiscountInput
+                aria-label="批量折扣"
+                placeholder="批量折扣"
                 value={commonDiscount}
                 onChange={setCommonDiscount}
               />
@@ -496,7 +455,7 @@ function BulkDetail({
             {
               title: '折扣 / 状态',
               render: (_, r) =>
-                `${r.proposedQuoteInput.discount ?? '未知'} bps / ${r.proposedQuoteInput.priceStatus ? quoteStatusLabels[r.proposedQuoteInput.priceStatus] : '参考报价（默认）'}`,
+                `${r.proposedQuoteInput.discount == null ? '未知' : discountText(r.proposedQuoteInput.discount)} / ${r.proposedQuoteInput.priceStatus ? quoteStatusLabels[r.proposedQuoteInput.priceStatus] : '仅报价'}`,
             },
             {
               title: '参照报价',
@@ -576,7 +535,7 @@ function BulkDetail({
         <Card title="逐行预览校验" className="quote-section">
           <p>
             查询时刻：{displayDate(preview.asOf)}
-            。数字基点差仅供人工参考，不代表商业采购结论。
+            。折扣变化仅供人工参考，不代表商业采购结论。
           </p>
           {preview.errors.map((e, i) => (
             <Alert key={i} type="error" title={`${e.field}：${e.message}`} />
@@ -588,9 +547,15 @@ function BulkDetail({
               </h3>
               <p className="quote-wrap">
                 参照：{r.prior?.id ?? '未选择历史参照'}；原折扣：
-                {r.prior?.discount ?? '未知'}；新折扣：
-                {r.input.discount ?? '未知'}；数字差：
-                {r.numericDifferenceBps ?? '无参照'} bps（仅供人工参考）
+                {r.prior ? discountText(r.prior.discount) : '未知'}；新折扣：
+                {r.input.discount == null
+                  ? '未知'
+                  : discountText(r.input.discount)}
+                ；数字差：
+                {r.numericDifferenceBps == null
+                  ? '无参照'
+                  : discountText(r.numericDifferenceBps)}
+                （仅供人工参考）
               </p>
               <p>
                 参照原状态：

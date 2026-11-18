@@ -1,3 +1,4 @@
+import { catalogModels } from '../../src/mocks/catalog';
 import { describe, expect, it } from 'vitest';
 import { createMockAdapter } from '../../src/mocks/mock-adapter';
 import { fixture as data } from '../../src/mocks/data';
@@ -247,6 +248,7 @@ describe('authorized mock API projections and record scopes', () => {
     expect((await a.listModels()).map((m) => m.id)).toEqual([
       'm-seed-cn',
       'm-seed-os',
+      ...catalogModels.map((m) => m.id),
     ]);
     expect(await a.listChannels({ modelId: 'm-gpt' })).toEqual([]);
     expect(await ops.getQuoteHistory('ch-5')).toHaveLength(1);

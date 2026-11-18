@@ -32,10 +32,12 @@ test('compact workspace and business test filters use linked service records', a
   ).toBeVisible();
   await page.goto('/sourcing');
   await expect(
-    page.getByRole('columnheader', { name: '采购负责人', exact: true }),
+    page.getByRole('columnheader', { name: '已满足／待满足', exact: true }),
   ).toBeVisible();
+  await page.getByRole('button', { name: '列设置', exact: true }).click();
+  await page.getByRole('checkbox', { name: '截止日期', exact: true }).check();
   await expect(
-    page.getByRole('columnheader', { name: '需求截止时间', exact: true }),
+    page.getByRole('columnheader', { name: '截止日期', exact: true }),
   ).toBeVisible();
   const response = await page.request.get('/__local_business_data');
   expect(response.status()).toBe(204);

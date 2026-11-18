@@ -35,6 +35,8 @@ export interface ModelVendor extends Identified, Timestamps {
   readonly status: EntityStatus;
 }
 export interface Model extends Identified, Timestamps {
+  readonly procurementOwnerId?: string;
+  readonly operationsOwnerId?: string;
   readonly vendorId: string;
   readonly name: string;
   readonly modelCode: string;

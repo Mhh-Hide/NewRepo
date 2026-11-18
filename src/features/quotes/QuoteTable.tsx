@@ -1,9 +1,9 @@
-import { Table, Space, Tag } from 'antd';
+import { Table, Tag, Tooltip } from 'antd';
 import { Link } from 'react-router-dom';
 import type { QuoteRow } from '../../services/quotation-types';
-import { quoteStatusLabels } from '../../domain/statuses';
-import { quoteSourceLabels, validityLabels } from '../../domain/quotations';
-import { priceSpecText, quoteDiscount, displayDate } from './quote-format';
+import { quoteStatusLabels, channelTypeLabels } from '../../domain/statuses';
+import { priceHistoryEnd } from '../../domain/current-price';
+import { quoteDiscount, displayDate } from './quote-format';
 export function QuoteTable({
   rows,
   page = 1,
@@ -21,8 +21,10 @@ export function QuoteTable({
     <Table<QuoteRow>
       size="small"
       rowKey={(r) => r.quote.id}
-      dataSource={[...rows]}
-      scroll={{ x: 1700 }}
+      dataSource={[...rows].sort((a, b) =>
+        a.quote.createdAt.localeCompare(b.quote.createdAt),
+      )}
+      scroll={{ x: 1100 }}
       pagination={
         onPage
           ? {
@@ -35,80 +37,63 @@ export function QuoteTable({
           : { defaultPageSize: pageSize, showSizeChanger: true }
       }
       columns={[
+        { title: '模型', width: 170, render: (_, r) => r.model.name },
         {
-          title: '模型 / 供应商 / 渠道',
-          width: 260,
+          title: '供应商',
+          width: 120,
           render: (_, r) => (
-            <div>
-              <strong>{r.model.name}</strong>
-              <small className="resource-subtitle">{r.supplier.name}</small>
-              <Link to={`/channels/${r.channel.id}`}>
-                {r.channel.displayName}
-              </Link>
-            </div>
+            <Tooltip title={r.supplier.name}>
+              {r.supplier.shortCode || r.supplier.name}
+            </Tooltip>
           ),
+        },
+        {
+          title: '渠道',
+          width: 220,
+          render: (_, r) => (
+            <Link to={`/channels/${r.channel.id}`}>
+              {r.channel.displayName}
+            </Link>
+          ),
+        },
+        {
+          title: '类型',
+          width: 150,
+          render: (_, r) => channelTypeLabels[r.channel.channelType],
         },
         {
           title: '报价折扣',
-          width: 170,
+          width: 110,
           render: (_, r) => quoteDiscount(r.quote),
         },
         {
-          title: '价格口径及单价',
-          width: 300,
-          render: (_, r) => (
-            <div className="quote-wrap">
-              {priceSpecText(r.quote.priceSpec)}
-              <small className="resource-subtitle">
-                基准：{r.quote.priceSpec.referencePriceSource ?? '未提供'} ·
-                规格：{r.quote.priceSpec.specification ?? '未提供'}
-              </small>
-            </div>
-          ),
+          title: '报价状态',
+          width: 130,
+          render: (_, r) => <Tag>{quoteStatusLabels[r.quote.priceStatus]}</Tag>,
         },
         {
-          title: '状态 / 有效期判断',
-          width: 230,
-          render: (_, r) => (
-            <Space orientation="vertical">
-              <Tag>{quoteStatusLabels[r.quote.priceStatus]}</Tag>
-              <Tag color={r.validity === 'expired' ? 'default' : 'processing'}>
-                {validityLabels[r.validity]}
-              </Tag>
-              <small>{r.verified ? '已独立核验' : '无独立核验记录'}</small>
-            </Space>
-          ),
+          title: '生效日期',
+          width: 120,
+          render: (_, r) => displayDate(r.quote.effectiveFrom),
         },
         {
-          title: '原始来源',
-          width: 140,
-          render: (_, r) => quoteSourceLabels[r.quote.sourceType],
-        },
-        {
-          title: '生效 / 截止',
-          width: 210,
-          render: (_, r) => (
-            <div>
-              {displayDate(r.quote.effectiveFrom)}
-              <small className="resource-subtitle">
-                至 {displayDate(r.quote.effectiveUntil)}
-              </small>
-            </div>
-          ),
-        },
-        {
-          title: '最近记录更新',
-          width: 180,
-          render: (_, r) => displayDate(r.updatedAt),
+          title: '结束日期',
+          width: 120,
+          render: (_, r) => {
+            const end = priceHistoryEnd(
+              r.quote,
+              rows.map((x) => x.quote),
+            );
+            return end ? displayDate(end) : '不设截止';
+          },
         },
         {
           title: '操作',
-          fixed: 'right',
-          width: 100,
+          width: 90,
           render: (_, r) => <Link to={`/quotes/${r.quote.id}`}>查看报价</Link>,
         },
       ]}
-      locale={{ emptyText: '当前授权或筛选范围内暂无报价记录' }}
+      locale={{ emptyText: '暂无报价记录' }}
     />
   );
 }

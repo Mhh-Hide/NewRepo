@@ -137,7 +137,7 @@ test('testing persona executes and reads own technical history but cannot adopt 
   page,
 }) => {
   await page.goto('/tests');
-  await persona(page, '测试 · 模拟Testing');
+  await persona(page, '测试 · 周予安');
   await create(page);
   await execute(page, '失败');
   await expect(
@@ -193,7 +193,7 @@ test('procurement and support see summary only; supplier and front roles are den
   await execute(page, '失败');
   const url = page.url();
   await page.goto('/tests');
-  await persona(page, '采购 · 模拟Procurement');
+  await persona(page, '采购 · 陈嘉宁');
   await expect(
     page.getByText('技术摘要（只读）', { exact: true }),
   ).toBeVisible();
@@ -205,15 +205,15 @@ test('procurement and support see summary only; supplier and front roles are den
   await expect(
     page.getByText('当前身份仅能读取技术摘要，无测试详情权限'),
   ).toBeVisible();
-  await persona(page, '运维 · 模拟OperationsSupport');
+  await persona(page, '运维 · 许明哲');
   await page.goto('/tests');
   await expect(
     page.getByText('技术摘要（只读）', { exact: true }),
   ).toBeVisible();
   await expect(page.getByText(/browser-sentinel/)).toHaveCount(0);
-  await persona(page, '供应商 · 模拟SupplierUser');
+  await persona(page, '供应商 · 供应商联系人');
   await expect(page.getByText('当前演示身份无此模块访问权限')).toBeVisible();
-  await persona(page, '销售 · 模拟Sales');
+  await persona(page, '销售 · 沈悦');
   await expect(page.getByText('当前演示身份无此模块访问权限')).toBeVisible();
   await expect(
     page.getByText(/模拟渠道2|华北资源合作方|华东模型合作方|海外资源合作方/),

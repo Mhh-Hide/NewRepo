@@ -1,3 +1,4 @@
+import { discountText } from '../procurement/discount';
 import { Alert, Empty, Tag } from 'antd';
 import { buildChannelTrend } from '../../domain/procurement-analytics';
 import type { AnalysisRecord } from '../../domain/procurement-analytics';
@@ -28,7 +29,7 @@ export function PriceTrend({
         {axis === 'created'
           ? '报价记录创建时间'
           : '供应商报价时间（不是回复时间）'}
-        ；北京时间。纵轴：折扣基点。按完整价格口径和原录入状态分组，确认不会新增价格点。
+        ；北京时间。纵轴：采购折扣（折）。按完整价格口径和原录入状态分组，确认不会新增价格点。
       </p>
       {trend.issues.length > 0 && (
         <Alert
@@ -59,7 +60,7 @@ export function PriceTrend({
               <g key={n}>
                 <line x1="55" y1={y(n)} x2="760" y2={y(n)} stroke="#dae3ee" />
                 <text x="5" y={y(n) + 4} fontSize="12">
-                  {n}
+                  {discountText(n)}
                 </text>
               </g>
             ))}
@@ -86,7 +87,7 @@ export function PriceTrend({
                   {s.points.map((p) => {
                     const px = x(p.at),
                       py = y(p.record.quote.discount);
-                    const title = `${p.record.channel.name} · ${p.record.quote.discount}基点 · ${displayDate(p.at)} · ${p.correction ? '历史纠错，不作为真实调价' : quoteStatusLabels[p.record.recordedStatus]}`;
+                    const title = `${p.record.channel.name} · ${discountText(p.record.quote.discount)} · ${displayDate(p.at)} · ${p.correction ? '历史纠错，不作为真实调价' : quoteStatusLabels[p.record.recordedStatus]}`;
                     return (
                       <g key={p.record.quote.id}>
                         <title>{title}</title>

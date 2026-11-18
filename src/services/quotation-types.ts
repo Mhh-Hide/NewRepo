@@ -1,3 +1,4 @@
+import type { BusinessQuoteStatus } from '../domain/quote-business';
 import type { ChannelQuote, Model, ModelVendor } from '../domain/entities';
 import type { ChannelView } from '../auth/view-models';
 import type {
@@ -12,6 +13,9 @@ import type { ResourceSupplier } from './resource-types';
 export type { QuoteInput } from '../domain/quotations';
 import type { QuoteInput } from '../domain/quotations';
 export interface QuoteRow {
+  readonly businessStatus?: BusinessQuoteStatus;
+  readonly ownerUserId?: string;
+  readonly currentDiscount?: number | null;
   readonly quote: ManagedQuote;
   readonly storedPriceStatus: ChannelQuote['priceStatus'];
   readonly channel: ChannelView;
@@ -49,6 +53,10 @@ export interface QuoteOptions {
   }[];
 }
 export interface QuoteQuery {
+  readonly view?: 'current' | 'history';
+  readonly businessStatus?: BusinessQuoteStatus;
+  readonly ownerId?: string;
+  readonly manufacturerDomain?: 'domestic' | 'overseas';
   readonly demandItemId?: string;
   readonly search?: string;
   readonly channelId?: string;

@@ -1,3 +1,4 @@
+import { atomicStorage } from '../services/atomic-storage';
 import { businessStorage } from '../services/runtime-data';
 import {
   LifecycleRepository,
@@ -167,9 +168,14 @@ function seed(): ChannelState {
 export class ChannelRepository {
   readonly remediations: RemediationRepository;
   readonly lifecycle: LifecycleRepository;
-  constructor(private storage: StoragePort) {
-    this.remediations = new RemediationRepository(storage);
-    this.lifecycle = new LifecycleRepository(storage);
+  private storage: StoragePort;
+  get storagePort() {
+    return this.storage;
+  }
+  constructor(storage: StoragePort) {
+    this.storage = atomicStorage(storage);
+    this.remediations = new RemediationRepository(this.storage);
+    this.lifecycle = new LifecycleRepository(this.storage);
   }
   read(): ChannelState {
     try {
@@ -337,7 +343,4 @@ export class ChannelRepository {
     }
   }
 }
-export const channelRepository = new ChannelRepository({
-  getItem: (k) => businessStorage.getItem(k),
-  setItem: (k, v) => businessStorage.setItem(k, v),
-});
+export const channelRepository = new ChannelRepository(businessStorage);

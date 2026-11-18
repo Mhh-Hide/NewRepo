@@ -1,3 +1,4 @@
+import { listDemoProfiles } from '../../services/demo-session';
 import { useCallback, useMemo, useState } from 'react';
 import { Button, Card, Input, Select, Space, Table, Tag } from 'antd';
 import type { ColumnsType, TableProps } from 'antd/es/table';
@@ -37,6 +38,12 @@ export default function ModelPoolPage() {
   const [params, setParams] = useSearchParams();
   const supplierId = params.get('supplierId');
   const [filters, setFilters] = useState(initialFilters);
+  const [ownerId, setOwner] = useState(
+    ['Procurement', 'ProductOperations'].includes(session.profile.user.role) &&
+      !['u-proc', 'u-ops'].includes(session.profile.user.id)
+      ? session.profile.user.id
+      : '',
+  );
   const [pagination, setPagination] = useState({ page: 1, pageSize: 10 });
   const [sort, setSort] = useState<Pick<ModelResourceQuery, 'sort' | 'order'>>({
     sort: 'name',
@@ -47,6 +54,7 @@ export default function ModelPoolPage() {
       ...pagination,
       ...sort,
       search: filters.search,
+      ...(ownerId ? { ownerId } : {}),
       ...(supplierId !== null ? { supplierId } : {}),
       ...(filters.vendor !== 'all' ? { vendorId: filters.vendor } : {}),
       ...(filters.category !== 'all' ? { category: filters.category } : {}),
@@ -59,7 +67,7 @@ export default function ModelPoolPage() {
         ? { supplierCoverage: filters.coverage }
         : {}),
     }),
-    [pagination, sort, filters, supplierId],
+    [pagination, sort, filters, supplierId, ownerId],
   );
   const load = useCallback(
     () => session.api.queryModelResources(query),
@@ -289,6 +297,30 @@ export default function ModelPoolPage() {
           </p>
         )}
         <div className="resource-filters">
+          {['Procurement', 'ProductOperations'].includes(
+            session.profile.user.role,
+          ) && (
+            <Select
+              aria-label="模型工作范围"
+              value={ownerId}
+              onChange={(v) => {
+                setOwner(v);
+                setPagination((p) => ({ ...p, page: 1 }));
+              }}
+              options={[
+                { value: '', label: '全部授权工作' },
+                ...listDemoProfiles()
+                  .filter((p) => p.user.role === session.profile.user.role)
+                  .map((p) => ({
+                    value: p.user.id,
+                    label:
+                      p.user.id === session.profile.user.id
+                        ? '我的工作'
+                        : p.user.name,
+                  })),
+              ]}
+            />
+          )}
           <Input
             aria-label="模型名称或代码"
             placeholder="搜索模型名称或模型代码"

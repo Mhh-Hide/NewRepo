@@ -169,6 +169,9 @@ export function createResourceApi(
           (!search ||
             r.model.name.toLowerCase().includes(search) ||
             r.model.modelCode.toLowerCase().includes(search)) &&
+          (!query.ownerId ||
+            r.model.procurementOwnerId === query.ownerId ||
+            r.model.operationsOwnerId === query.ownerId) &&
           (!query.vendorId || r.vendor.id === query.vendorId) &&
           (!query.category || r.model.category === query.category) &&
           (!query.regionVariant ||

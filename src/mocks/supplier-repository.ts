@@ -1,3 +1,4 @@
+import { atomicStorage } from '../services/atomic-storage';
 import { businessStorage, isPrivateData } from '../services/runtime-data';
 import type { BusinessDomain, Supplier } from '../domain/entities';
 import type {
@@ -301,7 +302,13 @@ function initialState(): SupplierStore {
 }
 /** One supplier store shared by legacy reads, management queries and mutations. */
 export class SupplierRepository {
-  constructor(private readonly storage: StoragePort) {}
+  private storage: StoragePort;
+  get storagePort() {
+    return this.storage;
+  }
+  constructor(storage: StoragePort) {
+    this.storage = atomicStorage(storage);
+  }
   private raw(): string | null {
     try {
       return this.storage.getItem(supplierStorageKey);
@@ -360,10 +367,7 @@ export class SupplierRepository {
     this.save(initialState());
   }
 }
-const browserStorage: StoragePort = {
-  getItem: (key) => businessStorage.getItem(key),
-  setItem: (key, value) => businessStorage.setItem(key, value),
-};
+const browserStorage: StoragePort = businessStorage;
 export const supplierRepository = new SupplierRepository(browserStorage);
 export function assertSupplierUnique(
   state: SupplierStore,

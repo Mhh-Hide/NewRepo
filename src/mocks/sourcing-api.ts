@@ -1,5 +1,13 @@
+import {
+  defaultResponsibility,
+  readResponsibilities,
+} from './responsibility-api';
 import type { AccessContext, PermissionAction } from '../auth/types';
-import { can } from '../auth/policy';
+import {
+  demandBusinessFields,
+  itemBusinessFields,
+} from '../domain/procurement-fields';
+import { can, hasCustomer } from '../auth/policy';
 import { projectChannel } from '../auth/projections';
 import type {
   BusinessDomain,
@@ -51,6 +59,7 @@ const sharedHistoryFields = new Set([
   'status',
 ]);
 const headFields = [
+  ...demandBusinessFields,
   'title',
   'description',
   'sharedTitle',
@@ -60,6 +69,8 @@ const headFields = [
   'dueAt',
 ] as const;
 const itemFields = [
+  ...itemBusinessFields,
+  'targetDiscountUnknown',
   'modelId',
   'requiredTpm',
   'requiredRpm',
@@ -116,7 +127,25 @@ export function createSourcingApi(
       .every((i) => allowedModel(i.modelId));
   const project = (d: ManagedDemand): SourcingDemandView => {
     const ops = ctx!.user.role === 'ProductOperations';
+    const assignments = readResponsibilities(supplierRepo.storagePort);
+    const owners = [
+      ...new Set(
+        itemsFor(repo.read(), d.id).map(
+          (i) =>
+            assignments.find((a) => a.modelId === i.modelId)
+              ?.operationsOwnerId ??
+            defaultResponsibility(
+              fixture.models.find((m) => m.id === i.modelId)!,
+            ).operationsOwnerId,
+        ),
+      ),
+    ];
     return {
+      ...(ops
+        ? Object.fromEntries(demandBusinessFields.map((k) => [k, d[k] ?? null]))
+        : {}),
+      operationsOwnerId:
+        d.operationsOwnerId ?? (owners.length === 1 ? owners[0]! : d.createdBy),
       source: d.source,
       id: d.id,
       demandCode: d.demandCode,
@@ -145,6 +174,7 @@ export function createSourcingApi(
     };
   };
   const projectItem = (i: ManagedDemandItem): ManagedDemandItem => ({
+    ...Object.fromEntries(itemBusinessFields.map((k) => [k, i[k] ?? null])),
     source: i.source,
     id: i.id,
     demandId: i.demandId,
@@ -330,8 +360,11 @@ export function createSourcingApi(
         'FORBIDDEN',
         '明细模型不在当前授权业务域或包含不允许的字段。',
       );
+    for (const k of itemBusinessFields)
+      if (i[k] != null && (typeof i[k] !== 'string' || i[k]!.length > 2000))
+        throw new SupplierError('VALIDATION', '模型要求最多2000字。');
     try {
-      discountBps(i.targetPurchaseDiscount);
+      if (!i.targetDiscountUnknown) discountBps(i.targetPurchaseDiscount);
     } catch {
       throw new SupplierError(
         'VALIDATION',
@@ -396,13 +429,48 @@ export function createSourcingApi(
         'VALIDATION',
         '运营说明、客户关联、日期或优先级无效。',
       );
+    for (const k of demandBusinessFields)
+      if (
+        input[k] != null &&
+        (typeof input[k] !== 'string' || input[k]!.length > 2000)
+      )
+        throw new SupplierError('VALIDATION', '需求商务信息最多2000字。');
+    for (const [field, role] of [
+      ['salesOwnerId', 'Sales'],
+      ['operationsOwnerId', 'ProductOperations'],
+    ] as const) {
+      const id = input[field];
+      if (
+        id &&
+        (!fixture.users.some((u) => u.id === id && u.role === role) ||
+          !input.items.every((i) => {
+            const m = fixture.models.find((m) => m.id === i.modelId);
+            return (
+              m &&
+              fixture.domainGrants.some(
+                (g) =>
+                  g.userId === id &&
+                  g.businessDomain === modelDomain(m, fixture.vendors),
+              )
+            );
+          }))
+      )
+        throw new SupplierError(
+          'VALIDATION',
+          '需求负责人岗位或厂商范围不匹配。',
+        );
+    }
     input.items.forEach(validateItem);
   };
   const itemValues = (i: SourcingItemInput) =>
-    Object.fromEntries(itemFields.map((k) => [k, i[k]])) as Pick<
-      ManagedDemandItem,
-      (typeof itemFields)[number]
-    >;
+    Object.fromEntries(
+      itemFields.map((k) => [
+        k,
+        k === 'targetDiscountUnknown'
+          ? !!i.targetDiscountUnknown
+          : (i[k] ?? null),
+      ]),
+    ) as Pick<ManagedDemandItem, (typeof itemFields)[number]>;
   const textNote = (s: string) => {
     if (typeof s !== 'string' || !s.trim() || s.length > 2000)
       throw new SupplierError(
@@ -412,6 +480,71 @@ export function createSourcingApi(
     return s.trim();
   };
   return {
+    async querySalesProgress(id) {
+      if (
+        !ctx ||
+        !can(ctx, 'demand:read') ||
+        ![
+          'ProductOperations',
+          'Sales',
+          'AccountManager',
+          'SolutionArchitect',
+        ].includes(ctx.user.role)
+      )
+        return [];
+      const s = repo.read(),
+        cs = channelRepo.read().channels;
+      return s.demands
+        .filter(
+          (d) =>
+            (!id || d.id === id) &&
+            (ctx.user.role === 'ProductOperations' ||
+              (d.customerId !== null && hasCustomer(ctx, d.customerId))) &&
+            itemsFor(s, d.id).length > 0,
+        )
+        .map((d) => ({
+          id: d.id,
+          title: `采购需求 ${d.demandCode}`,
+          customerName:
+            fixture.customers.find((c) => c.id === d.customerId)?.name ?? null,
+          models: itemsFor(s, d.id).map((i) => {
+            const candidates = s.matches
+              .filter(
+                (m) =>
+                  m.demandItemId === i.id &&
+                  !['excluded', 'unsuitable'].includes(m.matchStatus),
+              )
+              .flatMap((m) => cs.filter((c) => c.id === m.channelId));
+            const usable = candidates.some(
+              (c) =>
+                c.resourceStatus === 'enabled' &&
+                ['passed', 'exempted'].includes(c.qualityStatus) &&
+                c.connectivityStatus === 'passed' &&
+                c.integrationStatus === 'integrated' &&
+                c.availabilityStatus === 'open',
+            );
+            const problem =
+              !usable &&
+              candidates.some(
+                (c) =>
+                  c.qualityStatus === 'failed' ||
+                  c.connectivityStatus === 'failed',
+              );
+            return {
+              name: fixture.models.find((m) => m.id === i.modelId)!.name,
+              usable,
+              problem,
+              nextAction: usable
+                ? '可用资源已就绪'
+                : problem
+                  ? '跟进资源整改并安排复测'
+                  : candidates.length
+                    ? '推进测试与交付确认'
+                    : '继续寻找候选资源',
+            };
+          }),
+        }));
+    },
     async querySourcing(q = {}) {
       if (!readable())
         throw new SupplierError(
@@ -451,7 +584,26 @@ export function createSourcingApi(
                 .includes(term)) &&
             (!q.modelId ||
               itemsFor(s, r.demand.id).some((i) => i.modelId === q.modelId)) &&
+            (!q.manufacturerDomain ||
+              itemsFor(s, r.demand.id).some(
+                (i) =>
+                  fixture.vendors.find(
+                    (v) =>
+                      v.id ===
+                      fixture.models.find((m) => m.id === i.modelId)?.vendorId,
+                  )?.businessDomain === q.manufacturerDomain,
+              )) &&
             (!q.status || r.demand.status === q.status) &&
+            (!q.ownerId ||
+              r.demand.operationsOwnerId === q.ownerId ||
+              itemsFor(s, r.demand.id).some((i) => {
+                const m = fixture.models.find((m) => m.id === i.modelId)!;
+                const a =
+                  readResponsibilities(supplierRepo.storagePort).find(
+                    (a) => a.modelId === m.id,
+                  ) ?? defaultResponsibility(m);
+                return a.procurementOwnerId === q.ownerId;
+              })) &&
             (!q.priority || r.demand.priority === q.priority) &&
             (!q.from || r.demand.createdAt.slice(0, 10) >= q.from) &&
             (!q.to || r.demand.createdAt.slice(0, 10) <= q.to),
@@ -512,6 +664,9 @@ export function createSourcingApi(
       }
       const now = new Date().toISOString();
       const d: ManagedDemand = {
+        ...Object.fromEntries(
+          demandBusinessFields.map((k) => [k, input[k] ?? null]),
+        ),
         source: 'mock',
         id,
         demandCode: `MOCK-REQ-${String(state.demands.length + 1).padStart(4, '0')}`,
@@ -543,7 +698,7 @@ export function createSourcingApi(
           updatedAt: now,
         };
       });
-      const head = Object.fromEntries(headFields.map((k) => [k, d[k]]));
+      const head = Object.fromEntries(headFields.map((k) => [k, d[k] ?? null]));
       repo.write(
         state,
         {
@@ -595,15 +750,15 @@ export function createSourcingApi(
       });
       const after = {
         ...d,
-        ...Object.fromEntries(headFields.map((k) => [k, input[k]])),
+        ...Object.fromEntries(headFields.map((k) => [k, input[k] ?? null])),
       } as ManagedDemand;
       const events = [
         event(
           id,
           'updated',
           differences(
-            Object.fromEntries(headFields.map((k) => [k, d[k]])),
-            Object.fromEntries(headFields.map((k) => [k, after[k]])),
+            Object.fromEntries(headFields.map((k) => [k, d[k] ?? null])),
+            Object.fromEntries(headFields.map((k) => [k, after[k] ?? null])),
           ),
         ),
         ...nextItems.map((i) => {

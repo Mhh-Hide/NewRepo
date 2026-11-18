@@ -16,10 +16,13 @@ async function select(page: Page, name: string | RegExp, label: string) {
 }
 async function createTextQuote(page: Page, discount: string) {
   await page.goto('/quotes');
-  await page.getByRole('button', { name: '录入采购报价', exact: true }).click();
+  await page.getByRole('button', { name: '新增单条报价', exact: true }).click();
   await select(page, '报价渠道选择', '模拟渠道5');
   const d = page.getByRole('dialog', { name: '录入采购报价', exact: true });
-  await d.getByRole('spinbutton', { name: /上游实际报价折扣/ }).fill(discount);
+  await d
+    .getByRole('spinbutton', { name: '采购折扣', exact: true })
+    .fill(String(Number(discount) / 1000));
+  await d.locator('summary').filter({ hasText: '报价依据与计价明细' }).click();
   await d
     .getByRole('textbox', { name: /供应商原始提交人引用$/ })
     .fill('mock:demo-contact');
@@ -41,9 +44,7 @@ async function createTextQuote(page: Page, discount: string) {
     .getByRole('spinbutton', { name: /维度 1 每份计量数量$/ })
     .fill('1000000');
   await d.getByRole('textbox', { name: /维度 1 计量单位$/ }).fill('Token');
-  await d
-    .getByRole('textbox', { name: /报价证据引用$/ })
-    .fill('mock:analysis-evidence');
+
   await d
     .getByRole('textbox', { name: /报价来源说明与备注$/ })
     .fill('模拟供应商文本报价，用于分析演示，非真实商业数据。');
@@ -67,7 +68,7 @@ test('operations compares authorized same-model channels, inspects unavailable t
   await expect(
     page.getByText('同基准可比性未确认', { exact: true }),
   ).toBeVisible();
-  await select(page, '分析模型', 'Seedance 示例国内版');
+  await select(page, '分析模型', 'Seedance 1.0 国内版');
   await select(page, '分析比较基准报价', 'q-1 ·');
   await expect(page.getByText(/无法比较：币种未提供/).first()).toBeVisible();
   await page
@@ -97,7 +98,7 @@ test('new quotes refresh analysis immediately and comparable text records produc
   await expect(page.getByTestId('analysis-reference')).toContainText('3');
   await createTextQuote(page, '5800');
   await page.goto('/analytics/procurement');
-  await select(page, '分析模型', 'GPT 示例');
+  await select(page, '分析模型', 'GPT-4.1');
   await select(page, '趋势渠道', '模拟渠道5');
   await expect(
     page.getByRole('img', { name: '渠道报价折扣历史趋势', exact: true }),
@@ -122,7 +123,7 @@ test('testing and sales cannot access analysis or receive prices through navigat
   page,
 }) => {
   await page.goto('/analytics/procurement');
-  for (const label of ['模拟Testing', '模拟Sales']) {
+  for (const label of ['周予安', '沈悦']) {
     await page.getByRole('combobox', { name: '演示身份' }).fill(label);
     await page
       .locator('.ant-select-dropdown:visible .ant-select-item-option')
@@ -150,7 +151,7 @@ test('1440, 1280 and 390px analysis filters, comparisons and historical tables s
   for (const width of [1440, 1280, 390]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/analytics/procurement');
-    await select(page, '分析模型', 'Seedance 示例国内版');
+    await select(page, '分析模型', 'Seedance 1.0 国内版');
     await select(page, '分析比较基准报价', 'q-1 ·');
     await expect(page.getByText(/无法比较：币种未提供/).first()).toBeVisible();
     await page.getByRole('button', { name: '刷新分析', exact: true }).click();

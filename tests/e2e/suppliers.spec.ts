@@ -28,7 +28,7 @@ async function create(page: Page) {
     .getByRole('textbox', { name: /供应商名称$/ })
     .fill('虚构星河算力（模拟）');
   await page.getByRole('textbox', { name: /供应商简称$/ }).fill('MOCK-STAR');
-  await owner(page, '模拟Procurement');
+  await owner(page, '陈嘉宁');
   await page
     .getByRole('textbox', { name: '主要联系人', exact: true })
     .fill('模拟联系人小林');
@@ -83,13 +83,13 @@ test('operations creates, immediately reads, edits and restores a no-channel sup
   await expect(
     page.getByText('编辑资料', { exact: true }).first(),
   ).toBeVisible();
-  await persona(page, '采购 · 模拟Procurement');
+  await persona(page, '采购 · 陈嘉宁');
   await expect(
     page.getByRole('button', { name: '编辑资料', exact: true }),
   ).toBeVisible();
   await expect(page.getByRole('button', { name: '停用供应商' })).toHaveCount(0);
   await expect(page.getByText('客户售价', { exact: true })).toHaveCount(0);
-  await persona(page, '销售 · 模拟Sales');
+  await persona(page, '销售 · 沈悦');
   await expect(page.getByText('当前演示身份无此模块访问权限')).toBeVisible();
   await expect(
     page.getByText('虚构星河算力更新（模拟）', { exact: true }),
@@ -103,14 +103,14 @@ test('owner reassignment changes procurement maintenance permission', async ({
     .locator('.supplier-profile')
     .getByRole('button', { name: '编辑资料', exact: true })
     .click();
-  await owner(page, '模拟采购乙');
+  await owner(page, '赵清禾');
   await page.getByRole('button', { name: '保存供应商', exact: true }).click();
   await expect(
     page.getByText('供应商资料已保存。', { exact: true }),
   ).toBeVisible();
-  await persona(page, '采购 · 模拟Procurement');
+  await persona(page, '采购 · 陈嘉宁');
   await expect(page.getByText('供应商不存在或无权访问')).toBeVisible();
-  await persona(page, '采购 · 模拟采购乙');
+  await persona(page, '采购 · 赵清禾');
   await expect(page.locator('.supplier-profile-title')).toContainText(
     '华北资源合作方',
   );
@@ -196,7 +196,7 @@ test('failed local persistence keeps the editor open and never reports creation 
     .getByRole('textbox', { name: /供应商名称$/ })
     .fill('虚构存储失败样例');
   await page.getByRole('textbox', { name: /供应商简称$/ }).fill('MOCK-FAIL');
-  await owner(page, '模拟Procurement');
+  await owner(page, '陈嘉宁');
   await page.getByRole('button', { name: '保存供应商', exact: true }).click();
   await expect(
     page.getByText('演示数据保存失败，请检查浏览器存储空间和权限后重试。'),

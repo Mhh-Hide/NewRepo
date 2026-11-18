@@ -1,4 +1,8 @@
 import type {
+  DemandBusinessFields,
+  ItemBusinessFields,
+} from '../domain/procurement-fields';
+import type {
   ManagedDemand,
   ManagedDemandItem,
   ManagedMatch,
@@ -21,8 +25,12 @@ export type SourcingItemInput = Pick<
   | 'targetPurchaseDiscount'
   | 'requiredRegion'
   | 'priority'
-> & { readonly id?: string };
-export interface SourcingInput {
+> &
+  ItemBusinessFields & {
+    readonly id?: string;
+    readonly targetDiscountUnknown?: boolean;
+  };
+export interface SourcingInput extends DemandBusinessFields {
   readonly title: string;
   readonly description: string;
   readonly sharedTitle: string;
@@ -32,24 +40,27 @@ export interface SourcingInput {
   readonly dueAt: string | null;
   readonly items: readonly SourcingItemInput[];
 }
-export interface SourcingDemandView extends Pick<
-  ManagedDemand,
-  | 'source'
-  | 'id'
-  | 'demandCode'
-  | 'title'
-  | 'description'
-  | 'sharedTitle'
-  | 'sharedSummary'
-  | 'priority'
-  | 'dueAt'
-  | 'version'
-  | 'status'
-  | 'createdAt'
-  | 'updatedAt'
-  | 'createdBy'
-  | 'updatedBy'
-> {
+export interface SourcingDemandView
+  extends
+    DemandBusinessFields,
+    Pick<
+      ManagedDemand,
+      | 'source'
+      | 'id'
+      | 'demandCode'
+      | 'title'
+      | 'description'
+      | 'sharedTitle'
+      | 'sharedSummary'
+      | 'priority'
+      | 'dueAt'
+      | 'version'
+      | 'status'
+      | 'createdAt'
+      | 'updatedAt'
+      | 'createdBy'
+      | 'updatedBy'
+    > {
   readonly customerId?: string | null;
   readonly customer?: Pick<Customer, 'id' | 'name'> | null;
 }
@@ -83,8 +94,10 @@ export interface SourcingDetail {
   readonly transitions: readonly SourcingStatus[];
 }
 export interface SourcingQuery {
+  readonly ownerId?: string;
   readonly search?: string;
   readonly modelId?: string;
+  readonly manufacturerDomain?: 'domestic' | 'overseas';
   readonly status?: SourcingStatus;
   readonly priority?: Priority;
   readonly from?: string;
@@ -107,7 +120,19 @@ export interface SourcingPage {
   readonly canCreate: boolean;
   readonly canReset: boolean;
 }
+export interface SalesProgress {
+  readonly id: string;
+  readonly title: string;
+  readonly customerName: string | null;
+  readonly models: readonly {
+    readonly name: string;
+    readonly usable: boolean;
+    readonly problem: boolean;
+    readonly nextAction: string;
+  }[];
+}
 export interface SourcingApi {
+  querySalesProgress(id?: string): Promise<readonly SalesProgress[]>;
   querySourcing(query?: SourcingQuery): Promise<SourcingPage>;
   getSourcingDemand(id: string): Promise<SourcingDetail | null>;
   listSourcingCustomers(): Promise<readonly Pick<Customer, 'id' | 'name'>[]>;

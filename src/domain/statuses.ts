@@ -57,9 +57,11 @@ export const incidentStatusLabels = {
 } as const;
 export type IncidentStatus = keyof typeof incidentStatusLabels;
 export const channelTypeLabels = {
-  official_direct: '官方原厂 Key',
-  official_proxy: '官方中转 Key',
+  official_direct: '官 Key',
+  official_proxy: '官转',
   cloud_self_hosted: '云厂商自部署',
+  cloud_self_hosted_proxy: '云厂商自部署中转',
+  supplier_self_hosted: '供应商自部署',
   third_party_proxy: '第三方中转',
   other: '其他',
 } as const;

@@ -22,10 +22,10 @@ async function persona(page: Page, label: string) {
 async function create(page: Page, multi = true) {
   await page.getByRole('button', { name: '新增采购需求', exact: true }).click();
   await page
-    .getByRole('textbox', { name: /运营需求标题（受限）$/ })
+    .getByRole('textbox', { name: /需求名称$/ })
     .fill('PRIVATE 虚构客户专项资源');
   await page
-    .getByRole('textbox', { name: '运营原始说明（受限）', exact: true })
+    .getByRole('textbox', { name: '客户背景', exact: true })
     .fill('PRIVATE 原始客户背景及模拟售价 999 元');
   await select(page, '需求客户关联', '虚构客户1');
   await page
@@ -34,10 +34,8 @@ async function create(page: Page, multi = true) {
   await page
     .getByRole('textbox', { name: /采购共享需求摘要$/ })
     .fill('寻找满足技术要求的上游模拟资源，采购共享内容。');
-  await select(page, '明细 1 模型选择', 'Seedance 示例国内版');
-  await page
-    .getByRole('spinbutton', { name: /明细 1 目标采购折扣/ })
-    .fill('8000');
+  await select(page, '明细 1 模型选择', 'Seedance 1.0 国内版');
+  await page.getByRole('spinbutton', { name: /明细 1 目标折扣/ }).fill('8');
   await page
     .getByRole('spinbutton', { name: '明细 1 TPM', exact: true })
     .fill('1000');
@@ -54,10 +52,8 @@ async function create(page: Page, multi = true) {
     await page
       .getByRole('button', { name: '添加模型明细', exact: true })
       .click();
-    await select(page, '明细 2 模型选择', 'GPT 示例');
-    await page
-      .getByRole('spinbutton', { name: /明细 2 目标采购折扣/ })
-      .fill('8500');
+    await select(page, '明细 2 模型选择', 'GPT-4.1');
+    await page.getByRole('spinbutton', { name: /明细 2 目标折扣/ }).fill('8.5');
   }
   await page.getByRole('button', { name: '保存采购需求', exact: true }).click();
   await expect(page).toHaveURL(/\/sourcing\/mock-demand-/);
@@ -65,14 +61,14 @@ async function create(page: Page, multi = true) {
     page.getByRole('heading', { name: '采购需求详情', exact: true }),
   ).toBeVisible();
   await expect(page.getByTestId('sourcing-item-1')).toContainText(
-    'Seedance 示例国内版',
+    'Seedance 1.0 国内版',
   );
 }
 async function addCandidate(page: Page, name: string) {
   const item = page.getByTestId('sourcing-item-1');
   await item.getByRole('button', { name: '选择候选渠道', exact: true }).click();
   const drawer = page.getByRole('dialog', {
-    name: '选择候选渠道 · Seedance 示例国内版',
+    name: '选择候选渠道 · Seedance 1.0 国内版',
     exact: true,
   });
   await drawer
@@ -110,17 +106,19 @@ test('operations creates multi-model request; procurement sees only shared conte
   page,
 }) => {
   await page.goto('/sourcing');
-  await expect(page.getByTestId('metric-sourcing-total')).toContainText('2');
+  await expect(page.locator('.ant-table-tbody > tr.ant-table-row')).toHaveCount(
+    2,
+  );
   await create(page);
   const url = page.url();
-  await expect(page.getByTestId('sourcing-item-2')).toContainText('GPT 示例');
+  await expect(page.getByTestId('sourcing-item-2')).toContainText('GPT-4.1');
   await expect(
     page.getByText('PRIVATE 虚构客户专项资源', { exact: true }),
   ).toBeVisible();
   await expect(
     page.getByText('虚构客户1（模拟）', { exact: true }),
   ).toBeVisible();
-  await persona(page, '模拟Procurement');
+  await persona(page, '陈嘉宁');
   await expect(
     page.getByRole('heading', { name: '采购需求详情' }),
   ).toBeVisible();
@@ -130,13 +128,13 @@ test('operations creates multi-model request; procurement sees only shared conte
   await expect(page.getByRole('button', { name: '维护需求资料' })).toHaveCount(
     0,
   );
-  await expect(page.getByTestId('sourcing-item-1')).toContainText('8000 基点');
+  await expect(page.getByTestId('sourcing-item-1')).toContainText('8 折');
   const expand = page.locator('.ant-table-row-expand-icon');
   await expand.first().click();
   await expect(page.locator('body')).not.toContainText('PRIVATE');
   await page.reload();
   await expect(page).toHaveURL(url);
-  await expect(page.getByTestId('sourcing-item-2')).toContainText('GPT 示例');
+  await expect(page.getByTestId('sourcing-item-2')).toContainText('GPT-4.1');
   await expect(page.locator('body')).not.toContainText('PRIVATE');
   await page.goto('/dashboard');
   await expect(page.getByTestId('metric-demands')).toContainText('3');
@@ -146,6 +144,7 @@ test('operations creates multi-model request; procurement sees only shared conte
   await expect(page.locator('.ant-table-tbody tr.ant-table-row')).toHaveCount(
     0,
   );
+  await page.getByRole('button', { name: '更多筛选' }).click();
   await page.getByRole('button', { name: '重置筛选' }).click();
   await expect(
     page.getByRole('link', { name: '虚构多模型性能优化需求', exact: true }),
@@ -157,7 +156,7 @@ test('procurement adds multiple channels, deduplicates suppliers, changes matchi
   await page.goto('/sourcing');
   await create(page, false);
   const url = page.url();
-  await persona(page, '模拟Procurement');
+  await persona(page, '陈嘉宁');
   for (const name of ['模拟渠道1', '模拟渠道2']) await addCandidate(page, name);
   const item = page.getByTestId('sourcing-item-1');
   await expect(item.getByTestId('coverage-candidates')).toHaveText('2');
@@ -223,25 +222,20 @@ test('operations maintains item requirements, versions and manual sourcing progr
   );
   await expect(page.locator('body')).not.toContainText('正式采购完成');
 });
-test('commercial sourcing is denied to testing, support, suppliers and front office', async ({
+test('commercial sourcing is denied to testing, support and suppliers', async ({
   page,
 }) => {
   await page.goto('/sourcing');
   await create(page, false);
   const url = page.url();
-  for (const profile of [
-    '模拟Testing',
-    '模拟OperationsSupport',
-    '模拟SupplierUser',
-    '模拟Sales',
-  ]) {
+  for (const profile of ['周予安', '许明哲', '供应商联系人']) {
     await persona(page, profile);
     await page.goto(url);
     await expect(
       page.getByText('当前演示身份无内部采购寻源访问权限', { exact: true }),
     ).toBeVisible();
     await expect(page.locator('body')).not.toContainText('PRIVATE');
-    await expect(page.locator('body')).not.toContainText('8000 基点');
+    await expect(page.locator('body')).not.toContainText('8 折');
     await page.goto('/sourcing');
     await expect(
       page.getByRole('button', { name: '新增采购需求' }),
@@ -265,7 +259,7 @@ test('390px multi-item form, candidate selection and detail are usable without p
     ),
   ).toBe(true);
   await page.reload();
-  await expect(page.getByTestId('sourcing-item-2')).toContainText('GPT 示例');
+  await expect(page.getByTestId('sourcing-item-2')).toContainText('GPT-4.1');
 });
 test('confirmed sourcing reset recovers incompatible data and preserves current channel resources', async ({
   page,
@@ -280,7 +274,9 @@ test('confirmed sourcing reset recovers incompatible data and preserves current 
     '供应商、渠道、测试及报价数据保持原样',
   );
   await page.getByRole('button', { name: '确认重置寻源', exact: true }).click();
-  await expect(page.getByTestId('metric-sourcing-total')).toContainText('2');
+  await expect(page.locator('.ant-table-tbody > tr.ant-table-row')).toHaveCount(
+    2,
+  );
   await page.goto('/channels?view=management');
   await expect(page.getByTestId('metric-channel-total')).toContainText('7');
   await page.evaluate(() =>
@@ -292,5 +288,7 @@ test('confirmed sourcing reset recovers incompatible data and preserves current 
   ).toBeVisible();
   await page.getByRole('button', { name: '重置寻源演示数据' }).click();
   await page.getByRole('button', { name: '确认重置寻源' }).click();
-  await expect(page.getByTestId('metric-sourcing-total')).toContainText('2');
+  await expect(page.locator('.ant-table-tbody > tr.ant-table-row')).toHaveCount(
+    2,
+  );
 });

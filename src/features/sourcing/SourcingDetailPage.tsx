@@ -1,3 +1,4 @@
+import { SalesProgressSummary } from './SalesProgressSummary';
 import { ResourceGoal } from '../lifecycle/ResourceGoal';
 import { TestSummaryPanel } from '../testing/TestSummaryPanel';
 import { RelatedQuotes } from '../quotes/RelatedQuotes';
@@ -61,7 +62,7 @@ export default function SourcingDetailPage() {
   const header = (
     <PageHeader
       title="采购需求详情"
-      description="按模型明细跟踪候选渠道与供应商覆盖；所有展示均为模拟数据。"
+      description=""
       group="业务协同"
       actions={
         <Space wrap>
@@ -129,6 +130,9 @@ export default function SourcingDetailPage() {
   return (
     <>
       {header}
+      {session.profile.user.role === 'ProductOperations' && (
+        <SalesProgressSummary session={session} id={master.id} />
+      )}
       <Card
         title={master.title}
         extra={
@@ -252,7 +256,7 @@ export default function SourcingDetailPage() {
                 label: '目标采购折扣',
                 children: item.item.targetDiscountUnknown
                   ? '待补充'
-                  : `${item.item.targetPurchaseDiscount} 基点（${item.item.targetPurchaseDiscount / 1000} 折）`,
+                  : `${Number((item.item.targetPurchaseDiscount / 1000).toFixed(2))} 折`,
               },
               {
                 key: 'priority',

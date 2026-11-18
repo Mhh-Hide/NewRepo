@@ -10,9 +10,9 @@ class MemoryStorage implements StoragePort {
   raw: string | null = null;
   failRead = false;
   failWrite = false;
-  getItem() {
+  getItem(key: string) {
     if (this.failRead) throw new Error('read');
-    return this.raw;
+    return key === 'maas-supplier-demo-v1' ? this.raw : null;
   }
   setItem(_key: string, value: string) {
     if (this.failWrite) throw new Error('quota');

@@ -53,7 +53,7 @@ test('domain filters change real metrics and single-domain identity cannot expan
   await expect(page.getByTestId('metric-gaps')).toContainText('0');
   await domain(page, '海外模型');
   await expect(page.getByTestId('metric-channels')).toContainText('2');
-  await persona(page, '产品运营 · 模拟国内运营');
+  await persona(page, '产品运营 · 苏雨晴');
   await expect(page.getByTestId('metric-channels')).toContainText('5');
   await page.getByRole('combobox', { name: '业务域' }).click();
   await expect(
@@ -62,7 +62,7 @@ test('domain filters change real metrics and single-domain identity cannot expan
       .filter({ hasText: '海外模型' }),
   ).toHaveCount(0);
   await page.keyboard.press('Escape');
-  await persona(page, '产品运营 · 模拟海外运营');
+  await persona(page, '产品运营 · 程以宁');
   await expect(page.getByTestId('metric-channels')).toContainText('2');
 });
 test('role switches remove sensitive content and show relevant work', async ({
@@ -70,24 +70,24 @@ test('role switches remove sensitive content and show relevant work', async ({
 }) => {
   await page.goto('/dashboard');
   await expect(page.getByRole('link', { name: /采购报价/ })).toBeVisible();
-  await persona(page, '测试 · 模拟Testing');
+  await persona(page, '测试 · 周予安');
   await expect(page.getByTestId('metric-quality')).toBeVisible();
   await expect(page.getByText('采购报价摘要', { exact: true })).toHaveCount(0);
   await expect(page.getByText('采购折扣（模拟）', { exact: true })).toHaveCount(
     0,
   );
-  await persona(page, '运维 · 模拟OperationsSupport');
+  await persona(page, '运维 · 许明哲');
   await expect(page.getByTestId('metric-incidents')).toBeVisible();
   await expect(page.getByTestId('metric-quality')).toHaveCount(0);
   await expect(page.getByText('采购报价摘要', { exact: true })).toHaveCount(0);
-  await persona(page, '供应商 · 模拟SupplierUser');
+  await persona(page, '供应商 · 供应商联系人');
   await expect(page.getByTestId('metric-channels')).toContainText('3');
   await expect(page.getByText('华东模型合作方', { exact: true })).toHaveCount(
     0,
   );
   await page.reload();
   await expect(page.getByTestId('metric-channels')).toContainText('3');
-  await persona(page, '销售 · 模拟Sales');
+  await persona(page, '销售 · 沈悦');
   await expect(page.getByTestId('metric-demands')).toContainText('1');
   await expect(page.getByTestId('metric-suppliers')).toHaveCount(0);
   await expect(
@@ -99,9 +99,9 @@ test('empty scope, route guard, collapsed sidebar and small screen are usable', 
   page,
 }) => {
   await page.goto('/dashboard');
-  await persona(page, '产品运营 · 模拟未授权运营');
+  await persona(page, '产品运营 · 未分配权限');
   await expect(page.getByText('暂无待处理业务')).toBeVisible();
-  await persona(page, '销售 · 模拟Sales');
+  await persona(page, '销售 · 沈悦');
   await page.getByRole('button', { name: '收起导航' }).click();
   await expect(page.getByRole('button', { name: '展开导航' })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
@@ -122,6 +122,6 @@ test('empty scope, route guard, collapsed sidebar and small screen are usable', 
   ).toBe(true);
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/suppliers');
-  await persona(page, '销售 · 模拟Sales');
+  await persona(page, '销售 · 沈悦');
   await expect(page.getByText('当前演示身份无此模块访问权限')).toBeVisible();
 });

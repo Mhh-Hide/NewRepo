@@ -328,3 +328,12 @@ AppShell 保持原 Outlet DemoSession 契约，DemoControlsContext 只暴露与 
 - 最后收敛采购列表的负责人、截止时间与签约后保障提示，整改列表以渠道和问题为主，编号与核验信息收起；采购和整改专项浏览器回归分别 7/7 通过。
 - 恢复会话后重新通过 TypeScript、ESLint、Prettier、Vitest 763/763、Production Build 与合成工作簿导入回归；更新六张公开样本截图。共享需求说明去除已知客户名称及销售敏感内容，运营原始说明独立保留。
 - 按用户最新时间约束，未再次执行约十分钟的全量 Playwright；前一轮完整 verify 的 80/80 结果与最后两处 UI 的专项结果分别记录，不混称为最新提交再次跑过完整套件。
+
+## Stage 07F — 2026-11-18
+
+- 基于 d640392 的 stage-07f-procurement-redesign：当前渠道报价、折数输入、多行供应商报价及原子保存、三级采购需求、销售安全进度投影、公开模型目录、人员默认负责范围和个人列设置。
+- 保留采购/两阶段测试/整改/合同与历史规则；私有 Excel 与商业资料继续本机受控加载，不进入 Git 或公开构建。
+- 最终完整 npm run verify 成功：TypeScript、Lint、Prettier、772 Vitest、83 Playwright、Production Build。旧浏览器选择器按新 UI 更新，未删除关键业务规则测试。
+- 逐张检查五类公开演示截图，位于 docs/stage-07f/screenshots。Diff 凭据模式扫描无命中，未纳入附件或私有导入数据。
+- 剩余限制：旧未获取渠道可能待分配；数字控件补零及原生日期区域格式；部分旧页面筛选较多；模型目录非实时同步；构建分包超过500 kB警告。详见 docs/stage-07f/README.md。
+- 仅提交推送阶段分支，不修改 main、不部署、不进入下一阶段。

@@ -1,4 +1,8 @@
 import type {
+  DemandBusinessFields,
+  ItemBusinessFields,
+} from './procurement-fields';
+import type {
   Channel,
   Demand,
   DemandItem,
@@ -18,24 +22,26 @@ export const matchStatusLabels = {
   unsuitable: '不符合',
   excluded: '已排除',
 } as const;
-export type ManagedDemand = Demand & {
-  readonly demandCode: string;
-  readonly title: string;
-  readonly description: string;
-  readonly sharedTitle: string;
-  readonly sharedSummary: string;
-  readonly priority: Priority;
-  readonly dueAt: string | null;
-  readonly version: number;
-  readonly createdBy: string;
-  readonly updatedBy: string;
-};
-export type ManagedDemandItem = DemandItem & {
-  readonly requiredRegion: string;
-  readonly priority: Priority;
-  readonly createdAt: string;
-  readonly updatedAt: string;
-};
+export type ManagedDemand = Demand &
+  DemandBusinessFields & {
+    readonly demandCode: string;
+    readonly title: string;
+    readonly description: string;
+    readonly sharedTitle: string;
+    readonly sharedSummary: string;
+    readonly priority: Priority;
+    readonly dueAt: string | null;
+    readonly version: number;
+    readonly createdBy: string;
+    readonly updatedBy: string;
+  };
+export type ManagedDemandItem = DemandItem &
+  ItemBusinessFields & {
+    readonly requiredRegion: string;
+    readonly priority: Priority;
+    readonly createdAt: string;
+    readonly updatedAt: string;
+  };
 export type ManagedMatch = DemandChannelMatch & {
   readonly assessment: string;
   readonly createdBy: string;

@@ -1,3 +1,4 @@
+import { discountText } from '../procurement/discount';
 import { inquiryStatusLabels } from '../../domain/quotations';
 import { useCallback, useState } from 'react';
 import { Alert, Button, Card, Space, Tag } from 'antd';
@@ -55,7 +56,7 @@ export function RelatedQuotes({
       {target !== undefined && (
         <Alert
           type="info"
-          title={`采购目标 ${target} 基点（${target / 1000} 折）与供应商报价分别保留`}
+          title={`目标采购折扣 ${discountText(target)}`}
           description="采购目标尚未记录价格基准和适用规格，不具备直接可比性，暂不计算差价或判定达标；报价不会自动改变候选匹配。"
         />
       )}

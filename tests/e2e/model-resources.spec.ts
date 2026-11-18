@@ -134,10 +134,10 @@ test('test, supplier and sales perspectives keep technical and supplier boundari
   page,
 }) => {
   await page.goto('/channels/ch-1');
-  await persona(page, '测试 · 模拟Testing');
+  await persona(page, '测试 · 周予安');
   await expect(page.getByText('Endpoint 引用', { exact: true })).toBeVisible();
   await expect(page.getByText('采购折扣', { exact: true })).toHaveCount(0);
-  await persona(page, '供应商 · 模拟SupplierUser');
+  await persona(page, '供应商 · 供应商联系人');
   await expect(page.getByText('Endpoint 引用', { exact: true })).toHaveCount(0);
   await page.goto('/models/m-seed-cn');
   const own = (await service('u-supplier').getModelResource('m-seed-cn'))!;
@@ -149,7 +149,7 @@ test('test, supplier and sales perspectives keep technical and supplier boundari
   );
   await page.goto('/channels/ch-3');
   await expect(page.getByText('渠道不存在或无权访问')).toBeVisible();
-  await persona(page, '销售 · 模拟Sales');
+  await persona(page, '销售 · 沈悦');
   await page.goto('/models/m-seed-cn');
   const front = (await service('u-sales').getModelResource('m-seed-cn'))!;
   await expect(page.getByTestId('metric-model-channels')).toContainText(
@@ -190,7 +190,7 @@ test('domain change filters vendors and models and does not turn overseas varian
   await page.keyboard.press('Escape');
   await select(page, '地区版本筛选', '海外版');
   await page
-    .getByRole('link', { name: 'Seedance 示例海外版', exact: true })
+    .getByRole('link', { name: 'Seedance 1.0 海外版', exact: true })
     .click();
   await expect(page.getByTestId('model-region-variant')).toHaveText('海外版');
   await expect(page.getByTestId('model-business-domain')).toHaveText(

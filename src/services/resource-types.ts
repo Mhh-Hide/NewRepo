@@ -78,6 +78,7 @@ export type ChannelResourceDetail = ChannelResourceSummary & {
     >
   >;
 export interface ModelResourceQuery {
+  readonly ownerId?: string;
   readonly search?: string;
   readonly vendorId?: string;
   readonly category?: Model['category'];

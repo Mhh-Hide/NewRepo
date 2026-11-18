@@ -1,3 +1,4 @@
+import { useColumns } from '../procurement/use-columns';
 import { listDemoProfiles } from '../../services/demo-session';
 import { useCallback, useState } from 'react';
 import { Alert, Button, Card, Input, Modal, Select, Space, Table } from 'antd';
@@ -9,7 +10,10 @@ import type { SourcingStatus } from '../../domain/statuses';
 import { priorityLabels } from '../../domain/sourcing';
 import type { Priority } from '../../domain/sourcing';
 import { PageHeader } from '../../components/PageHeader';
-import { StatCard } from '../../components/StatCard';
+import { ColumnSettings } from '../procurement/ColumnSettings';
+import { DemandTree } from './DemandTree';
+import { displayDate } from '../quotes/quote-format';
+import type { ColumnsType } from 'antd/es/table';
 import { StatusBadge } from '../../components/StatusBadge';
 import {
   LoadingState,
@@ -22,10 +26,29 @@ import { SourcingEditor } from './SourcingEditor';
 export default function SourcingListPage() {
   const session = useOutletContext<DemoSession>();
   const navigate = useNavigate();
-  const [filters, setFilters] = useState<Record<string, string>>({});
+  const [filters, setFilters] = useState<Record<string, string>>(
+    ['Procurement', 'ProductOperations'].includes(session.profile.user.role) &&
+      !['u-proc', 'u-ops'].includes(session.profile.user.id)
+      ? { ownerId: session.profile.user.id }
+      : {},
+  );
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [editing, setEditing] = useState(false);
+  const [advanced, setAdvanced] = useState(false);
+  const defaults = [
+    'customer',
+    'title',
+    'models',
+    'candidates',
+    'status',
+    'met',
+    'actions',
+  ];
+  const prefs = useColumns(
+    `maas:columns:demands:${session.profile.user.id}`,
+    defaults,
+  );
   const [reset, setReset] = useState(false);
   const [error, setError] = useState('');
   const load = useCallback(async () => {
@@ -33,7 +56,11 @@ export default function SourcingListPage() {
       page,
       pageSize,
       search: filters.search ?? '',
+      ...(filters.ownerId ? { ownerId: filters.ownerId } : {}),
       ...(filters.model ? { modelId: filters.model } : {}),
+      ...(filters.domain
+        ? { manufacturerDomain: filters.domain as 'domestic' | 'overseas' }
+        : {}),
       ...(filters.status ? { status: filters.status as SourcingStatus } : {}),
       ...(filters.priority ? { priority: filters.priority as Priority } : {}),
       ...(filters.from ? { from: filters.from } : {}),
@@ -67,7 +94,7 @@ export default function SourcingListPage() {
   const header = (
     <PageHeader
       title="采购需求"
-      description="统一管理模型资源采购需求、候选渠道与资源缺口。"
+      description=""
       group="业务协同"
       actions={
         <Space wrap>
@@ -129,13 +156,6 @@ export default function SourcingListPage() {
       </>
     );
   const { data, models, details, users, goals, progress } = result.data;
-  const metrics = [
-    ['total', '需求总数', data.stats.total],
-    ['active', '寻源中需求', data.stats.sourcing],
-    ['gaps', '存在资源缺口', data.stats.gaps],
-    ['matched', '已匹配需求', data.stats.matched],
-    ['urgent', '紧急需求', data.stats.urgent],
-  ] as const;
   const selector = (
     key: string,
     label: string,
@@ -149,24 +169,138 @@ export default function SourcingListPage() {
       onChange={(v) => filter(key, v)}
     />
   );
+  const columns: ColumnsType<SourcingRow> = [
+    {
+      key: 'customer',
+      title: '客户',
+      width: 160,
+      render: (_, r) => r.demand.customer?.name || '客户需求',
+    },
+    {
+      key: 'title',
+      title: '采购需求',
+      width: 260,
+      render: (_, r) => (
+        <Link to={`/sourcing/${r.demand.id}`}>{r.demand.title}</Link>
+      ),
+    },
+    {
+      key: 'models',
+      title: '模型数量',
+      width: 100,
+      render: (_, r) => r.modelCount,
+    },
+    {
+      key: 'candidates',
+      title: '候选渠道',
+      width: 100,
+      render: (_, r) =>
+        details
+          .find((d) => d?.demand.id === r.demand.id)
+          ?.items.reduce((n, i) => n + i.candidates.length, 0) ?? 0,
+    },
+    {
+      key: 'status',
+      title: '寻源状态',
+      width: 120,
+      render: (_, r) => (
+        <StatusBadge label={sourcingStatusLabels[r.demand.status]} />
+      ),
+    },
+    {
+      key: 'met',
+      title: '已满足／待满足',
+      width: 150,
+      render: (_, r) => {
+        const items =
+          details.find((d) => d?.demand.id === r.demand.id)?.items ?? [];
+        const met = items.filter(
+          (i) =>
+            i.candidates.filter(
+              (c) =>
+                progress?.rows.find((p) => p.id === c.channel.id)?.schedulable,
+            ).length >= (goals[data.rows.indexOf(r)]?.customerSigned ? 3 : 1),
+        ).length;
+        return `${met} / ${items.length - met}`;
+      },
+    },
+    {
+      key: 'owner',
+      title: '产品运营',
+      width: 110,
+      render: (_, r) =>
+        users.find(
+          (u) => u.id === (r.demand.operationsOwnerId || r.demand.createdBy),
+        )?.name || '待分配',
+    },
+    {
+      key: 'sales',
+      title: '销售负责人',
+      width: 110,
+      render: (_, r) =>
+        users.find((u) => u.id === r.demand.salesOwnerId)?.name || '待补充',
+    },
+    {
+      key: 'start',
+      title: '发起日期',
+      width: 120,
+      render: (_, r) => displayDate(r.demand.createdAt),
+    },
+    {
+      key: 'end',
+      title: '截止日期',
+      width: 120,
+      render: (_, r) =>
+        r.demand.dueAt ? displayDate(r.demand.dueAt) : '未指定',
+    },
+    {
+      key: 'updated',
+      title: '最近更新',
+      width: 120,
+      render: (_, r) => displayDate(r.demand.updatedAt),
+    },
+    {
+      key: 'currency',
+      title: '用量币种',
+      width: 100,
+      render: (_, r) => r.demand.usageCurrency || '—',
+    },
+    {
+      key: 'usage',
+      title: '预计月用量',
+      width: 150,
+      render: (_, r) => r.demand.monthlyUsage || '待补充',
+    },
+    {
+      key: 'actions',
+      title: '操作',
+      width: 100,
+      fixed: 'right',
+      render: (_, r) => <Link to={`/sourcing/${r.demand.id}`}>查看详情</Link>,
+    },
+  ];
+  const columnOptions = columns.map((c) => ({
+    value: String(c.key),
+    label: String(c.title),
+  }));
   return (
     <>
       {header}
-      <div className="stats-grid resource-stats">
-        {metrics.map(([id, label, value]) => (
-          <StatCard
-            key={id}
-            metric={{
-              id: `sourcing-${id}`,
-              label,
-              value,
-              note: '当前业务范围主单统计；未开展寻源不直接计作已确认缺口',
-            }}
-          />
-        ))}
-      </div>
       <Card title="需求清单">
         <div className="resource-filters">
+          {selector(
+            'ownerId',
+            '工作范围',
+            listDemoProfiles()
+              .filter((p) => p.user.role === session.profile.user.role)
+              .map((p) => ({
+                value: p.user.id,
+                label:
+                  p.user.id === session.profile.user.id
+                    ? '我的工作'
+                    : p.user.name,
+              })),
+          )}
           <Input
             aria-label="需求编号或标题"
             placeholder="搜索需求编号或当前可见标题"
@@ -174,6 +308,10 @@ export default function SourcingListPage() {
             value={filters.search ?? ''}
             onChange={(e) => filter('search', e.target.value)}
           />
+          {selector('domain', '厂商归属', [
+            { value: 'domestic', label: '国内厂商' },
+            { value: 'overseas', label: '海外厂商' },
+          ])}
           {selector(
             'model',
             '需求模型',
@@ -187,60 +325,72 @@ export default function SourcingListPage() {
               label,
             })),
           )}
-          {selector(
-            'priority',
-            '优先级',
-            Object.entries(priorityLabels).map(([value, label]) => ({
-              value,
-              label,
-            })),
-          )}
-          <label className="sourcing-date">
-            创建起始日期
-            <Input
-              aria-label="创建起始日期"
-              type="date"
-              value={filters.from ?? ''}
-              onChange={(e) => filter('from', e.target.value)}
-            />
-          </label>
-          <label className="sourcing-date">
-            创建截止日期
-            <Input
-              aria-label="创建截止日期"
-              type="date"
-              value={filters.to ?? ''}
-              onChange={(e) => filter('to', e.target.value)}
-            />
-          </label>
-          <Select
-            aria-label="需求排序字段"
-            value={filters.sort ?? 'updatedAt'}
-            options={[
-              { value: 'updatedAt', label: '按最近更新' },
-              { value: 'createdAt', label: '按创建时间' },
-              { value: 'demandCode', label: '按需求编号' },
-            ]}
-            onChange={(v) => filter('sort', v)}
+          <Button onClick={() => setAdvanced(!advanced)}>更多筛选</Button>
+          <ColumnSettings
+            options={columnOptions}
+            defaults={defaults}
+            selected={prefs.selected}
+            onChange={prefs.update}
           />
-          <Select
-            aria-label="需求排序方向"
-            value={filters.order ?? 'desc'}
-            options={[
-              { value: 'desc', label: '降序' },
-              { value: 'asc', label: '升序' },
-            ]}
-            onChange={(v) => filter('order', v)}
-          />
-          <Button
-            onClick={() => {
-              setFilters({});
-              setPage(1);
-            }}
-          >
-            重置筛选
-          </Button>
         </div>
+        {advanced && (
+          <div className="resource-filters">
+            {' '}
+            {selector(
+              'priority',
+              '优先级',
+              Object.entries(priorityLabels).map(([value, label]) => ({
+                value,
+                label,
+              })),
+            )}
+            <label className="sourcing-date">
+              创建起始日期
+              <Input
+                aria-label="创建起始日期"
+                type="date"
+                value={filters.from ?? ''}
+                onChange={(e) => filter('from', e.target.value)}
+              />
+            </label>
+            <label className="sourcing-date">
+              创建截止日期
+              <Input
+                aria-label="创建截止日期"
+                type="date"
+                value={filters.to ?? ''}
+                onChange={(e) => filter('to', e.target.value)}
+              />
+            </label>
+            <Select
+              aria-label="需求排序字段"
+              value={filters.sort ?? 'updatedAt'}
+              options={[
+                { value: 'updatedAt', label: '按最近更新' },
+                { value: 'createdAt', label: '按创建时间' },
+                { value: 'demandCode', label: '按需求编号' },
+              ]}
+              onChange={(v) => filter('sort', v)}
+            />
+            <Select
+              aria-label="需求排序方向"
+              value={filters.order ?? 'desc'}
+              options={[
+                { value: 'desc', label: '降序' },
+                { value: 'asc', label: '升序' },
+              ]}
+              onChange={(v) => filter('order', v)}
+            />
+            <Button
+              onClick={() => {
+                setFilters({});
+                setPage(1);
+              }}
+            >
+              重置筛选
+            </Button>
+          </div>
+        )}
         <Table<SourcingRow>
           rowKey={(r) => r.demand.id}
           dataSource={[...data.rows]}
@@ -258,103 +408,22 @@ export default function SourcingListPage() {
             },
             showTotal: (n) => `共 ${n} 条授权需求`,
           }}
-          columns={[
-            {
-              title: '需求编号 / 标题',
-              width: 210,
-              render: (_, r) => (
-                <div>
-                  <Link to={`/sourcing/${r.demand.id}`}>{r.demand.title}</Link>
-                  <small className="resource-subtitle">
-                    {r.demand.demandCode} · {priorityLabels[r.demand.priority]}
-                  </small>
-                </div>
-              ),
+          expandable={{
+            expandedRowRender: (r) => {
+              const d = details.find((d) => d?.demand.id === r.demand.id);
+              return d ? (
+                <DemandTree
+                  detail={d}
+                  session={session}
+                  progress={progress?.rows ?? []}
+                  required={goals[data.rows.indexOf(r)]?.customerSigned ? 3 : 1}
+                />
+              ) : null;
             },
-            {
-              title: '需求模型',
-              width: 140,
-              render: (_, r) =>
-                details
-                  .find((d) => d?.demand.id === r.demand.id)
-                  ?.items.map((i) => i.model.name)
-                  .join('、') || '待补充',
-            },
-            {
-              title: '提出人',
-              width: 80,
-              render: (_, r) =>
-                users.find((u) => u.id === r.demand.createdBy)?.name ??
-                '待补充',
-            },
-            {
-              title: '已找到 / 可测试',
-              width: 100,
-              render: (_, r) => {
-                const items =
-                  details.find((d) => d?.demand.id === r.demand.id)?.items ??
-                  [];
-                const candidates = items.flatMap((i) => i.candidates);
-                return `${candidates.length} / ${candidates.filter((c) => c.channel.resourceStatus === 'enabled' && c.match.matchStatus !== 'excluded' && c.match.matchStatus !== 'unsuitable').length}`;
-              },
-            },
-            {
-              title: '寻源状态',
-              width: 90,
-              render: (_, r) => (
-                <StatusBadge label={sourcingStatusLabels[r.demand.status]} />
-              ),
-            },
-            {
-              title: '初始 1 条 / 签约后 3 条',
-              width: 150,
-              render: (_, r) =>
-                goals[data.rows.indexOf(r)]
-                  ? `${goals[data.rows.indexOf(r)]!.usableChannels >= 1 ? '已满足' : '待补充'} / ${!goals[data.rows.indexOf(r)]!.customerSigned ? '待签约' : goals[data.rows.indexOf(r)]!.usableChannels >= 3 ? '已满足' : '待补充'}`
-                  : `${r.gapItems} 项待补充`,
-            },
-            {
-              title: '采购负责人',
-              width: 90,
-              render: (_, r) => {
-                const ids = [
-                  ...new Set(
-                    progress?.rows.flatMap((ch) => {
-                      const record = ch.record;
-                      return record?.demandId === r.demand.id
-                        ? [record.procurementOwnerId]
-                        : [];
-                    }) ?? [],
-                  ),
-                ];
-                return (
-                  ids
-                    .map(
-                      (id) => users.find((u) => u.id === id)?.name ?? '待分配',
-                    )
-                    .join('、') || '待分配'
-                );
-              },
-            },
-            {
-              title: '需求截止时间',
-              width: 110,
-              render: (_, r) =>
-                r.demand.dueAt
-                  ? new Date(r.demand.dueAt).toLocaleDateString('zh-CN', {
-                      timeZone: 'Asia/Shanghai',
-                    })
-                  : '待补充',
-            },
-            {
-              title: '操作',
-              fixed: 'right',
-              width: 90,
-              render: (_, r) => (
-                <Link to={`/sourcing/${r.demand.id}`}>查看详情</Link>
-              ),
-            },
-          ]}
+          }}
+          columns={columns.filter((c) =>
+            prefs.selected.includes(String(c.key)),
+          )}
           locale={{
             emptyText: (
               <EmptyState description="当前业务范围或筛选条件下暂无采购需求" />

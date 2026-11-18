@@ -1,3 +1,5 @@
+import type { ResponsibilityApi } from './responsibility-types';
+import type { SupplierQuoteApi } from './supplier-quote-types';
 import type { LifecycleApi } from './lifecycle-types';
 import type { RemediationApi } from './remediation-types';
 import type { TestingApi } from './testing-types';
@@ -36,6 +38,8 @@ export interface DemandDetail {
 /** Unified domain contract. Supplier writes are Demo-only; no raw store escape hatch. */
 export interface ApiAdapter
   extends
+    ResponsibilityApi,
+    SupplierQuoteApi,
     SupplierApi,
     ResourceApi,
     ChannelApi,

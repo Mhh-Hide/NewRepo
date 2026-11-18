@@ -18,6 +18,7 @@ import { discountBps } from '../../domain/rules';
 import { LoadingState, ErrorState } from '../../components/FeedbackStates';
 import { resourceErrorMessage } from '../../services/resource-types';
 import { useResourceQuery } from '../models/use-resource-query';
+import { DiscountInput } from '../procurement/DiscountInput';
 import { dateInput, dateISO } from './quote-format';
 export interface QuotePreset {
   readonly channelId?: string;
@@ -109,9 +110,9 @@ export function QuoteEditor({
     effectiveFrom: dateInput(q?.effectiveFrom ?? null),
     effectiveUntil: dateInput(q?.effectiveUntil ?? null),
     supplierQuotedAt: '',
-    supplierSubmitterReference: '',
-    evidenceReference: '',
-    reason: '',
+    supplierSubmitterReference: `mock:staff:${session.profile.user.id}`,
+    evidenceReference: `mock:quote:${requestId}`,
+    reason: '供应商报价录入',
   };
   const title = correction
     ? '更正历史报价'
@@ -120,12 +121,6 @@ export function QuoteEditor({
       : '录入采购报价';
   return (
     <Drawer title={title} size={820} open onClose={onClose} destroyOnHidden>
-      <Alert
-        type="info"
-        showIcon
-        title="仅模拟采购记录；保存只追加历史，不自动正式生效。"
-        description="证据和原始提交人仅填写 mock: 模拟引用。不得录入客户身份、客户售价、真实合同或密钥。"
-      />
       {result.status === 'loading' ? (
         <LoadingState />
       ) : result.status === 'error' ? (
@@ -180,52 +175,55 @@ export function QuoteEditor({
             {result.data.channels.find((c) => c.channel.id === channelId)?.model
               .name ?? '尚未选择'}
           </p>
-          <div className="quote-form-grid">
-            <Form.Item name="demandItemId" label="关联采购需求明细（可空）">
-              <Select
-                aria-label="报价需求明细"
-                allowClear
-                disabled={!!prior}
-                options={result.data.demands
-                  .filter(
-                    (i) =>
-                      i.modelId ===
-                      result.data.channels.find(
-                        (c) => c.channel.id === channelId,
-                      )?.model.id,
-                  )
-                  .map((i) => ({ value: i.id, label: i.label }))}
-              />
-            </Form.Item>
-            <Form.Item name="inquiryId" label="关联询价（可空）">
-              <Select
-                aria-label="报价关联询价"
-                allowClear
-                options={result.data.inquiries
-                  .filter(
-                    (i) => i.channelId === channelId && i.status !== 'closed',
-                  )
-                  .map((i) => ({ value: i.id, label: i.id }))}
-              />
-            </Form.Item>
-          </div>
-          {!prior && (
-            <Form.Item
-              name="previousQuoteId"
-              label="前序报价（真实调价可关联，非必填）"
-            >
-              <Select
-                allowClear
-                options={result.data.quotes
-                  .filter((q) => q.channelId === channelId)
-                  .map((q) => ({ value: q.id, label: q.id }))}
-              />
-            </Form.Item>
-          )}
+          <details>
+            <summary>关联需求与询价</summary>
+            <div className="quote-form-grid">
+              <Form.Item name="demandItemId" label="关联采购需求明细（可空）">
+                <Select
+                  aria-label="报价需求明细"
+                  allowClear
+                  disabled={!!prior}
+                  options={result.data.demands
+                    .filter(
+                      (i) =>
+                        i.modelId ===
+                        result.data.channels.find(
+                          (c) => c.channel.id === channelId,
+                        )?.model.id,
+                    )
+                    .map((i) => ({ value: i.id, label: i.label }))}
+                />
+              </Form.Item>
+              <Form.Item name="inquiryId" label="关联询价（可空）">
+                <Select
+                  aria-label="报价关联询价"
+                  allowClear
+                  options={result.data.inquiries
+                    .filter(
+                      (i) => i.channelId === channelId && i.status !== 'closed',
+                    )
+                    .map((i) => ({ value: i.id, label: i.id }))}
+                />
+              </Form.Item>
+            </div>
+            {!prior && (
+              <Form.Item
+                name="previousQuoteId"
+                label="前序报价（真实调价可关联，非必填）"
+              >
+                <Select
+                  allowClear
+                  options={result.data.quotes
+                    .filter((q) => q.channelId === channelId)
+                    .map((q) => ({ value: q.id, label: q.id }))}
+                />
+              </Form.Item>
+            )}
+          </details>
           <div className="quote-form-grid">
             <Form.Item
               name="discount"
-              label="上游实际报价折扣（整数基点，8000 = 八折）"
+              label="采购折扣"
               rules={[
                 { required: true },
                 {
@@ -236,12 +234,12 @@ export function QuoteEditor({
                     n <= 10000
                       ? Promise.resolve()
                       : Promise.reject(
-                          new Error('折扣须为0–10000的整数基点。'),
+                          new Error('请输入 0–10 折，最多两位小数。'),
                         ),
                 },
               ]}
             >
-              <InputNumber min={0} max={10000} style={{ width: '100%' }} />
+              <DiscountInput aria-label="采购折扣" />
             </Form.Item>
             <Form.Item
               name="priceStatus"
@@ -269,160 +267,156 @@ export function QuoteEditor({
                 .map(([value, label]) => ({ value, label }))}
             />
           </Form.Item>
-          <div className="quote-form-grid">
-            <Form.Item
-              name="supplierSubmitterReference"
-              label="供应商原始提交人引用"
-              rules={[
-                {
-                  required: sourceType === 'supplier_submission',
-                  message: '供应商报价需保留模拟原始提交人引用',
-                },
-              ]}
-            >
-              <Input placeholder="mock:supplier-contact" maxLength={160} />
-            </Form.Item>
-            <Form.Item
-              name="supplierQuotedAt"
-              label="供应商报价日期（北京时间）"
-            >
-              <Input type="date" />
-            </Form.Item>
-          </div>
-          <Card size="small" title="价格口径与可选绝对单价">
-            <Alert
-              type="info"
-              title="缺少币种、基准、适用规格或计量单位时不可直接比较。金额最多6位小数，不自动套用 Token 单位。"
-            />
+          <details>
+            <summary>报价依据与计价明细</summary>
             <div className="quote-form-grid">
               <Form.Item
-                name={['priceSpec', 'currency']}
-                label="币种（可未知）"
+                name="supplierSubmitterReference"
+                label="供应商原始提交人引用"
+                rules={[
+                  {
+                    required: sourceType === 'supplier_submission',
+                    message: '供应商报价需保留模拟原始提交人引用',
+                  },
+                ]}
               >
-                <Input
-                  placeholder="例如 CNY / USD；未知留空"
-                  maxLength={3}
-                  onChange={(e) =>
-                    form.setFieldValue(
-                      ['priceSpec', 'currency'],
-                      e.target.value.toUpperCase(),
-                    )
-                  }
-                />
+                <Input placeholder="mock:supplier-contact" maxLength={160} />
               </Form.Item>
               <Form.Item
-                name={['priceSpec', 'referencePriceSource']}
-                label="折扣价格基准（可未知）"
+                name="supplierQuotedAt"
+                label="供应商报价日期（北京时间）"
               >
-                <Input placeholder="仅录入明确的模拟基准引用" maxLength={300} />
+                <Input type="date" />
               </Form.Item>
             </div>
-            <Form.Item
-              name={['priceSpec', 'specification']}
-              label="适用规格（可未知）"
-            >
-              <Input
-                maxLength={300}
-                placeholder="同规格才能比较；不要编造官方规格"
+            <Card size="small" title="价格口径与可选绝对单价">
+              <Alert
+                type="info"
+                title="缺少币种、基准、适用规格或计量单位时不可直接比较。金额最多6位小数，不自动套用 Token 单位。"
               />
-            </Form.Item>
-            <Form.List name={['priceSpec', 'rates']}>
-              {(fields, { add, remove }) => (
-                <>
-                  {fields.map((f, index) => (
-                    <Card
-                      size="small"
-                      className="quote-rate"
-                      key={f.key}
-                      title={`计价维度 ${index + 1}`}
-                      extra={
-                        <Button onClick={() => remove(f.name)}>
-                          移除此维度
-                        </Button>
-                      }
+              <div className="quote-form-grid">
+                <Form.Item
+                  name={['priceSpec', 'currency']}
+                  label="币种（可未知）"
+                >
+                  <Input
+                    placeholder="例如 CNY / USD；未知留空"
+                    maxLength={3}
+                    onChange={(e) =>
+                      form.setFieldValue(
+                        ['priceSpec', 'currency'],
+                        e.target.value.toUpperCase(),
+                      )
+                    }
+                  />
+                </Form.Item>
+                <Form.Item
+                  name={['priceSpec', 'referencePriceSource']}
+                  label="折扣价格基准（可未知）"
+                >
+                  <Input
+                    placeholder="仅录入明确的模拟基准引用"
+                    maxLength={300}
+                  />
+                </Form.Item>
+              </div>
+              <Form.Item
+                name={['priceSpec', 'specification']}
+                label="适用规格（可未知）"
+              >
+                <Input
+                  maxLength={300}
+                  placeholder="同规格才能比较；不要编造官方规格"
+                />
+              </Form.Item>
+              <Form.List name={['priceSpec', 'rates']}>
+                {(fields, { add, remove }) => (
+                  <>
+                    {fields.map((f, index) => (
+                      <Card
+                        size="small"
+                        className="quote-rate"
+                        key={f.key}
+                        title={`计价维度 ${index + 1}`}
+                        extra={
+                          <Button onClick={() => remove(f.name)}>
+                            移除此维度
+                          </Button>
+                        }
+                      >
+                        <div className="quote-form-grid">
+                          <Form.Item
+                            name={[f.name, 'dimension']}
+                            label={`维度 ${index + 1} 类型`}
+                            rules={[{ required: true }]}
+                          >
+                            <Select
+                              options={Object.entries(dimensionLabels).map(
+                                ([value, label]) => ({ value, label }),
+                              )}
+                            />
+                          </Form.Item>
+                          <Form.Item
+                            name={[f.name, 'amount']}
+                            label={`维度 ${index + 1} 绝对单价（可未知）`}
+                            rules={[
+                              {
+                                pattern: /^(0|[1-9]\d{0,11})(\.\d{1,6})?$/,
+                                message: '非负十进制，最多12位整数、6位小数',
+                              },
+                            ]}
+                          >
+                            <Input placeholder="例如 0.125000；未知留空" />
+                          </Form.Item>
+                          <Form.Item
+                            name={[f.name, 'quantity']}
+                            label={`维度 ${index + 1} 每份计量数量`}
+                            rules={[{ required: true }]}
+                          >
+                            <InputNumber min={1} style={{ width: '100%' }} />
+                          </Form.Item>
+                          <Form.Item
+                            name={[f.name, 'unit']}
+                            label={`维度 ${index + 1} 计量单位`}
+                            rules={[{ required: true, whitespace: true }]}
+                          >
+                            <Input
+                              maxLength={80}
+                              placeholder="明确填写 Token / 张 / 秒等"
+                            />
+                          </Form.Item>
+                        </div>
+                      </Card>
+                    ))}
+                    <Button
+                      style={{ marginTop: 12 }}
+                      onClick={() => add({ amount: null })}
                     >
-                      <div className="quote-form-grid">
-                        <Form.Item
-                          name={[f.name, 'dimension']}
-                          label={`维度 ${index + 1} 类型`}
-                          rules={[{ required: true }]}
-                        >
-                          <Select
-                            options={Object.entries(dimensionLabels).map(
-                              ([value, label]) => ({ value, label }),
-                            )}
-                          />
-                        </Form.Item>
-                        <Form.Item
-                          name={[f.name, 'amount']}
-                          label={`维度 ${index + 1} 绝对单价（可未知）`}
-                          rules={[
-                            {
-                              pattern: /^(0|[1-9]\d{0,11})(\.\d{1,6})?$/,
-                              message: '非负十进制，最多12位整数、6位小数',
-                            },
-                          ]}
-                        >
-                          <Input placeholder="例如 0.125000；未知留空" />
-                        </Form.Item>
-                        <Form.Item
-                          name={[f.name, 'quantity']}
-                          label={`维度 ${index + 1} 每份计量数量`}
-                          rules={[{ required: true }]}
-                        >
-                          <InputNumber min={1} style={{ width: '100%' }} />
-                        </Form.Item>
-                        <Form.Item
-                          name={[f.name, 'unit']}
-                          label={`维度 ${index + 1} 计量单位`}
-                          rules={[{ required: true, whitespace: true }]}
-                        >
-                          <Input
-                            maxLength={80}
-                            placeholder="明确填写 Token / 张 / 秒等"
-                          />
-                        </Form.Item>
-                      </div>
-                    </Card>
-                  ))}
-                  <Button
-                    style={{ marginTop: 12 }}
-                    onClick={() => add({ amount: null })}
-                  >
-                    添加计价维度
-                  </Button>
-                </>
-              )}
-            </Form.List>
-          </Card>
+                      添加计价维度
+                    </Button>
+                  </>
+                )}
+              </Form.List>
+            </Card>
+          </details>
           <div className="quote-form-grid">
             <Form.Item
               name="effectiveFrom"
-              label="生效日期（北京时间00:00）"
+              label="生效日期"
               rules={[{ required: priceStatus === 'temporary' }]}
             >
               <Input type="date" />
             </Form.Item>
             <Form.Item
               name="effectiveUntil"
-              label="截止日期（北京时间00:00，不含）"
+              label="截止日期（可空，不含当日）"
               rules={[{ required: priceStatus === 'temporary' }]}
             >
               <Input type="date" />
             </Form.Item>
           </div>
-          <Form.Item
-            name="evidenceReference"
-            label="报价证据引用"
-            rules={[
-              { required: true },
-              {
-                pattern: /^mock:[A-Za-z0-9_:/.-]+$/,
-                message: '仅使用 mock: 模拟引用',
-              },
-            ]}
-          >
-            <Input placeholder="mock:evidence:quote" maxLength={155} />
+          <Form.Item name="evidenceReference" hidden>
+            <Input />
           </Form.Item>
           <Form.Item
             name="reason"

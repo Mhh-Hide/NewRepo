@@ -1,3 +1,4 @@
+import { discountText } from '../procurement/discount';
 import { useCallback, useState } from 'react';
 import { Alert, Button, Card, Input, Select, Space, Table, Tag } from 'antd';
 import { Link, useOutletContext } from 'react-router-dom';
@@ -118,7 +119,7 @@ export default function ProcurementAnalyticsPage() {
       <div>
         <div>
           {value.comparable
-            ? `同口径；基准报价减此报价 ${value.discountDifferenceBps} 基点（非节约率）`
+            ? `同口径；基准报价减此报价 ${value.discountDifferenceBps == null ? '—' : discountText(value.discountDifferenceBps)}（非节约率）`
             : `无法比较：${value.reasons.join('；')}`}
         </div>
         <div>规格口径：{value.specComparable ? '一致' : '不同或信息不足'}</div>
@@ -283,7 +284,7 @@ export default function ProcurementAnalyticsPage() {
           onChange={(v) => setBaseline(v ?? '')}
           options={d.records.map((r) => ({
             value: r.quote.id,
-            label: `${r.quote.id} · ${r.channel.name} · ${r.quote.discount}基点`,
+            label: `${r.quote.id} · ${r.channel.name} · ${discountText(r.quote.discount)}`,
           }))}
         />
         {!query.modelId ? (
@@ -322,7 +323,7 @@ export default function ProcurementAnalyticsPage() {
                   c.latest ? (
                     <>
                       <Link to={`/quotes/${c.latest.quote.id}`}>
-                        {c.latest.quote.discount} 基点 ·{' '}
+                        {discountText(c.latest.quote.discount)} ·{' '}
                         {quoteStatusLabels[c.latest.quote.priceStatus]}
                       </Link>
                       <div>{priceSpecText(c.latest.quote.priceSpec)}</div>
@@ -354,7 +355,8 @@ export default function ProcurementAnalyticsPage() {
                     {c.latestFormal ? (
                       <>
                         <Link to={`/quotes/${c.latestFormal.quote.id}`}>
-                          {c.latestFormal.quote.discount} 基点 · 已确认历史
+                          {discountText(c.latestFormal.quote.discount)} ·
+                          已确认历史
                         </Link>
                         <div>
                           查询时刻：
@@ -386,7 +388,7 @@ export default function ProcurementAnalyticsPage() {
                         {c.activeFormals.map((r) => (
                           <div key={r.quote.id}>
                             <Link to={`/quotes/${r.quote.id}`}>
-                              {r.quote.discount} 基点 · 查看正式报价
+                              {discountText(r.quote.discount)} · 查看正式报价
                             </Link>
                             <small>
                               {' '}
@@ -417,7 +419,7 @@ export default function ProcurementAnalyticsPage() {
                     {c.activePromotions.map((r) => (
                       <div key={r.quote.id}>
                         <Link to={`/quotes/${r.quote.id}`}>
-                          {r.quote.discount} 基点 · 查看优惠
+                          {discountText(r.quote.discount)} · 查看优惠
                         </Link>
                       </div>
                     ))}
@@ -506,7 +508,7 @@ export default function ProcurementAnalyticsPage() {
               title: '折扣与优惠状态',
               render: (_, v) => (
                 <>
-                  {v.record.quote.discount} 基点
+                  {discountText(v.record.quote.discount)}
                   <div>{analyticsValidityLabels[v.validity]}</div>
                   {v.expiring && (
                     <Tag color="orange">七天内到期，待人工跟进</Tag>
@@ -562,11 +564,17 @@ export default function ProcurementAnalyticsPage() {
               ),
             },
             { title: '渠道', dataIndex: 'channel' },
-            { title: '目标基点', render: (_, t) => t.target.discount },
-            { title: '实际报价基点', dataIndex: 'quotedDiscount' },
+            {
+              title: '目标折扣',
+              render: (_, t) => discountText(t.target.discount),
+            },
+            {
+              title: '实际报价折扣',
+              render: (_, t) => discountText(t.quotedDiscount),
+            },
             {
               title: '报价减目标（纯数字）',
-              dataIndex: 'numericDifferenceBps',
+              render: (_, t) => discountText(t.numericDifferenceBps),
             },
             { title: '商业结论', render: () => '未确认，不判定达成' },
           ]}

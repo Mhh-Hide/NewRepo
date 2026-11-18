@@ -2,6 +2,7 @@ import { Button, Drawer, Form, Input, InputNumber, Select, Space } from 'antd';
 import type { QuoteInput, QuoteOptions } from '../../services/quotation-types';
 import { dimensionLabels, quoteSourceLabels } from '../../domain/quotations';
 import { quoteStatusLabels } from '../../domain/statuses';
+import { DiscountInput } from '../procurement/DiscountInput';
 import { dateISO, dateInput } from '../quotes/quote-format';
 export function BulkItemEditor({
   input,
@@ -97,8 +98,8 @@ export function BulkItemEditor({
           />
         </Form.Item>
         <div className="quote-form-grid">
-          <Form.Item name="discount" label="报价折扣（整数基点，8000 = 八折）">
-            <InputNumber aria-label="行报价折扣" style={{ width: '100%' }} />
+          <Form.Item name="discount" label="报价折扣">
+            <DiscountInput aria-label="行报价折扣" />
           </Form.Item>
           <Form.Item name="priceStatus" label="报价状态">
             <Select

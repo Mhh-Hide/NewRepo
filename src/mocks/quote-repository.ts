@@ -1,3 +1,4 @@
+import { atomicStorage } from '../services/atomic-storage';
 import { businessStorage } from '../services/runtime-data';
 import { projectLegacyRemediation } from './remediation-repository';
 import { testingSnapshot } from './testing-state';
@@ -181,7 +182,13 @@ function seed(): QuoteState {
   };
 }
 export class QuoteRepository {
-  constructor(private storage: StoragePort) {}
+  private storage: StoragePort;
+  get storagePort() {
+    return this.storage;
+  }
+  constructor(storage: StoragePort) {
+    this.storage = atomicStorage(storage);
+  }
   read(): QuoteState {
     try {
       const raw = this.storage.getItem(quoteStorageKey);
@@ -480,7 +487,4 @@ export class QuoteRepository {
     }
   }
 }
-export const quoteRepository = new QuoteRepository({
-  getItem: (k) => businessStorage.getItem(k),
-  setItem: (k, v) => businessStorage.setItem(k, v),
-});
+export const quoteRepository = new QuoteRepository(businessStorage);

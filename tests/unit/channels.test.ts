@@ -131,7 +131,7 @@ describe('channel lifecycle and coherent graph', () => {
     expect((await a.getSupplier(s.id))?.resources).toMatchObject({
       channelCount: 1,
       modelCount: 1,
-      channelTypes: ['官方原厂 Key'],
+      channelTypes: ['官 Key'],
     });
     expect((await a.getModelResource('m-seed-cn'))?.summary.supplierCount).toBe(
       4,
